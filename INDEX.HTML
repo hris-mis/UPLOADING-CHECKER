@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Conflict Checker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Library for Excel file generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        .paste-area {
+            border: 2px dashed #d1d5db;
+            padding: 1rem;
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            min-height: 150px;
+            white-space: pre;
+            overflow: auto;
+            color: #6b7280;
+            cursor: text;
+        }
+        .paste-area:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+        }
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+            white-space: nowrap;
+        }
+        th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+        .conflict {
+            background-color: #fefce8;
+            color: #854d0e;
+            font-weight: 500;
+        }
+        .weekend-rest-day {
+            color: #dc2626;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-6 lg:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">Schedule Conflict Checker</h1>
+            <p class="mt-2 text-gray-600">Paste data from Excel to automatically validate work and rest day schedules.</p>
+        </header>
+
+        <!-- Success Message -->
+        <div id="success-message" class="hidden fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg transition-transform transform translate-x-full">
+            Validation successful! HRIS upload file has been generated.
+        </div>
+
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Work Schedule Section -->
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">1. Paste Work Schedule Data</h2>
+                    <div class="flex items-center">
+                        <input type="text" id="work-branch-name" placeholder="Enter Branch Name" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2">
+                        <button id="generate-work-btn" onclick="generateHrisFile('work')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                            Generate File
+                        </button>
+                    </div>
+                </div>
+                <div id="work-schedule-paste" contenteditable="true" class="paste-area" onpaste="handlePaste(event, 'work')"></div>
+                <div class="table-container mt-4">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Employee No.</th>
+                                <th>Work Date</th>
+                                <th>Shift Code</th>
+                                <th>Day of Week</th>
+                                <th>Position</th>
+                            </tr>
+                        </thead>
+                        <tbody id="work-schedule-body">
+                            <!-- JS will populate this -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Rest Day Schedule Section -->
+            <div class="bg-white p-6 rounded-lg shadow-sm">
+                 <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                    <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
+                     <div class="flex items-center">
+                        <input type="text" id="rest-branch-name" placeholder="Enter Branch Name" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2">
+                        <button id="generate-rest-btn" onclick="generateHrisFile('rest')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
+                            Generate File
+                        </button>
+                    </div>
+                </div>
+                <div id="rest-day-paste" contenteditable="true" class="paste-area" onpaste="handlePaste(event, 'rest')"></div>
+                <div class="table-container mt-4">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Employee No.</th>
+                                <th>Rest Day Date</th>
+                                <th>Day of Week</th>
+                                <th>Position</th>
+                                <th class="w-1/4">Schedule Conflict Checker</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rest-day-body">
+                            <!-- JS will populate this -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex justify-center mb-8">
+            <button onclick="clearAllData()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
+                Clear All Data
+            </button>
+        </div>
+
+        <!-- Important Notices -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-yellow-200">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Important Notices</h3>
+            <ul class="space-y-3 text-gray-600">
+                <li><strong class="font-semibold text-yellow-800">1:</strong> Branch Heads, Site Supervisors, and OICs are strictly prohibited from taking rest days on the same date.</li>
+                <li><strong class="font-semibold text-yellow-800">2:</strong> Validation is based on Employee Number, Rest Day, and Work Date. Ensure Employee Numbers are entered correctly for accurate conflict detection.</li>
+                <li><strong class="font-semibold text-yellow-800">3:</strong> Leaders and Team Members can only take a maximum of 2 weekend Rest Days per month.</li>
+            </ul>
+        </div>
+    </div>
+
+<script>
+    // Data stores
+    let workScheduleData = [];
+    let restDayData = [];
+
+    const LEADERSHIP_POSITIONS = ['Branch Head', 'Site Supervisor', 'OIC'];
+
+    // --- PASTE AND PARSE LOGIC ---
+    function handlePaste(e, type) {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        
+        e.target.innerText = '';
+        
+        const allRows = text.trim().split('\n').map(row => row.split('\t'));
+        const rows = allRows.slice(1); // Skip header row from pasted data
+        
+        if (type === 'work') {
+            workScheduleData = rows.map(row => ({
+                name: row[0] || '',
+                empNo: row[1] || '',
+                date: row[2] ? normalizeDate(row[2]) : '',
+                shift: row[3] || '',
+                day: row[4] || '',
+                position: row[5] || ''
+            })).filter(d => d.empNo && d.date);
+            renderWorkTable();
+        } else if (type === 'rest') {
+            restDayData = rows.map(row => ({
+                name: row[0] || '',
+                empNo: row[1] || '',
+                date: row[2] ? normalizeDate(row[2]) : '',
+                day: row[3] || '',
+                position: row[4] || '',
+                conflicts: []
+            })).filter(d => d.empNo && d.date);
+        }
+        
+        validateSchedules();
+    }
+    
+    function normalizeDate(dateString) {
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${month}/${day}/${year}`;
+        } catch(e) {
+            return dateString;
+        }
+    }
+
+    // --- RENDERING LOGIC ---
+    function renderWorkTable() {
+        const tbody = document.getElementById('work-schedule-body');
+        tbody.innerHTML = workScheduleData.map(d => `
+            <tr>
+                <td>${d.name}</td>
+                <td>${d.empNo}</td>
+                <td>${d.date}</td>
+                <td>${d.shift}</td>
+                <td>${d.day}</td>
+                <td>${d.position}</td>
+            </tr>
+        `).join('');
+    }
+
+    function renderRestDayTable() {
+        const tbody = document.getElementById('rest-day-body');
+        tbody.innerHTML = restDayData.map(d => {
+            const isWeekend = d.day === 'Saturday' || d.day === 'Sunday';
+            const dayClass = isWeekend ? 'weekend-rest-day' : '';
+            const conflictCellClass = d.conflicts.length > 0 ? 'conflict' : '';
+            const conflictMessages = d.conflicts.map(c => `<div>${c}</div>`).join('');
+
+            return `
+                <tr>
+                    <td>${d.name}</td>
+                    <td>${d.empNo}</td>
+                    <td class="${dayClass}">${d.date}</td>
+                    <td class="${dayClass}">${d.day}</td>
+                    <td>${d.position}</td>
+                    <td class="${conflictCellClass}">${conflictMessages}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    // --- BUTTON AND STATE MANAGEMENT ---
+    function updateButtonStates() {
+        const workBtn = document.getElementById('generate-work-btn');
+        const restBtn = document.getElementById('generate-rest-btn');
+
+        workBtn.disabled = workScheduleData.length === 0;
+
+        const hasConflicts = restDayData.some(d => d.conflicts.length > 0);
+        restBtn.disabled = restDayData.length === 0 || hasConflicts;
+    }
+
+    // --- VALIDATION LOGIC ---
+    function validateSchedules() {
+        if (workScheduleData.length > 0 || restDayData.length > 0) {
+            // Reset conflicts
+            restDayData.forEach(rd => rd.conflicts = []);
+
+            const workScheduleMap = new Map(
+                workScheduleData.map(ws => [`${ws.empNo}-${ws.date}`, ws])
+            );
+            const restDaysByDate = {};
+            const weekendRestDaysByEmployee = {};
+
+            restDayData.forEach(rd => {
+                if (!restDaysByDate[rd.date]) restDaysByDate[rd.date] = [];
+                restDaysByDate[rd.date].push(rd);
+                const isWeekend = rd.day === 'Saturday' || rd.day === 'Sunday';
+                if (isWeekend) {
+                    const monthYear = rd.date.substring(0, 2) + '/' + rd.date.substring(6, 10);
+                    const key = `${rd.empNo}-${monthYear}`;
+                    if (!weekendRestDaysByEmployee[key]) weekendRestDaysByEmployee[key] = 0;
+                    weekendRestDaysByEmployee[key]++;
+                }
+            });
+
+            // Validations
+            restDayData.forEach(rd => {
+                if (workScheduleMap.has(`${rd.empNo}-${rd.date}`)) {
+                    rd.conflicts.push('⚠️ CONFLICT WITH WORK SCHED');
+                }
+            });
+
+            for (const date in restDaysByDate) {
+                const leadersOnRest = restDaysByDate[date].filter(rd => LEADERSHIP_POSITIONS.includes(rd.position));
+                if (leadersOnRest.length > 1) {
+                    leadersOnRest.forEach(leaderRd => {
+                        if (!leaderRd.conflicts.includes('🚫 LEADERSHIP REST DAY CONFLICT')) {
+                           leaderRd.conflicts.push('🚫 LEADERSHIP REST DAY CONFLICT');
+                        }
+                    });
+                }
+            }
+            
+            for (const key in weekendRestDaysByEmployee) {
+                if (weekendRestDaysByEmployee[key] > 2) {
+                    const [empNo, monthYear] = key.split('-');
+                    restDayData.forEach(rd => {
+                        const rdMonthYear = rd.date.substring(0, 2) + '/' + rd.date.substring(6, 10);
+                        const isWeekend = rd.day === 'Saturday' || rd.day === 'Sunday';
+                        if (rd.empNo === empNo && rdMonthYear === monthYear && isWeekend) {
+                            if (!rd.conflicts.includes(' weekend rest days exceed limit')) {
+                               rd.conflicts.push(`🚩 ${weekendRestDaysByEmployee[key]} weekend rest days exceed limit (Max 2)`);
+                            }
+                        }
+                    });
+                }
+            }
+        }
+        
+        renderRestDayTable();
+        updateButtonStates();
+    }
+    
+    // --- FILE GENERATION ---
+    function generateHrisFile(type) {
+        let data, filename, branchName;
+
+        if (type === 'work' && workScheduleData.length > 0) {
+            branchName = document.getElementById('work-branch-name').value.trim();
+            data = workScheduleData.map(item => ({
+                'Employee No.': item.empNo,
+                'Work Date': item.date,
+                'Work Shift Code': item.shift
+            }));
+            const defaultFilename = 'work_schedule_upload.xlsx';
+            filename = branchName ? `${branchName}_${defaultFilename}` : defaultFilename;
+
+        } else if (type === 'rest' && restDayData.length > 0) {
+            branchName = document.getElementById('rest-branch-name').value.trim();
+            data = restDayData.map(item => ({
+                'Employee No.': item.empNo,
+                'Rest Day Date': item.date
+            }));
+            const defaultFilename = 'rest_day_upload.xlsx';
+            filename = branchName ? `${branchName}_${defaultFilename}` : defaultFilename;
+        } else {
+            return; // No data to generate
+        }
+        
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'HRIS Upload');
+        XLSX.writeFile(workbook, filename);
+
+        showSuccessMessage();
+    }
+
+    function showSuccessMessage() {
+        const msg = document.getElementById('success-message');
+        msg.classList.remove('hidden', 'translate-x-full');
+        msg.classList.add('translate-x-0');
+        setTimeout(() => {
+            msg.classList.remove('translate-x-0');
+            msg.classList.add('translate-x-full');
+            setTimeout(() => msg.classList.add('hidden'), 300);
+        }, 3000);
+    }
+    
+    function clearAllData() {
+        workScheduleData = [];
+        restDayData = [];
+        document.getElementById('work-schedule-paste').innerText = '';
+        document.getElementById('rest-day-paste').innerText = '';
+        document.getElementById('work-branch-name').value = '';
+        document.getElementById('rest-branch-name').value = '';
+        renderWorkTable();
+        renderRestDayTable();
+        updateButtonStates();
+    }
+
+</script>
+</body>
+</html>
+
