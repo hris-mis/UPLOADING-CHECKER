@@ -13,8 +13,12 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
         }
-        .table-container {
-            overflow-x: auto;
+.table-container {
+    overflow-x: auto;
+    width: 100%;
+    max-width: 95vw;
+    margin: 0 auto;
+
         }
         .paste-area {
             border: 2px dashed #d1d5db;
@@ -224,7 +228,8 @@
             const isWeekend = d.day === 'Saturday' || d.day === 'Sunday';
             const dayClass = isWeekend ? 'weekend-rest-day' : '';
             const conflictCellClass = d.conflicts.length > 0 ? 'conflict' : '';
-            const conflictMessages = d.conflicts.map(c => `<div>${c}</div>`).join('');
+            const conflictMessages = d.conflicts.map(c => `<div><strong>${c.type}:</strong> ${c.reason}</div>`).join('');
+
 
             return `
                 <tr>
@@ -251,67 +256,88 @@
     }
 
     // --- VALIDATION LOGIC ---
-    function validateSchedules() {
-        if (workScheduleData.length > 0 || restDayData.length > 0) {
-            // Reset conflicts
-            restDayData.forEach(rd => rd.conflicts = []);
+function validateSchedules() {
+    if (workScheduleData.length > 0 || restDayData.length > 0) {
+        restDayData.forEach(rd => rd.conflicts = []);
 
-            const workScheduleMap = new Map(
-                workScheduleData.map(ws => [`${ws.empNo}-${ws.date}`, ws])
-            );
-            const restDaysByDate = {};
-            const weekendRestDaysByEmployee = {};
+        const workScheduleMap = new Map(workScheduleData.map(ws => [`${ws.empNo}-${ws.date}`, ws]));
+        const empNumbersInWork = new Set(workScheduleData.map(ws => ws.empNo));
+        const restDaysByDate = {};
+        const weekendRestDaysByEmployee = {};
+        const seenRestEntries = new Set();
 
-            restDayData.forEach(rd => {
-                if (!restDaysByDate[rd.date]) restDaysByDate[rd.date] = [];
-                restDaysByDate[rd.date].push(rd);
-                const isWeekend = rd.day === 'Saturday' || rd.day === 'Sunday';
-                if (isWeekend) {
-                    const monthYear = rd.date.substring(0, 2) + '/' + rd.date.substring(6, 10);
-                    const key = `${rd.empNo}-${monthYear}`;
-                    if (!weekendRestDaysByEmployee[key]) weekendRestDaysByEmployee[key] = 0;
-                    weekendRestDaysByEmployee[key]++;
-                }
-            });
+        restDayData.forEach(rd => {
+            if (!restDaysByDate[rd.date]) restDaysByDate[rd.date] = [];
+            restDaysByDate[rd.date].push(rd);
 
-            // Validations
-            restDayData.forEach(rd => {
-                if (workScheduleMap.has(`${rd.empNo}-${rd.date}`)) {
-                    rd.conflicts.push('⚠️ CONFLICT WITH WORK SCHED');
-                }
-            });
-
-            for (const date in restDaysByDate) {
-                const leadersOnRest = restDaysByDate[date].filter(rd => LEADERSHIP_POSITIONS.includes(rd.position));
-                if (leadersOnRest.length > 1) {
-                    leadersOnRest.forEach(leaderRd => {
-                        if (!leaderRd.conflicts.includes('🚫 LEADERSHIP REST DAY CONFLICT')) {
-                           leaderRd.conflicts.push('🚫 LEADERSHIP REST DAY CONFLICT');
-                        }
-                    });
-                }
+            // --- Weekend Count ---
+            const isWeekend = rd.day === 'Saturday' || rd.day === 'Sunday';
+            if (isWeekend) {
+                const monthYear = rd.date.substring(0, 2) + '/' + rd.date.substring(6, 10);
+                const key = `${rd.empNo}-${monthYear}`;
+                if (!weekendRestDaysByEmployee[key]) weekendRestDaysByEmployee[key] = 0;
+                weekendRestDaysByEmployee[key]++;
             }
-            
-            for (const key in weekendRestDaysByEmployee) {
-                if (weekendRestDaysByEmployee[key] > 2) {
-                    const [empNo, monthYear] = key.split('-');
-                    restDayData.forEach(rd => {
-                        const rdMonthYear = rd.date.substring(0, 2) + '/' + rd.date.substring(6, 10);
-                        const isWeekend = rd.day === 'Saturday' || rd.day === 'Sunday';
-                        if (rd.empNo === empNo && rdMonthYear === monthYear && isWeekend) {
-                            if (!rd.conflicts.includes(' weekend rest days exceed limit')) {
-                               rd.conflicts.push(`🚩 ${weekendRestDaysByEmployee[key]} weekend rest days exceed limit (Max 2)`);
-                            }
-                        }
-                    });
-                }
+
+            // --- Duplicate Entry Check ---
+            const uniqueKey = `${rd.empNo}-${rd.date}`;
+            if (seenRestEntries.has(uniqueKey)) {
+                rd.conflicts.push({ type: 'Duplicate Entry', reason: 'Duplicate rest day entry found for same employee and date.' });
+            } else {
+                seenRestEntries.add(uniqueKey);
+            }
+
+            // --- Invalid Date Format ---
+            const d = new Date(rd.date);
+            if (isNaN(d.getTime())) {
+                rd.conflicts.push({ type: 'Invalid Date Format', reason: 'Date format unrecognized or invalid.' });
+            }
+
+            // --- Missing Employee Check ---
+            if (!empNumbersInWork.has(rd.empNo)) {
+                rd.conflicts.push({ type: 'Missing Employee', reason: 'Employee found in Rest Day sheet but not in Work Schedule data.' });
+            }
+
+            // --- Work Conflict ---
+            if (workScheduleMap.has(uniqueKey)) {
+                rd.conflicts.push({ type: 'Work Conflict', reason: 'Employee has a work schedule on the same date as their rest day.' });
+            }
+        });
+
+        // --- Leadership Conflict ---
+        for (const date in restDaysByDate) {
+            const leadersOnRest = restDaysByDate[date].filter(rd => LEADERSHIP_POSITIONS.includes(rd.position));
+            if (leadersOnRest.length > 1) {
+                leadersOnRest.forEach(rd => {
+                    rd.conflicts.push({ type: 'Leadership Conflict', reason: 'Multiple leaders (Branch Head/Supervisor/OIC) have the same rest day.' });
+                });
             }
         }
-        
-        renderRestDayTable();
-        updateButtonStates();
+
+        // --- Weekend Limit Exceeded ---
+        for (const key in weekendRestDaysByEmployee) {
+            if (weekendRestDaysByEmployee[key] > 2) {
+                const [empNo, monthYear] = key.split('-');
+                restDayData.forEach(rd => {
+                    const rdMonthYear = rd.date.substring(0, 2) + '/' + rd.date.substring(6, 10);
+                    const isWeekend = rd.day === 'Saturday' || rd.day === 'Sunday';
+                    if (rd.empNo === empNo && rdMonthYear === monthYear && isWeekend) {
+                        rd.conflicts.push({
+                            type: 'Weekend Limit Exceeded',
+                            reason: `${weekendRestDaysByEmployee[key]} weekend rest days found — maximum allowed is 2.`
+                        });
+                    }
+                });
+            }
+        }
     }
-    
+
+    renderRestDayTable();
+    updateButtonStates();
+}
+
+            ;
+
     // --- FILE GENERATION ---
     function generateHrisFile(type) {
         let data, filename, branchName;
