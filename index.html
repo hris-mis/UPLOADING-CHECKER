@@ -56,6 +56,13 @@
             color: #dc2626;
             font-weight: 500;
         }
+        th:first-child, td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: #fffbea; /* light yellow */
+    z-index: 2;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+}
     </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
@@ -100,9 +107,11 @@
                         <tbody id="work-schedule-body">
                             <!-- JS will populate this -->
                         </tbody>
-                    </table>
-                </div>
-            </div>
+
+</table>
+<p id="summary" class="text-sm text-gray-600 mt-3 italic"></p>
+</div>
+
 
             <!-- Rest Day Schedule Section -->
             <div class="bg-white p-6 rounded-lg shadow-sm">
@@ -119,15 +128,16 @@
                 <div class="table-container mt-4">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Employee No.</th>
-                                <th>Rest Day Date</th>
-                                <th>Day of Week</th>
-                                <th>Position</th>
-                                <th class="w-1/4">Schedule Conflict Checker</th>
-                            </tr>
-                        </thead>
+    <tr>
+        <th class="w-1/3 text-red-600">Conflict</th>
+        <th>Name</th>
+        <th>Employee No.</th>
+        <th>Rest Day Date</th>
+        <th>Day of Week</th>
+        <th>Position</th>
+    </tr>
+</thead>
+
                         <tbody id="rest-day-body">
                             <!-- JS will populate this -->
                         </tbody>
@@ -222,27 +232,42 @@
         `).join('');
     }
 
-    function renderRestDayTable() {
-        const tbody = document.getElementById('rest-day-body');
-        tbody.innerHTML = restDayData.map(d => {
-            const isWeekend = d.day === 'Saturday' || d.day === 'Sunday';
-            const dayClass = isWeekend ? 'weekend-rest-day' : '';
-            const conflictCellClass = d.conflicts.length > 0 ? 'conflict' : '';
-            const conflictMessages = d.conflicts.map(c => `<div><strong>${c.type}:</strong> ${c.reason}</div>`).join('');
+function renderRestDayTable() {
+    const tbody = document.getElementById('rest-day-body');
+    tbody.innerHTML = restDayData.map(d => {
+        const isWeekend = d.day === 'Saturday' || d.day === 'Sunday';
+        const hasConflict = d.conflicts.length > 0;
+        const rowHighlight = hasConflict ? 'bg-yellow-50 border-l-4 border-yellow-400' : '';
+        const conflictMessages = d.conflicts.map(c => `<div><strong>${c.type}:</strong> ${c.reason}</div>`).join('');
 
+        return `
+            <tr class="${rowHighlight}">
+                <td class="font-medium text-red-600 max-w-xs overflow-y-auto whitespace-pre-line">
+                    ${conflictMessages || ''}
+                </td>
+                <td>${d.name}</td>
+                <td>${d.empNo}</td>
+                <td class="${isWeekend ? 'weekend-rest-day' : ''}">${d.date}</td>
+                <td class="${isWeekend ? 'weekend-rest-day' : ''}">${d.day}</td>
+                <td>${d.position}</td>
+            </tr>
+        `;
+    }).join('');
 
-            return `
-                <tr>
-                    <td>${d.name}</td>
-                    <td>${d.empNo}</td>
-                    <td class="${dayClass}">${d.date}</td>
-                    <td class="${dayClass}">${d.day}</td>
-                    <td>${d.position}</td>
-                    <td class="${conflictCellClass}">${conflictMessages}</td>
-                </tr>
-            `;
-        }).join('');
-    }
+    // ✅ Move summary counter here (after rendering)
+    const total = restDayData.length;
+    const conflicts = restDayData.filter(d => d.conflicts && d.conflicts.length > 0).length;
+    document.getElementById('summary').innerText =
+      `${conflicts} out of ${total} entries have conflicts detected.`;
+
+      if (conflicts === 0 && total > 0) {
+  document.getElementById('summary').classList.add('text-green-600');
+  document.getElementById('summary').innerText = `✅ No conflicts detected for ${total} entries.`;
+} else {
+  document.getElementById('summary').classList.remove('text-green-600');
+}
+
+}
     
     // --- BUTTON AND STATE MANAGEMENT ---
     function updateButtonStates() {
@@ -313,6 +338,44 @@ function validateSchedules() {
                 });
             }
         }
+// --- Weekend Pair Validation (optional enhancement) ---
+const weekendPairs = [
+    ['Thursday', 'Friday'],
+    ['Friday', 'Saturday'],
+    ['Saturday', 'Sunday'],
+    ['Sunday', 'Monday']
+];
+
+const groupedByEmp = {};
+restDayData.forEach(rd => {
+    if (!groupedByEmp[rd.empNo]) groupedByEmp[rd.empNo] = [];
+    groupedByEmp[rd.empNo].push(rd);
+});
+
+Object.keys(groupedByEmp).forEach(empNo => {
+    const empDays = groupedByEmp[empNo];
+    const dayNames = empDays.map(d => d.day);
+    let detectedPairs = new Set();
+
+    weekendPairs.forEach(([a, b]) => {
+        if (dayNames.includes(a) && dayNames.includes(b)) {
+            detectedPairs.add(`${a}-${b}`);
+        }
+    });
+
+    const hasFriday = dayNames.includes('Friday');
+    const hasSaturday = dayNames.includes('Saturday');
+    const hasWeekday = dayNames.some(d => !['Friday','Saturday','Sunday'].includes(d));
+    if (hasFriday && hasWeekday) detectedPairs.add('Friday + Weekday');
+    if (hasSaturday && hasWeekday) detectedPairs.add('Saturday + Weekday');
+
+    if (detectedPairs.size > 2) {
+        const reason = `Weekend Limit Exceeded: ${detectedPairs.size} weekend RDs (${[...detectedPairs].join(', ')})`;
+        empDays.forEach(d => {
+            d.conflicts.push({ type: 'Weekend Pair Violation', reason });
+        });
+    }
+});
 
         // --- Weekend Limit Exceeded ---
         for (const key in weekendRestDaysByEmployee) {
@@ -331,6 +394,15 @@ function validateSchedules() {
             }
         }
     }
+
+    // ✅ Scroll to first conflict if any
+const firstConflict = restDayData.find(rd => rd.conflicts.length > 0);
+if (firstConflict) {
+  setTimeout(() => {
+    const row = document.querySelector('td.font-medium.text-red-600');
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 200);
+}
 
     renderRestDayTable();
     updateButtonStates();
