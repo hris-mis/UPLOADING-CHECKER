@@ -14,10 +14,29 @@
             background-color: #f3f4f6;
         }
 .table-container {
-    overflow-x: auto;
-    width: 100%;
-    max-width: 95vw;
-    margin: 0 auto;
+  overflow-x: auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  border-radius: 0.75rem;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: all 0.2s ease-in-out;
+}
+.table-container:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+table {
+  table-layout: auto;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  background: linear-gradient(to right, #f9fafb, #f3f4f6);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.85rem;
 
         }
         .paste-area {
@@ -36,21 +55,31 @@
             border-color: #4f46e5;
             box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
         }
-        th, td {
-            padding: 0.75rem 1rem;
-            text-align: left;
-            border-bottom: 1px solid #e5e7eb;
-            white-space: nowrap;
-        }
+th, td {
+  padding: 0.85rem 1.25rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+        
         th {
             background-color: #f9fafb;
             font-weight: 600;
             color: #374151;
         }
-        .conflict {
-            background-color: #fefce8;
-            color: #854d0e;
-            font-weight: 500;
+.conflict {
+  background-color: #fff7ed;
+  color: #b45309;
+  font-weight: 500;
+  border-left: 4px solid #f59e0b;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 0.75rem;
+  min-width: 320px;
+  max-width: 480px;
+  border-radius: 0.5rem;
         }
         .weekend-rest-day {
             color: #dc2626;
@@ -63,20 +92,58 @@
     z-index: 2;
     box-shadow: 2px 0 5px rgba(0,0,0,0.05);
 }
+
+html, body {
+  overflow-x: hidden;
+}
+
+/* ✨ Subtle row hover animation for corporate polish */
+tbody tr {
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+tbody tr:hover {
+  background: #f9fafb;
+  transform: scale(1.01);
+}
+
     </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
 
     <div class="max-w-7xl mx-auto">
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl font-bold text-gray-800">Schedule Conflict Checker</h1>
-            <p class="mt-2 text-gray-600">Paste data from Excel to automatically validate work and rest day schedules.</p>
-        </header>
+<header class="mb-10 text-center">
+  <h1 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-700 to-blue-500 text-transparent bg-clip-text">
+    Schedule Conflict Checker
+  </h1>
+  <p class="mt-2 text-gray-600 text-sm tracking-wide">
+    Validate, review, and export work & rest day schedules with ease.
+  </p>
+</header>
+
+<div id="warning-banner" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mx-auto rounded-lg max-w-3xl text-center mb-6">
+  ⚠️ Please enter both Work Branch and Rest Branch names before generating the file.
+</div>
+
+
+
+        <!-- 🔴 Clear All Button (Top-Centered, Global Reset) -->
+<div class="flex justify-center mt-6 mb-8">
+  <button onclick="clearAllData()"
+    class="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 
+           text-white font-semibold py-3 px-8 rounded-full shadow-md 
+           transition-transform transform hover:scale-105">
+    🧹 Clear All Data
+  </button>
+</div>
+
 
         <!-- Success Message -->
-        <div id="success-message" class="hidden fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-lg transition-transform transform translate-x-full">
-            Validation successful! HRIS upload file has been generated.
-        </div>
+<div id="success-message"
+  class="hidden fixed top-6 right-6 bg-gradient-to-r from-green-600 to-emerald-600 text-white 
+         py-3 px-6 rounded-lg shadow-lg font-medium transition-transform transform translate-x-full">
+  ✅ Validation successful! HRIS upload file has been generated.
+</div>
+
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
   <!-- Work Schedule Section -->
@@ -151,12 +218,6 @@
     <!-- 🟡 Summary (must be outside the table) -->
     <p id="summary" class="text-sm text-gray-600 mt-3 italic"></p>
 
-    <!-- 🔴 Clear All Button (moved outside table) -->
-    <div class="flex justify-center mt-6">
-      <button onclick="clearAllData()"
-        class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-colors text-lg">
-        🔴 Clear All Data
-      </button>
     </div>
   </div>
 </div>
@@ -451,63 +512,115 @@ if (firstConflict) {
 }
 }
     // --- FILE GENERATION ---
-    function generateHrisFile(type) {
-        let data, filename, branchName;
+// --- FILE GENERATION ---
+function generateHrisFile(type) {
+  const banner = document.getElementById('warning-banner');
 
-if (type === 'work' && workScheduleData.length > 0) {
-  branchName = document.getElementById('work-branch-name').value.trim();
-  data = workScheduleData.map(item => ({
-    'Employee Number': item.empNo,
-    'Work Date': item.date,
-    'Shift Code': item.shift || ''
+  function showBanner(message) {
+    banner.textContent = message;
+    banner.classList.remove('hidden');
+    banner.classList.add('opacity-100');
+    setTimeout(() => {
+      banner.classList.remove('opacity-100');
+      setTimeout(() => banner.classList.add('hidden'), 500);
+    }, 4000);
+  }
 
-  }));
+  let branchName = '';
+  let data = [];
+  let filename = '';
 
-  filename = `${branchName}_WORK_SCHEDULE.xlsx`;
+  if (type === 'work') {
+    branchName = document.getElementById('work-branch-name').value.trim();
+    if (!branchName) {
+      showBanner("⚠️ Please enter the Work Branch Name before generating the file.");
+      return;
+    }
+    if (workScheduleData.length === 0) {
+      showBanner("⚠️ No Work Schedule data found. Please paste it first.");
+      return;
+    }
+
+    data = workScheduleData.map(item => ({
+      'Employee Number': item.empNo,
+      'Work Date': item.date,
+      'Shift Code': item.shift || ''
+    }));
+
+    filename = `${branchName}_WORK_SCHEDULE.xlsx`;
+  }
+
+  else if (type === 'rest') {
+    branchName = document.getElementById('rest-branch-name').value.trim();
+    if (!branchName) {
+      showBanner("⚠️ Please enter the Rest Branch Name before generating the file.");
+      return;
+    }
+    if (restDayData.length === 0) {
+      showBanner("⚠️ No Rest Day Schedule data found. Please paste it first.");
+      return;
+    }
+
+    data = restDayData.map(item => ({
+      'Employee No': item.empNo,
+      'Rest Day Date': item.date
+    }));
+
+    const defaultFilename = 'REST_DAY_UPLOAD.xlsx';
+    filename = branchName ? `${branchName}_${defaultFilename}` : defaultFilename;
+  }
+
+  else {
+    showBanner("⚠️ Invalid generation type.");
+    return;
+  }
+
+  // ✅ Generate Excel file
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'HRIS Upload');
+  XLSX.writeFile(workbook, filename);
+
+  // ✅ Show success message
+  showSuccessMessage();
 }
 
-        else if (type === 'rest' && restDayData.length > 0) {
-            branchName = document.getElementById('rest-branch-name').value.trim();
-            data = restDayData.map(item => ({
-                'Employee No': item.empNo,
-                'Rest Day Date': item.date
-            }));
-            const defaultFilename = 'rest_day_upload.xlsx';
-            filename = branchName ? `${branchName}_${defaultFilename}` : defaultFilename;
-        } else {
-            return; // No data to generate
-        }
-        
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'HRIS Upload');
-        XLSX.writeFile(workbook, filename);
+// --- SUCCESS MESSAGE ---
+function showSuccessMessage() {
+  const msg = document.getElementById('success-message');
+  msg.classList.remove('hidden', 'translate-x-full');
+  msg.classList.add('translate-x-0');
+  setTimeout(() => {
+    msg.classList.remove('translate-x-0');
+    msg.classList.add('translate-x-full');
+    setTimeout(() => msg.classList.add('hidden'), 300);
+  }, 3000);
+}
 
-        showSuccessMessage();
-    }
+// --- CLEAR ALL DATA ---
+function clearAllData() {
+  workScheduleData = [];
+  restDayData = [];
+  document.getElementById('work-schedule-paste').innerText = '';
+  document.getElementById('rest-day-paste').innerText = '';
+  document.getElementById('work-branch-name').value = '';
+  document.getElementById('rest-branch-name').value = '';
+  document.getElementById('summary').innerText = '';
+  document.getElementById('summary').classList.remove('text-green-600');
+  renderWorkTable();
+  renderRestDayTable();
+  updateButtonStates();
 
-    function showSuccessMessage() {
-        const msg = document.getElementById('success-message');
-        msg.classList.remove('hidden', 'translate-x-full');
-        msg.classList.add('translate-x-0');
-        setTimeout(() => {
-            msg.classList.remove('translate-x-0');
-            msg.classList.add('translate-x-full');
-            setTimeout(() => msg.classList.add('hidden'), 300);
-        }, 3000);
-    }
-    
-    function clearAllData() {
-        workScheduleData = [];
-        restDayData = [];
-        document.getElementById('work-schedule-paste').innerText = '';
-        document.getElementById('rest-day-paste').innerText = '';
-        document.getElementById('work-branch-name').value = '';
-        document.getElementById('rest-branch-name').value = '';
-        renderWorkTable();
-        renderRestDayTable();
-        updateButtonStates();
-    }
+  // 🧹 Optional: show confirmation banner
+  const banner = document.getElementById('warning-banner');
+  banner.textContent = "🧹 All data cleared successfully.";
+  banner.classList.remove('hidden');
+  banner.classList.add('opacity-100');
+  setTimeout(() => {
+    banner.classList.remove('opacity-100');
+    setTimeout(() => banner.classList.add('hidden'), 500);
+  }, 3000);
+}
 
 </script>
 </body>
