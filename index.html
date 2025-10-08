@@ -199,15 +199,14 @@ function handlePaste(e, type) {
 
 if (type === 'work') {
     workScheduleData = rows.map(row => ({
-        empNo: row[0] || '',
-        name: row[1] || '',
+        name: row[0] || '',       // ✅ Name first
+        empNo: row[1] || '',      // ✅ Then Employee No
         date: row[2] ? normalizeDate(row[2]) : '',
         shift: row[3] || '',
         day: row[4] || '',
         position: row[5] || ''
     })).filter(d => d.empNo && d.date);
     renderWorkTable();
-}
 } else if (type === 'rest') {
     restDayData = rows.map(row => ({
         empNo: row[0] || '',
@@ -219,7 +218,6 @@ if (type === 'work') {
     })).filter(d => d.empNo && d.date);
 }
     validateSchedules();
-}
     
     function normalizeDate(dateString) {
         try {
@@ -489,4 +487,3 @@ if (type === 'work' && workScheduleData.length > 0) {
 </script>
 </body>
 </html>
-
