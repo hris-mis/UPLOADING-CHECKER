@@ -434,7 +434,7 @@ if (firstConflict) {
 if (type === 'work' && workScheduleData.length > 0) {
   branchName = document.getElementById('work-branch-name').value.trim();
   data = workScheduleData.map(item => ({
-    'Employee No.': item.empNo,
+    'Employee No': item.empNo,
     'Work Date': item.date,
     'Work Shift Code': item.shift || ''
 
@@ -446,7 +446,7 @@ if (type === 'work' && workScheduleData.length > 0) {
         else if (type === 'rest' && restDayData.length > 0) {
             branchName = document.getElementById('rest-branch-name').value.trim();
             data = restDayData.map(item => ({
-                'Employee No.': item.empNo,
+                'Employee No': item.empNo,
                 'Rest Day Date': item.date
             }));
             const defaultFilename = 'rest_day_upload.xlsx';
