@@ -151,8 +151,11 @@ tbody tr:hover {
   </p>
 </header>
 
-  <!-- 🟢 TAB: Schedule Checker -->
-  <div id="tab-schedule-content">
+<!-- Schedule Checker Content -->
+<div id="tab-schedule-content">
+    <!-- Your schedule conflict checker form and table here -->
+</div>
+
 
     <div id="warning-banner" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mx-auto rounded-lg max-w-3xl text-center mb-6">
   ⚠️ Please enter both Work Branch and Rest Branch names before generating the file.
@@ -164,8 +167,11 @@ tbody tr:hover {
 <div class="flex justify-center mt-10 mb-10">
 <button onclick="clearAllData()" ...
 ...
-<!-- 🟦 TAB: Monitoring -->
+<!-- Monitoring Content -->
 <div id="tab-monitoring-content" class="hidden">
+    <!-- Your monitoring section with tables and progress details here -->
+</div>
+
 
 
   <!-- Header -->
@@ -343,21 +349,6 @@ tbody tr:hover {
     <p id="summary" class="text-sm text-gray-600 mt-3 italic"></p>
   </div>
 </div>
-
-
-  <!-- Rest Day Schedule Section -->
-  <div class="bg-white p-6 rounded-lg shadow-sm">
-    <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-      <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
-      <div class="flex items-center">
-        <input type="text" id="rest-branch-name" placeholder="Enter Branch Name"
-          class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2">
-        <button id="generate-rest-btn" onclick="generateHrisFile('rest')"
-          class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
-          Generate File
-        </button>
-      </div>
-    </div>
 
     <div id="rest-day-paste" contenteditable="true" class="paste-area" onpaste="handlePaste(event, 'rest')"></div>
 
@@ -786,18 +777,24 @@ function clearAllData() {
   }, 3000);
 }
 
-// --- TAB SWITCHING LOGIC ---
+// TAB SWITCHING LOGIC
 document.getElementById('tab-schedule').addEventListener('click', () => {
+  // Show Schedule tab content and hide Monitoring content
   document.getElementById('tab-schedule-content').classList.remove('hidden');
   document.getElementById('tab-monitoring-content').classList.add('hidden');
+  
+  // Update button styling for active tab
   document.getElementById('tab-schedule').classList.add('bg-indigo-600', 'text-white');
   document.getElementById('tab-monitoring').classList.remove('bg-indigo-600', 'text-white');
   document.getElementById('tab-monitoring').classList.add('bg-gray-200', 'text-gray-700');
 });
 
 document.getElementById('tab-monitoring').addEventListener('click', () => {
+  // Show Monitoring tab content and hide Schedule content
   document.getElementById('tab-monitoring-content').classList.remove('hidden');
   document.getElementById('tab-schedule-content').classList.add('hidden');
+  
+  // Update button styling for active tab
   document.getElementById('tab-monitoring').classList.add('bg-indigo-600', 'text-white');
   document.getElementById('tab-schedule').classList.remove('bg-indigo-600', 'text-white');
   document.getElementById('tab-schedule').classList.add('bg-gray-200', 'text-gray-700');
