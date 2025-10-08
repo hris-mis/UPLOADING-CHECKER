@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Library for Excel file generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -151,28 +152,13 @@ tbody tr:hover {
   </p>
 </header>
 
-<!-- Schedule Checker Content -->
+<!-- ✅ Schedule Checker Tab -->
 <div id="tab-schedule-content">
-    <!-- Your schedule conflict checker form and table here -->
+  <!-- Everything related to Schedule Checker (paste areas, tables, generate buttons, notices, etc.) -->
 </div>
 
-
-    <div id="warning-banner" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mx-auto rounded-lg max-w-3xl text-center mb-6">
-  ⚠️ Please enter both Work Branch and Rest Branch names before generating the file.
-</div>
-
-
-
-<!-- 🔴 Clear All Button (Top-Centered, Global Reset) -->
-<div class="flex justify-center mt-10 mb-10">
-<button onclick="clearAllData()" ...
-...
- Monitoring Content -->
+<!-- ✅ Monitoring Tab -->
 <div id="tab-monitoring-content" class="hidden">
-    <!-- Your monitoring section with tables and progress details here -->
-</div>
-
-
 
   <!-- Header -->
   <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
@@ -361,7 +347,14 @@ tbody tr:hover {
         </div>
     </div>
 
+    
+
 <script>
+
+// Default: show Schedule tab only
+document.getElementById('tab-schedule-content').classList.remove('hidden');
+document.getElementById('tab-monitoring-content').classList.add('hidden');
+
     // Data stores
     let workScheduleData = [];
     let restDayData = [];
