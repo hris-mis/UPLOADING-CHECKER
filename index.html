@@ -14,6 +14,7 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
         }
+        
 table {
   table-layout: auto;
   width: 100%;
@@ -127,6 +128,13 @@ tbody tr:hover {
     </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
+
+<div id="warning-banner"
+  class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 
+         bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg shadow-md 
+         transition-opacity opacity-0">
+</div>
+
 
 <div class="max-w-[1600px] mx-auto">
 
@@ -260,7 +268,7 @@ tbody tr:hover {
 
 
 <!-- 🟦 WIDER SIDE-BY-SIDE LAYOUT -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
 
   <!-- Work Schedule Section -->
   <div class="bg-white p-6 rounded-lg shadow-sm">
@@ -282,12 +290,13 @@ tbody tr:hover {
       <table class="min-w-full divide-y divide-gray-200">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Employee No.</th>
-            <th>Work Date</th>
-            <th>Shift Code</th>
-            <th>Day of Week</th>
-            <th>Position</th>
+<th class="px-2 py-2 text-xs">Name</th>
+<th class="px-2 py-2 text-xs">Emp No.</th>
+<th class="px-2 py-2 text-xs">Work Date</th>
+<th class="px-2 py-2 text-xs">Shift</th>
+<th class="px-2 py-2 text-xs">Day</th>
+<th class="px-2 py-2 text-xs">Position</th>
+
           </tr>
         </thead>
         <tbody id="work-schedule-body">
