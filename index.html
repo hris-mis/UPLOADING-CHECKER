@@ -30,10 +30,10 @@ th {
         }
 .paste-area {
   border: 2px dashed #d1d5db;
-  padding: 1.25rem;
+  padding: 1rem; /* ⬅ slightly reduced for alignment */
   background-color: #ffffff;
   border-radius: 0.75rem;
-  min-height: 320px;
+  min-height: 300px; /* ⬅ smaller so both boxes match */
   width: 100%;
   white-space: pre;
   overflow-x: auto;
@@ -45,6 +45,7 @@ th {
   border: 1px solid #d1d5db;
   border-left: 4px solid #4f46e5;
 }
+
 
 .paste-area:focus {
   outline: none;
@@ -69,12 +70,13 @@ th {
   table-layout: auto; /* Allow flexible column widths */
 }
 
-th:nth-child(1), td:nth-child(1) { width: 18%; } /* Name */
-th:nth-child(2), td:nth-child(2) { width: 12%; } /* Emp No */
-th:nth-child(3), td:nth-child(3) { width: 15%; } /* Work Date */
-th:nth-child(4), td:nth-child(4) { width: 15%; } /* Shift */
-th:nth-child(5), td:nth-child(5) { width: 15%; } /* Day */
-th:nth-child(6), td:nth-child(6) { width: 25%; } /* Position */
+th:nth-child(1), td:nth-child(1) { width: 14%; } /* Name */
+th:nth-child(2), td:nth-child(2) { width: 10%; } /* Emp No */
+th:nth-child(3), td:nth-child(3) { width: 12%; } /* Work/Rest Date */
+th:nth-child(4), td:nth-child(4) { width: 11%; } /* Shift/Day */
+th:nth-child(5), td:nth-child(5) { width: 11%; } /* Day */
+th:nth-child(6), td:nth-child(6) { width: 14%; } /* Position (reduced width) */
+
 
 th, td {
   padding: 0.85rem 1.25rem;
@@ -263,9 +265,11 @@ tbody tr:hover {
   ✅ Validation successful! HRIS upload file has been generated.
 </div>
 
+<!-- ✅ Schedule Checker Tab -->
+<div id="tab-schedule-content">
 
 <!-- 🟦 WIDER SIDE-BY-SIDE LAYOUT -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
 
   <!-- Work Schedule Section -->
   <div class="bg-white p-6 rounded-lg shadow-sm">
@@ -354,7 +358,7 @@ tbody tr:hover {
     </div>
 
     
-
+</div>
 <script>
 
 // Default: show Schedule tab only
