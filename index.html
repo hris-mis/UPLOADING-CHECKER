@@ -172,6 +172,17 @@ tbody tr:hover {
     📈 Branch Monitoring Dashboard
   </h2>
 
+  <!-- Month & Year Selector -->
+<div class="flex items-center gap-3 mb-4">
+  <label for="monthSelect" class="font-medium text-gray-700">Select Month:</label>
+  <select id="monthSelect" class="border border-gray-300 rounded px-2 py-1">
+    <option value="2025-10">October 2025</option>
+    <option value="2025-11">November 2025</option>
+    <option value="2025-12">December 2025</option>
+  </select>
+</div>
+
+
   <!-- Filter + Actions -->
   <div class="flex flex-wrap justify-between items-center mb-6">
     <div class="flex items-center gap-3">
@@ -235,6 +246,28 @@ tbody tr:hover {
           <th>Progress</th>
         </tr>
       </thead>
+<div class="flex gap-3 items-center mb-3">
+  <select id="monitoringMonth" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+    <option value="01">January</option>
+    <option value="02">February</option>
+    <option value="03">March</option>
+    <option value="04">April</option>
+    <option value="05">May</option>
+    <option value="06">June</option>
+    <option value="07">July</option>
+    <option value="08">August</option>
+    <option value="09">September</option>
+    <option value="10" selected>October</option>
+    <option value="11">November</option>
+    <option value="12">December</option>
+  </select>
+
+  <select id="monitoringYear" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400">
+    <option>2024</option>
+    <option selected>2025</option>
+    <option>2026</option>
+  </select>
+</div>
       <tbody id="monitoring-body">
         <tr>
           <td>AASP CEBU</td>
@@ -321,8 +354,9 @@ tbody tr:hover {
 </div>
 
 <!-- Paste Area -->
-<div id="rest-day-paste" contenteditable="true"
-  class="paste-area mt-4"
+<div id="rest-day-paste" 
+  contenteditable="true"
+  class="paste-area"
   onpaste="handlePaste(event, 'rest')"></div>
 
 <!-- Table -->
@@ -783,6 +817,294 @@ function addBranch() {
 function editBranches() {
   alert('✏️ Edit Branches feature coming soon!');
 }
+
+/* --- MONITORING TAB LOCAL SAVE (Per Month Version) --- */
+const monitoringBody = document.getElementById("monitoring-body");
+const monthSelect = document.getElementById("monthSelect");
+
+function getStorageKey() {
+  return `branchMonitoring_${monthSelect.value}`;
+}
+
+// 🔹 Load saved data when page opens or month changes
+function loadMonitoringData() {
+  const saved = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
+  if (saved.length > 0) {
+    renderMonitoringTable(saved);
+  } else {
+    initializeMonitoringTable();
+  }
+}
+
+// 🔹 Save data to localStorage
+function saveMonitoringData() {
+  const rows = [...document.querySelectorAll("#monitoring-body tr")].map(tr => {
+    const tds = tr.querySelectorAll("td");
+    return {
+      branch: tds[0].innerText,
+      checked: tds[1].querySelector("input")?.checked || false,
+      uploaded: tds[2].querySelector("input")?.checked || false,
+      uploadedBy: tds[3].querySelector("input")?.value || "",
+      remarks: tds[4].querySelector("input")?.value || ""
+    };
+  });
+  localStorage.setItem(getStorageKey(), JSON.stringify(rows));
+}
+
+// 🔹 Render table dynamically
+function renderMonitoringTable(data) {
+  monitoringBody.innerHTML = data.map(item => `
+    <tr class="hover:bg-gray-50">
+      <td class="font-medium text-gray-800">${item.branch}</td>
+      <td class="text-center"><input type="checkbox" ${item.checked ? "checked" : ""} onchange="saveMonitoringData()"></td>
+      <td class="text-center"><input type="checkbox" ${item.uploaded ? "checked" : ""} onchange="saveMonitoringData()"></td>
+      <td><input type="text" value="${item.uploadedBy}" class="border rounded px-2 py-1 w-full" oninput="saveMonitoringData()"></td>
+      <td><input type="text" value="${item.remarks}" class="border rounded px-2 py-1 w-full" oninput="saveMonitoringData()"></td>
+      <td class="text-center text-blue-600 font-semibold">
+        ${item.checked && item.uploaded ? "✅ Done" : "⏳ Pending"}
+      </td>
+    </tr>
+  `).join("");
+}
+
+// 🔍 SEARCH FUNCTIONALITY
+document.getElementById("monitoringSearch").addEventListener("input", (e) => {
+  const term = e.target.value.toLowerCase();
+  const all = JSON.parse(localStorage.getItem("branchMonitoring") || "[]");
+  const filtered = all.filter(b => b.branch.toLowerCase().includes(term));
+  renderMonitoringTable(filtered);
+});
+
+
+// 🔹 Initialize table for new month
+function initializeMonitoringTable() {
+const branches = [
+  "AASP ABREEZA",
+  "AASP NES - ATLAS",
+  "AASP ANNEX",
+  "AASP CDO",
+  "AASP CEBU",
+  "AASP CLARK",
+  "AASP FESTIVAL",
+  "GREE",
+  "AASP GLORIETTA",
+  "ASP ILOILO",
+  "ASP MARIKINA",
+  "AASP MAISON",
+  "ASP NES - CC",
+  "ASP NES",
+  "ASP NAGA",
+  "ASP PODIUM",
+  "AASP KCC ZAMBOANGA",
+  "WAREHOUSE",
+  "OMOTESANDO",
+  "APP GREENBELT",
+  "AREA MANAGER - KENO CIPRIANO",
+  "AASP LIMA",
+  "APP MEGAMALL",
+  "AASP VERTIS NORTH",
+  "RBT COTABATO",
+  "RBT SM CITY ANGONO",
+  "AASP COTABATO",
+  "RBT SM CITY TARLAC",
+  "RBT STA. LUCIA",
+  "RBT SM CITY NOVALICHES",
+  "RBT TAGUM",
+  "RBT TORIL",
+  "RBT SM CITY TAYTAY",
+  "RBT PAGADIAN",
+  "RBT SEA SIDE",
+  "RBT LILOAN",
+  "THE LOOP KCC MALL COTABATO",
+  "RBT THE LOOP SIARGAO",
+  "RBT UP SHOPPING CENTER",
+  "RBT ROB MANILA",
+  "AASP LA UNION",
+  "RBT SM STA MESA",
+  "RBT SM TANUAN",
+  "RBT NEW POINT MALL",
+  "RBT GAISANO MALL DIGOS",
+  "RBT GAPAN",
+  "RBT TL SM MUNTINLUPA",
+  "RBT LAOAG",
+  "RBT SANGANDAAN",
+  "ASP MAGNOLIA",
+  "ASP TRINOMA",
+  "AASP NEWPOINT MALL",
+  "ECOMMERCE BACK END ( CONTENT AND DESIGN)",
+  "ECOMMERCE FRONT END (SALES AND OPERATION)",
+  "SUPPLY MANAGEMENT TEAM - smd",
+  "CHAR DINING-COMMISSARY",
+  "CHAR DINING-PODIUM",
+  "CHAR DINING-SM NORTH EDSA",
+  "RBT-ALABANG TOWN CENTER",
+  "RBT-ALTA CITTA",
+  "RBT-AYALA MANILA BAY",
+  "RBT-CASH AND CARRY",
+  "RBT-CIRCUIT MAKATI",
+  "RBT-DLSU",
+  "RBT-EDSA SHANGRI-LA MALL",
+  "RBT-ESTANCIA MALL",
+  "RBT-FORA MALL",
+  "RBT-GLORIETTA 5",
+  "RBT-HEAD OFFICE",
+  "RBT-ROB ILOCOS NORTE",
+  "RBT-NORTHEAST SQUARE",
+  "RBT-XIAOMI ONGPIN",
+  "RBT-ONGPIN",
+  "RBT-ROB GALLERIA SOUTH",
+  "RBT-ROB LA UNION",
+  "RBT-ROB ORMOC",
+  "RBT-ROBINSONS GALLERIA CEBU - CEBU",
+  "RBT-SM TUGUEGARAO",
+  "RBT-ROBINSONS TUGUEGARAO (- TUGUE)",
+  "RBT-ROBINSONS VALENCIA",
+  "RBT-SM CITY ROXAS",
+  "RBT-SM DASMARINAS",
+  "RBT-SM DOWNTOWN CDO",
+  "RBT-SM LEGAZPI",
+  "RBT-SM LIPA",
+  "RBT-SM LUCENA",
+  "RBT- APP MALL OF ASIA",
+  "RBT-PMC SM MEGAMALL",
+  "RBT-SM SAN JOSE DEL MONTE",
+  "RBT-SM SAN LAZARO",
+  "RBT-SM TRECE MARTIRES",
+  "RBT-SM VALENZUELA",
+  "RBT-SMALL MEDIUM BUSINESS",
+  "RBT-THE LOOP SM CABANATUAN",
+  "RBT-UST",
+  "RBT-VISTA MALL STA ROSA",
+  "RBT-SM CITY ROSARIO",
+  "RBT-ROBINSONS NAGA",
+  "RBT-AYALA MALLS SERIN",
+  "RBT-ISLAND CITY BOHOL",
+  "RBT-ROBINSONS SANTIAGO ISABELA",
+  "RBT-SM BICUTAN",
+  "RBT-MARINA TOWN DUMAGUETE (FILINVEST)",
+  "RBT-SM SORSOGON",
+  "RBT-SM CAUAYAN",
+  "RBT-TL ROBISONS DUMAGUETE",
+  "CHAR-G4",
+  "THE LOOP UP TOWN",
+  "THE LOOP GENSAN",
+  "THE LOOP-AYALA CENTER CEBU",
+  "THE LOOP-AYALA MALL CENTRAL BLOC CEBU",
+  "THE LOOP BONIFACIO HIGH STREET",
+  "THE LOOP CENTRIO (Not yet updated for oct)",
+  "THE LOOP MITSUKOSHI MALL",
+  "THE LOOP SM CITY STA MESA",
+  "THE LOOP SM MARILAO",
+  "THE LOOP SMAISON",
+  "THE LOOP-30TH MALL",
+  "THE LOOP-BORACAY",
+  "THE LOOP-COLLEGE OF ST BENILDE",
+  "THE LOOP-LUCKY CHINATOWN",
+  "THE LOOP-SM CITY CALAMBA",
+  "THE LOOP-SM UPTOWN CDO (THE LOOP CDO)",
+  "THE LOOP-SOUTHWOODS",
+  "THE LOOP-BGC UPTOWN MALL",
+  "THE LOOP-VIGAN",
+  "THE LOOP ROBINSONS TACLOBAN",
+  "THE LOOP LIMKETKAI (Not yet updated)",
+  "THE LOOP SM MAKATI",
+  "RBT MARIKINA",
+  "RBT OLONGAPO",
+  "RBT PALAWAN",
+  "RBT SM CITY PAMPANGA",
+  "RBT EASTWOOD",
+  "RBT PODIUM (Not updated for Oct)",
+  "RBT ROCKWELL (Not updated for Oct)",
+  "RBT SAN MATEO",
+  "RBT HARBOR POINT SUBIC",
+  "RBT-SM SAN PABLO",
+  "RBT-SM SANTO TOMAS",
+  "RBT-FESTIVAL MALL",
+  "RBT-SM SOUTHMALL",
+  "RBT-SM STA. ROSA",
+  "RBT-SM TANZA",
+  "RBT-SM BAGUIO",
+  "RBT-SM BATANGAS",
+  "RBT-SM BF PARANAQUE",
+  "RBT-SM CENTER PULILAN",
+  "RBT-SM CENTER TL SAN PEDRO",
+  "RBT VENICE",
+  "RBT URDANETA",
+  "RBT VERTIS NORTH",
+  "RBT DAET",
+  "RBT ILIGAN",
+  "RBT SM CITY BALIWAG",
+  "RBT GREENBELT",
+  "RBT SM CITY CALOOCAN",
+  "RBT TL SM DAGUPAN",
+  "RBT EAST ORTIGAS",
+  "RBT ECOLAND",
+  "RBT FAIRVIEW",
+  "RBT SM CITY BATAAN (Not yet updated for Oct)",
+  "RBT ROBINSONS BUTUAN",
+  "SM BUTUAN",
+  "RBT CLOVERLEAF",
+  "VISTA MALL BATAAN",
+  "RBT TRINOMA",
+  "RBT ROBINSONS ILOILO",
+  "SM ILOILO",
+  "RBT FESTIVE WALK ILOILO (Not updated for Oct)",
+  "RBT ROBINSON PANGASINAN",
+  "RBT LIMA",
+  "RBT VISTA MALL TAGUIG",
+  "RBT TL SM ARANETA CITY CUBAO",
+  "RBT SM CENTER LEMERY",
+  "RBT - VISTA MALL PAMPANGA",
+  "RBT - NEW POINT MALL (ANGELES)",
+  "RBT - SM MASINAG",
+  "RBT SM CITY J MALL CEBU",
+  "SM CITY CLARK",
+  "RBT GRAND CENTRAL",
+  "RBT ABREEZA (Not yet updated)",
+  "RBT ANNEX",
+  "RBT AURA",
+  "RBT BACOLOD",
+  "BACOOR (Not yet updated)",
+  "RBT AYALA MALL FELIZ",
+  "RBT LANANG",
+  "RBT MAGNOLIA (Not updated)",
+  "RBT SM TELABASTAGAN",
+  "RBT ZAMBOANGA",
+  "SM MINDPRO",
+  "TL ROBINSONS PALAWAN (Not yet updated)",
+  "PMC SM MARILAO",
+  "XENTRO MALL CALAPAN",
+  "SM CITY SUCAT",
+  "TL UP SHOPPING CENTER",
+  "JR AM_CANARES",
+  "PMC TACLOBAN",
+  "RSO TL DAVAO",
+  "CASHWRAP",
+  "APP BONIFACIO HIGH STREET",
+  "ADMINISTRATION-PHYSICAL SECURITY",
+  "POWERPLANT MALL - ROCKWELL",
+  "ASP NORTHEAST",
+  "WALTERMART TANAUAN",
+  "JAM macasero",
+  "SM PUERTO PRINCESA"
+];
+  const initialData = branches.map(name => ({
+    branch: name,
+    checked: false,
+    uploaded: false,
+    uploadedBy: "",
+    remarks: ""
+  }));
+  renderMonitoringTable(initialData);
+  localStorage.setItem(getStorageKey(), JSON.stringify(initialData));
+}
+
+// 🔹 When month changes → reload data
+monthSelect.addEventListener("change", loadMonitoringData);
+
+// 🔹 Load on page open
+window.addEventListener("load", loadMonitoringData);
+
 
 </script>
 
