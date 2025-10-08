@@ -173,27 +173,17 @@ tbody tr:hover {
   </h2>
 
   <!-- Month & Year Selector -->
-<div class="flex items-center gap-3 mb-4">
-  <label for="monthSelect" class="font-medium text-gray-700">Select Month:</label>
-  <select id="monthSelect" class="border border-gray-300 rounded px-2 py-1">
-    <option value="2025-10">October 2025</option>
-    <option value="2025-11">November 2025</option>
-    <option value="2025-12">December 2025</option>
-  </select>
-</div>
+<select id="uploaderSelect" class="border rounded px-2 py-1">
+  <option value="Claire">Claire</option>
+  <option value="Melvin">Melvin</option>
+  <option value="Joy">Joy</option>
+</select>
+<select id="monthSelect" class="border rounded px-2 py-1 ml-2">
+  <option value="October-2025">October 2025</option>
+  <option value="November-2025">November 2025</option>
+  <option value="December-2025">December 2025</option>
+</select>
 
-
-  <!-- Filter + Actions -->
-  <div class="flex flex-wrap justify-between items-center mb-6">
-    <div class="flex items-center gap-3">
-      <label for="monitoring-month" class="font-medium text-gray-700">Select Month:</label>
-      <select id="monitoring-month" 
-        class="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500">
-        <option>October 2025</option>
-        <option>November 2025</option>
-        <option>December 2025</option>
-      </select>
-    </div>
 
     <div class="flex gap-3">
       <button onclick="addBranch()" 
@@ -288,6 +278,31 @@ tbody tr:hover {
       </tbody>
     </table>
   </div>
+
+<!-- Monitoring branch progress area -->
+<div class="mt-4">
+  <div class="flex items-center space-x-4 mb-4">
+    <select id="monthSelect" class="border rounded-lg px-3 py-2 text-sm">
+      <option value="2025-10">October 2025</option>
+      <option value="2025-11">November 2025</option>
+      <option value="2025-12">December 2025</option>
+    </select>
+
+    <select id="uploaderSelect" class="border rounded-lg px-3 py-2 text-sm">
+      <option value="">All Uploaders</option>
+      <option value="Claire">Claire</option>
+      <option value="Melvin">Melvin</option>
+      <option value="Joy">Joy</option>
+    </select>
+  </div>
+
+  <div id="branchContainer"
+       class="space-y-2 border p-3 rounded-lg bg-white shadow-inner max-h-[450px] overflow-y-auto">
+  </div>
+
+  <p id="progressCount" class="text-gray-500 text-sm mt-2"></p>
+</div>
+
 
 </div> <!-- ✅ End of tab-monitoring-content -->
 
@@ -393,6 +408,218 @@ tbody tr:hover {
     
 </div>
 <script>
+
+    const branches = [
+    "AASP ABREEZA",
+    "AASP NES - ATLAS",
+    "AASP ANNEX",
+    "AASP CDO",
+    "AASP CEBU",
+    "AASP CLARK",
+    "AASP FESTIVAL",
+    "GREE",
+    "AASP GLORIETTA",
+    "ASP ILOILO",
+    "ASP MARIKINA",
+    "AASP MAISON",
+    "ASP NES - CC",
+    "ASP NES",
+    "ASP NAGA",
+    "ASP PODIUM",
+    "AASP KCC ZAMBOANGA",
+    "WAREHOUSE",
+    "OMOTESANDO",
+    "APP GREENBELT",
+    "AREA MANAGER - KENO CIPRIANO",
+    "AASP LIMA",
+    "APP MEGAMALL",
+    "AASP VERTIS NORTH",
+    "RBT COTABATO",
+    "RBT SM CITY ANGONO",
+    "AASP COTABATO",
+    "RBT SM CITY TARLAC",
+    "RBT STA. LUCIA",
+    "RBT SM CITY NOVALICHES",
+    "RBT TAGUM",
+    "RBT TORIL",
+    "RBT SM CITY TAYTAY",
+    "RBT PAGADIAN",
+    "RBT SEA SIDE",
+    "RBT LILOAN",
+    "THE LOOP KCC MALL COTABATO",
+    "RBT THE LOOP SIARGAO",
+    "RBT UP SHOPPING CENTER",
+    "RBT ROB MANILA",
+    "AASP LA UNION",
+    "RBT SM STA MESA",
+    "RBT SM TANUAN",
+    "RBT NEW POINT MALL",
+    "RBT GAISANO MALL DIGOS",
+    "RBT GAPAN",
+    "RBT TL SM MUNTINLUPA",
+    "RBT LAOAG",
+    "RBT SANGANDAAN",
+    "ASP MAGNOLIA",
+    "ASP TRINOMA",
+    "AASP NEWPOINT MALL",
+    "ECOMMERCE BACK END ( CONTENT AND DESIGN)",
+    "ECOMMERCE FRONT END (SALES AND OPERATION)",
+    "SUPPLY MANAGEMENT TEAM - smd",
+    "CHAR DINING-COMMISSARY",
+    "CHAR DINING-PODIUM",
+    "CHAR DINING-SM NORTH EDSA",
+    "RBT-ALABANG TOWN CENTER",
+    "RBT-ALTA CITTA",
+    "RBT-AYALA MANILA BAY",
+    "RBT-CASH AND CARRY",
+    "RBT-CIRCUIT MAKATI",
+    "RBT-DLSU",
+    "RBT-EDSA SHANGRI-LA MALL",
+    "RBT-ESTANCIA MALL",
+    "RBT-FORA MALL",
+    "RBT-GLORIETTA 5",
+    "RBT-HEAD OFFICE",
+    "RBT-ROB ILOCOS NORTE",
+    "RBT-NORTHEAST SQUARE",
+    "RBT-XIAOMI ONGPIN",
+    "RBT-ONGPIN",
+    "RBT-ROB GALLERIA SOUTH",
+    "RBT-ROB LA UNION",
+    "RBT-ROB ORMOC",
+    "RBT-ROBINSONS GALLERIA CEBU - CEBU",
+    "RBT-SM TUGUEGARAO",
+    "RBT-ROBINSONS TUGUEGARAO (- TUGUE)",
+    "RBT-ROBINSONS VALENCIA",
+    "RBT-SM CITY ROXAS",
+    "RBT-SM DASMARINAS",
+    "RBT-SM DOWNTOWN CDO",
+    "RBT-SM LEGAZPI",
+    "RBT-SM LIPA",
+    "RBT-SM LUCENA",
+    "RBT- APP MALL OF ASIA",
+    "RBT-PMC SM MEGAMALL",
+    "RBT-SM SAN JOSE DEL MONTE",
+    "RBT-SM SAN LAZARO",
+    "RBT-SM TRECE MARTIRES",
+    "RBT-SM VALENZUELA",
+    "RBT-SMALL MEDIUM BUSINESS",
+    "RBT-THE LOOP SM CABANATUAN",
+    "RBT-UST",
+    "RBT-VISTA MALL STA ROSA",
+    "RBT-SM CITY ROSARIO",
+    "RBT-ROBINSONS NAGA",
+    "RBT-AYALA MALLS SERIN",
+    "RBT-ISLAND CITY BOHOL",
+    "RBT-ROBINSONS SANTIAGO ISABELA",
+    "RBT-SM BICUTAN",
+    "RBT-MARINA TOWN DUMAGUETE (FILINVEST)",
+    "RBT-SM SORSOGON",
+    "RBT-SM CAUAYAN",
+    "RBT-TL ROBISONS DUMAGUETE",
+    "CHAR-G4",
+    "THE LOOP UP TOWN",
+    "THE LOOP GENSAN",
+    "THE LOOP-AYALA CENTER CEBU",
+    "THE LOOP-AYALA MALL CENTRAL BLOC CEBU",
+    "THE LOOP BONIFACIO HIGH STREET",
+    "THE LOOP CENTRIO (Not yet updated for oct)",
+    "THE LOOP MITSUKOSHI MALL",
+    "THE LOOP SM CITY STA MESA",
+    "THE LOOP SM MARILAO",
+    "THE LOOP SMAISON",
+    "THE LOOP-30TH MALL",
+    "THE LOOP-BORACAY",
+    "THE LOOP-COLLEGE OF ST BENILDE",
+    "THE LOOP-LUCKY CHINATOWN",
+    "THE LOOP-SM CITY CALAMBA",
+    "THE LOOP-SM UPTOWN CDO (THE LOOP CDO)",
+    "THE LOOP-SOUTHWOODS",
+    "THE LOOP-BGC UPTOWN MALL",
+    "THE LOOP-VIGAN",
+    "THE LOOP ROBINSONS TACLOBAN",
+    "THE LOOP LIMKETKAI (Not yet updated)",
+    "THE LOOP SM MAKATI",
+    "RBT MARIKINA",
+    "RBT OLONGAPO",
+    "RBT PALAWAN",
+    "RBT SM CITY PAMPANGA",
+    "RBT EASTWOOD",
+    "RBT PODIUM (Not updated for Oct)",
+    "RBT ROCKWELL (Not updated for Oct)",
+    "RBT SAN MATEO",
+    "RBT HARBOR POINT SUBIC",
+    "RBT-SM SAN PABLO",
+    "RBT-SM SANTO TOMAS",
+    "RBT-FESTIVAL MALL",
+    "RBT-SM SOUTHMALL",
+    "RBT-SM STA. ROSA",
+    "RBT-SM TANZA",
+    "RBT-SM BAGUIO",
+    "RBT-SM BATANGAS",
+    "RBT-SM BF PARANAQUE",
+    "RBT-SM CENTER PULILAN",
+    "RBT-SM CENTER TL SAN PEDRO",
+    "RBT VENICE",
+    "RBT URDANETA",
+    "RBT VERTIS NORTH",
+    "RBT DAET",
+    "RBT ILIGAN",
+    "RBT SM CITY BALIWAG",
+    "RBT GREENBELT",
+    "RBT SM CITY CALOOCAN",
+    "RBT TL SM DAGUPAN",
+    "RBT EAST ORTIGAS",
+    "RBT ECOLAND",
+    "RBT FAIRVIEW",
+    "RBT SM CITY BATAAN (Not yet updated for Oct)",
+    "RBT ROBINSONS BUTUAN",
+    "SM BUTUAN",
+    "RBT CLOVERLEAF",
+    "VISTA MALL BATAAN",
+    "RBT TRINOMA",
+    "RBT ROBINSONS ILOILO",
+    "SM ILOILO",
+    "RBT FESTIVE WALK ILOILO (Not updated for Oct)",
+    "RBT ROBINSON PANGASINAN",
+    "RBT LIMA",
+    "RBT VISTA MALL TAGUIG",
+    "RBT TL SM ARANETA CITY CUBAO",
+    "RBT SM CENTER LEMERY",
+    "RBT - VISTA MALL PAMPANGA",
+    "RBT - NEW POINT MALL (ANGELES)",
+    "RBT - SM MASINAG",
+    "RBT SM CITY J MALL CEBU",
+    "SM CITY CLARK",
+    "RBT GRAND CENTRAL",
+    "RBT ABREEZA (Not yet updated)",
+    "RBT ANNEX",
+    "RBT AURA",
+    "RBT BACOLOD",
+    "BACOOR (Not yet updated)",
+    "RBT AYALA MALL FELIZ",
+    "RBT LANANG",
+    "RBT MAGNOLIA (Not updated)",
+    "RBT SM TELABASTAGAN",
+    "RBT ZAMBOANGA",
+    "SM MINDPRO",
+    "TL ROBINSONS PALAWAN (Not yet updated)",
+    "PMC SM MARILAO",
+    "XENTRO MALL CALAPAN",
+    "SM CITY SUCAT",
+    "TL UP SHOPPING CENTER",
+    "JR AM_CANARES",
+    "PMC TACLOBAN",
+    "RSO TL DAVAO",
+    "CASHWRAP",
+    "APP BONIFACIO HIGH STREET",
+    "ADMINISTRATION-PHYSICAL SECURITY",
+    "POWERPLANT MALL - ROCKWELL",
+    "ASP NORTHEAST",
+    "WALTERMART TANAUAN",
+    "JAM macasero",
+    "SM PUERTO PRINCESA"
+  ];
+
 
 // Default: show Schedule tab only
 document.getElementById('tab-schedule-content').classList.remove('hidden');
@@ -878,216 +1105,6 @@ document.getElementById("monitoringSearch").addEventListener("input", (e) => {
 
 // 🔹 Initialize table for new month
 function initializeMonitoringTable() {
-const branches = [
-  "AASP ABREEZA",
-  "AASP NES - ATLAS",
-  "AASP ANNEX",
-  "AASP CDO",
-  "AASP CEBU",
-  "AASP CLARK",
-  "AASP FESTIVAL",
-  "GREE",
-  "AASP GLORIETTA",
-  "ASP ILOILO",
-  "ASP MARIKINA",
-  "AASP MAISON",
-  "ASP NES - CC",
-  "ASP NES",
-  "ASP NAGA",
-  "ASP PODIUM",
-  "AASP KCC ZAMBOANGA",
-  "WAREHOUSE",
-  "OMOTESANDO",
-  "APP GREENBELT",
-  "AREA MANAGER - KENO CIPRIANO",
-  "AASP LIMA",
-  "APP MEGAMALL",
-  "AASP VERTIS NORTH",
-  "RBT COTABATO",
-  "RBT SM CITY ANGONO",
-  "AASP COTABATO",
-  "RBT SM CITY TARLAC",
-  "RBT STA. LUCIA",
-  "RBT SM CITY NOVALICHES",
-  "RBT TAGUM",
-  "RBT TORIL",
-  "RBT SM CITY TAYTAY",
-  "RBT PAGADIAN",
-  "RBT SEA SIDE",
-  "RBT LILOAN",
-  "THE LOOP KCC MALL COTABATO",
-  "RBT THE LOOP SIARGAO",
-  "RBT UP SHOPPING CENTER",
-  "RBT ROB MANILA",
-  "AASP LA UNION",
-  "RBT SM STA MESA",
-  "RBT SM TANUAN",
-  "RBT NEW POINT MALL",
-  "RBT GAISANO MALL DIGOS",
-  "RBT GAPAN",
-  "RBT TL SM MUNTINLUPA",
-  "RBT LAOAG",
-  "RBT SANGANDAAN",
-  "ASP MAGNOLIA",
-  "ASP TRINOMA",
-  "AASP NEWPOINT MALL",
-  "ECOMMERCE BACK END ( CONTENT AND DESIGN)",
-  "ECOMMERCE FRONT END (SALES AND OPERATION)",
-  "SUPPLY MANAGEMENT TEAM - smd",
-  "CHAR DINING-COMMISSARY",
-  "CHAR DINING-PODIUM",
-  "CHAR DINING-SM NORTH EDSA",
-  "RBT-ALABANG TOWN CENTER",
-  "RBT-ALTA CITTA",
-  "RBT-AYALA MANILA BAY",
-  "RBT-CASH AND CARRY",
-  "RBT-CIRCUIT MAKATI",
-  "RBT-DLSU",
-  "RBT-EDSA SHANGRI-LA MALL",
-  "RBT-ESTANCIA MALL",
-  "RBT-FORA MALL",
-  "RBT-GLORIETTA 5",
-  "RBT-HEAD OFFICE",
-  "RBT-ROB ILOCOS NORTE",
-  "RBT-NORTHEAST SQUARE",
-  "RBT-XIAOMI ONGPIN",
-  "RBT-ONGPIN",
-  "RBT-ROB GALLERIA SOUTH",
-  "RBT-ROB LA UNION",
-  "RBT-ROB ORMOC",
-  "RBT-ROBINSONS GALLERIA CEBU - CEBU",
-  "RBT-SM TUGUEGARAO",
-  "RBT-ROBINSONS TUGUEGARAO (- TUGUE)",
-  "RBT-ROBINSONS VALENCIA",
-  "RBT-SM CITY ROXAS",
-  "RBT-SM DASMARINAS",
-  "RBT-SM DOWNTOWN CDO",
-  "RBT-SM LEGAZPI",
-  "RBT-SM LIPA",
-  "RBT-SM LUCENA",
-  "RBT- APP MALL OF ASIA",
-  "RBT-PMC SM MEGAMALL",
-  "RBT-SM SAN JOSE DEL MONTE",
-  "RBT-SM SAN LAZARO",
-  "RBT-SM TRECE MARTIRES",
-  "RBT-SM VALENZUELA",
-  "RBT-SMALL MEDIUM BUSINESS",
-  "RBT-THE LOOP SM CABANATUAN",
-  "RBT-UST",
-  "RBT-VISTA MALL STA ROSA",
-  "RBT-SM CITY ROSARIO",
-  "RBT-ROBINSONS NAGA",
-  "RBT-AYALA MALLS SERIN",
-  "RBT-ISLAND CITY BOHOL",
-  "RBT-ROBINSONS SANTIAGO ISABELA",
-  "RBT-SM BICUTAN",
-  "RBT-MARINA TOWN DUMAGUETE (FILINVEST)",
-  "RBT-SM SORSOGON",
-  "RBT-SM CAUAYAN",
-  "RBT-TL ROBISONS DUMAGUETE",
-  "CHAR-G4",
-  "THE LOOP UP TOWN",
-  "THE LOOP GENSAN",
-  "THE LOOP-AYALA CENTER CEBU",
-  "THE LOOP-AYALA MALL CENTRAL BLOC CEBU",
-  "THE LOOP BONIFACIO HIGH STREET",
-  "THE LOOP CENTRIO (Not yet updated for oct)",
-  "THE LOOP MITSUKOSHI MALL",
-  "THE LOOP SM CITY STA MESA",
-  "THE LOOP SM MARILAO",
-  "THE LOOP SMAISON",
-  "THE LOOP-30TH MALL",
-  "THE LOOP-BORACAY",
-  "THE LOOP-COLLEGE OF ST BENILDE",
-  "THE LOOP-LUCKY CHINATOWN",
-  "THE LOOP-SM CITY CALAMBA",
-  "THE LOOP-SM UPTOWN CDO (THE LOOP CDO)",
-  "THE LOOP-SOUTHWOODS",
-  "THE LOOP-BGC UPTOWN MALL",
-  "THE LOOP-VIGAN",
-  "THE LOOP ROBINSONS TACLOBAN",
-  "THE LOOP LIMKETKAI (Not yet updated)",
-  "THE LOOP SM MAKATI",
-  "RBT MARIKINA",
-  "RBT OLONGAPO",
-  "RBT PALAWAN",
-  "RBT SM CITY PAMPANGA",
-  "RBT EASTWOOD",
-  "RBT PODIUM (Not updated for Oct)",
-  "RBT ROCKWELL (Not updated for Oct)",
-  "RBT SAN MATEO",
-  "RBT HARBOR POINT SUBIC",
-  "RBT-SM SAN PABLO",
-  "RBT-SM SANTO TOMAS",
-  "RBT-FESTIVAL MALL",
-  "RBT-SM SOUTHMALL",
-  "RBT-SM STA. ROSA",
-  "RBT-SM TANZA",
-  "RBT-SM BAGUIO",
-  "RBT-SM BATANGAS",
-  "RBT-SM BF PARANAQUE",
-  "RBT-SM CENTER PULILAN",
-  "RBT-SM CENTER TL SAN PEDRO",
-  "RBT VENICE",
-  "RBT URDANETA",
-  "RBT VERTIS NORTH",
-  "RBT DAET",
-  "RBT ILIGAN",
-  "RBT SM CITY BALIWAG",
-  "RBT GREENBELT",
-  "RBT SM CITY CALOOCAN",
-  "RBT TL SM DAGUPAN",
-  "RBT EAST ORTIGAS",
-  "RBT ECOLAND",
-  "RBT FAIRVIEW",
-  "RBT SM CITY BATAAN (Not yet updated for Oct)",
-  "RBT ROBINSONS BUTUAN",
-  "SM BUTUAN",
-  "RBT CLOVERLEAF",
-  "VISTA MALL BATAAN",
-  "RBT TRINOMA",
-  "RBT ROBINSONS ILOILO",
-  "SM ILOILO",
-  "RBT FESTIVE WALK ILOILO (Not updated for Oct)",
-  "RBT ROBINSON PANGASINAN",
-  "RBT LIMA",
-  "RBT VISTA MALL TAGUIG",
-  "RBT TL SM ARANETA CITY CUBAO",
-  "RBT SM CENTER LEMERY",
-  "RBT - VISTA MALL PAMPANGA",
-  "RBT - NEW POINT MALL (ANGELES)",
-  "RBT - SM MASINAG",
-  "RBT SM CITY J MALL CEBU",
-  "SM CITY CLARK",
-  "RBT GRAND CENTRAL",
-  "RBT ABREEZA (Not yet updated)",
-  "RBT ANNEX",
-  "RBT AURA",
-  "RBT BACOLOD",
-  "BACOOR (Not yet updated)",
-  "RBT AYALA MALL FELIZ",
-  "RBT LANANG",
-  "RBT MAGNOLIA (Not updated)",
-  "RBT SM TELABASTAGAN",
-  "RBT ZAMBOANGA",
-  "SM MINDPRO",
-  "TL ROBINSONS PALAWAN (Not yet updated)",
-  "PMC SM MARILAO",
-  "XENTRO MALL CALAPAN",
-  "SM CITY SUCAT",
-  "TL UP SHOPPING CENTER",
-  "JR AM_CANARES",
-  "PMC TACLOBAN",
-  "RSO TL DAVAO",
-  "CASHWRAP",
-  "APP BONIFACIO HIGH STREET",
-  "ADMINISTRATION-PHYSICAL SECURITY",
-  "POWERPLANT MALL - ROCKWELL",
-  "ASP NORTHEAST",
-  "WALTERMART TANAUAN",
-  "JAM macasero",
-  "SM PUERTO PRINCESA"
-];
   const initialData = branches.map(name => ({
     branch: name,
     checked: false,
@@ -1115,6 +1132,58 @@ window.addEventListener("load", loadMonitoringData);
          transition-opacity opacity-0">
 </div>
 
+<script>
+  // ===== MONITORING FUNCTIONALITY =====
+  const container = document.getElementById("branchContainer");
+  const uploader = document.getElementById("uploaderSelect");
+  const month = document.getElementById("monthSelect");
+
+  function renderBranches() {
+    container.innerHTML = "";
+    branches.forEach(branch => {
+      const row = document.createElement("div");
+      row.className = "flex items-center gap-2";
+      row.innerHTML = `
+        <input type="checkbox" id="${branch}" class="branchCheck" />
+        <label for="${branch}" class="text-sm">${branch}</label>
+      `;
+      container.appendChild(row);
+    });
+    loadProgress();
+  }
+
+  function saveProgress() {
+    const key = `${uploader.value}_${month.value}`;
+    const data = {};
+    document.querySelectorAll(".branchCheck").forEach(cb => {
+      data[cb.id] = cb.checked;
+    });
+    localStorage.setItem(key, JSON.stringify(data));
+    updateProgress();
+  }
+
+  function loadProgress() {
+    const key = `${uploader.value}_${month.value}`;
+    const saved = JSON.parse(localStorage.getItem(key) || "{}");
+    document.querySelectorAll(".branchCheck").forEach(cb => {
+      cb.checked = !!saved[cb.id];
+    });
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const total = document.querySelectorAll(".branchCheck").length;
+    const done = document.querySelectorAll(".branchCheck:checked").length;
+    document.getElementById("progressCount").textContent = `${done}/${total} completed`;
+  }
+
+  document.addEventListener("change", e => {
+    if (e.target.classList.contains("branchCheck")) saveProgress();
+    if (e.target.id === "uploaderSelect" || e.target.id === "monthSelect") renderBranches();
+  });
+
+  renderBranches();
+</script>
 
 </body>
 </html>
