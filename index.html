@@ -66,13 +66,15 @@ th {
 
 .table-container table {
   width: 100%;
-  table-layout: fixed; /* Forces equal column spacing */
+  table-layout: auto; /* Allow flexible column widths */
 }
-th:nth-child(1), td:nth-child(1) { width: 25%; }
-th:nth-child(2), td:nth-child(2) { width: 15%; }
-th:nth-child(3), td:nth-child(3) { width: 15%; }
-th:nth-child(4), td:nth-child(4) { width: 20%; }
-th:nth-child(5), td:nth-child(5) { width: 25%; }
+
+th:nth-child(1), td:nth-child(1) { width: 18%; } /* Name */
+th:nth-child(2), td:nth-child(2) { width: 12%; } /* Emp No */
+th:nth-child(3), td:nth-child(3) { width: 15%; } /* Work Date */
+th:nth-child(4), td:nth-child(4) { width: 15%; } /* Shift */
+th:nth-child(5), td:nth-child(5) { width: 15%; } /* Day */
+th:nth-child(6), td:nth-child(6) { width: 25%; } /* Position */
 
 th, td {
   padding: 0.85rem 1.25rem;
@@ -159,11 +161,6 @@ tbody tr:hover {
     Validate, review, and export work & rest day schedules with ease.
   </p>
 </header>
-
-<!-- ✅ Schedule Checker Tab -->
-<div id="tab-schedule-content">
-  <!-- Everything related to Schedule Checker (paste areas, tables, generate buttons, notices, etc.) -->
-</div>
 
 <!-- ✅ Monitoring Tab -->
 <div id="tab-monitoring-content" class="hidden">
@@ -785,5 +782,14 @@ function editBranches() {
 }
 
 </script>
+
+<!-- ✅ Warning Banner -->
+<div id="warning-banner"
+  class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 
+         bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg shadow-md 
+         transition-opacity opacity-0">
+</div>
+
+
 </body>
 </html>
