@@ -198,24 +198,51 @@ function handlePaste(e, type) {
     const rows = hasMergedHeader ? allRows.slice(2) : allRows.slice(1); 
 
 if (type === 'work') {
-    workScheduleData = rows.map(row => ({
-        name: row[0] || '',       // ✅ Name first
-        empNo: row[1] || '',      // ✅ Then Employee No
-        date: row[2] ? normalizeDate(row[2]) : '',
-        shift: row[3] || '',
-        day: row[4] || '',
-        position: row[5] || ''
-    })).filter(d => d.empNo && d.date);
+    workScheduleData = rows.map(row => {
+        let name = '', empNo = '';
+
+        // 🔍 Detect column order automatically
+        if (/^\d+$/.test(row[0]?.trim())) {
+            empNo = row[0];
+            name = row[1];
+        } else {
+            name = row[0];
+            empNo = row[1];
+        }
+
+        return {
+            name: name || '',
+            empNo: empNo || '',
+            date: row[2] ? normalizeDate(row[2]) : '',
+            shift: row[3] || '',
+            day: row[4] || '',
+            position: row[5] || ''
+        };
+    }).filter(d => d.empNo && d.date);
     renderWorkTable();
+
 } else if (type === 'rest') {
-    restDayData = rows.map(row => ({
-        empNo: row[0] || '',
-        name: row[1] || '',
-        date: row[2] ? normalizeDate(row[2]) : '',
-        day: row[3] || '',
-        position: row[4] || '',
-        conflicts: []
-    })).filter(d => d.empNo && d.date);
+    restDayData = rows.map(row => {
+        let name = '', empNo = '';
+
+        // 🔍 Detect column order automatically
+        if (/^\d+$/.test(row[0]?.trim())) {
+            empNo = row[0];
+            name = row[1];
+        } else {
+            name = row[0];
+            empNo = row[1];
+        }
+
+        return {
+            empNo: empNo || '',
+            name: name || '',
+            date: row[2] ? normalizeDate(row[2]) : '',
+            day: row[3] || '',
+            position: row[4] || '',
+            conflicts: []
+        };
+    }).filter(d => d.empNo && d.date);
 }
     validateSchedules();
     
@@ -422,9 +449,7 @@ if (firstConflict) {
     renderRestDayTable();
     updateButtonStates();
 }
-
-            ;
-
+}
     // --- FILE GENERATION ---
     function generateHrisFile(type) {
         let data, filename, branchName;
