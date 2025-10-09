@@ -863,13 +863,19 @@ document.getElementById("clearMonitoringBtn").addEventListener("click", () => {
 
 // 🔹 Load saved data when page opens or month changes
 function loadMonitoringData() {
-  const saved = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
-  if (saved.length > 0) {
-    renderMonitoringTable(saved);
-  } else {
+  const key = getStorageKey();
+  let data = JSON.parse(localStorage.getItem(key)) || [];
+
+  // 🟦 If empty, initialize defaults
+  if (data.length === 0) {
     initializeMonitoringTable();
+    return;
   }
+
+  renderMonitoringTable(data);
+  updateMonitoringProgress();
 }
+
 
 // 🔹 Save data to localStorage
 function saveMonitoringData() {
@@ -910,56 +916,59 @@ document.getElementById("editBranchBtn").addEventListener("click", () => {
 
 // 🔹 Render table dynamically
 function renderMonitoringTable(data) {
-  monitoringBody.innerHTML = data.map(item => `
-    <tr class="hover:bg-gray-50">
-      <td class="font-medium text-gray-800">${item.branch}</td>
-      <td class="text-center"><input type="checkbox" ${item.checked ? "checked" : ""} onchange="saveMonitoringData()"></td>
-      <td class="text-center"><input type="checkbox" ${item.uploaded ? "checked" : ""} onchange="saveMonitoringData()"></td>
+  const tableBody = document.getElementById("monitoringTableBody");
+  tableBody.innerHTML = "";
+
+  data.forEach((item, index) => {
+    const row = document.createElement("tr");
+
+    row.innerHTML = `
+      <td>${item.branch}</td>
+      <td style="text-align:center;"><input type="checkbox" class="chk-checked" data-index="${index}" ${item.checked ? "checked" : ""}></td>
+      <td style="text-align:center;"><input type="checkbox" class="chk-uploaded" data-index="${index}" ${item.uploaded ? "checked" : ""}></td>
       <td>
-        <select class="border rounded px-2 py-1 w-full text-sm" onchange="saveMonitoringData()">
-          <option value="">Select</option>
-          <option ${item.uploadedBy==='Joy'?'selected':''}>Joy</option>
-          <option ${item.uploadedBy==='Melvin'?'selected':''}>Melvin</option>
-          <option ${item.uploadedBy==='Claire'?'selected':''}>Claire</option>
+        <select class="uploader" data-index="${index}">
+          <option value="">--Select--</option>
+          <option ${item.uploadedBy === "Joy" ? "selected" : ""}>Joy</option>
+          <option ${item.uploadedBy === "Melvin" ? "selected" : ""}>Melvin</option>
+          <option ${item.uploadedBy === "Claire" ? "selected" : ""}>Claire</option>
         </select>
       </td>
-      <td><input type="text" value="${item.remarks}" class="border rounded px-2 py-1 w-full text-sm" oninput="saveMonitoringData()"></td>
-      <td class="text-center font-semibold ${item.checked && item.uploaded ? 'text-green-600' : 'text-gray-500'}">
-        ${item.checked && item.uploaded ? '✅ Complete' : '⏳ Pending'}
-      </td>
-    </tr>
-  `).join("");
-  updateMonitoringProgressBar();
-}
+      <td><input type="text" class="remarks" data-index="${index}" value="${item.remarks || ""}"></td>
+    `;
 
-function updateMonitoringProgressBar() {
-  const rows = [...document.querySelectorAll("#monitoringBody tr")];
-  const total = rows.length;
-  let checked = 0, uploaded = 0, done = 0;
-
-  rows.forEach(r => {
-    const isChecked = r.cells[1].querySelector("input").checked;
-    const isUploaded = r.cells[2].querySelector("input").checked;
-    if (isChecked) checked++;
-    if (isUploaded) uploaded++;
-    if (isChecked && isUploaded) done++;
+    tableBody.appendChild(row);
   });
 
-  const percent = total ? ((done / total) * 100).toFixed(1) : 0;
-
-  document.getElementById("totalBranches").textContent = total;
-  document.getElementById("checkedBranches").textContent = checked;
-  document.getElementById("uploadedBranches").textContent = uploaded;
-  document.getElementById("progressPercent").textContent = percent + "%";
-  document.getElementById("progressBar").style.width = percent + "%";
-
-  // 🧠 Auto color change for visibility
-  const bar = document.getElementById("progressBar");
-  bar.classList.remove("bg-red-500","bg-yellow-400","bg-green-500");
-  if (percent < 40) bar.classList.add("bg-red-500");
-  else if (percent < 80) bar.classList.add("bg-yellow-400");
-  else bar.classList.add("bg-green-500");
+  // 🟩 Event listeners
+  document.querySelectorAll(".chk-checked, .chk-uploaded, .uploader, .remarks").forEach(el => {
+    el.addEventListener("change", saveMonitoringData);
+  });
 }
+
+
+function updateMonitoringProgress() {
+  const key = getStorageKey();
+  const data = JSON.parse(localStorage.getItem(key)) || [];
+
+  const total = data.length;
+  const checked = data.filter(d => d.checked).length;
+  const uploaded = data.filter(d => d.uploaded).length;
+
+  const percent = total > 0 ? ((checked + uploaded) / (total * 2)) * 100 : 0;
+
+  document.getElementById("monitoringStats").innerHTML = `
+    <strong>Total Branches:</strong> ${total} |
+    <strong>Checked:</strong> ${checked} |
+    <strong>Uploaded:</strong> ${uploaded} |
+    <strong>Progress:</strong> ${percent.toFixed(1)}%
+  `;
+
+  const bar = document.getElementById("progressBar");
+  bar.style.width = `${percent}%`;
+  bar.textContent = `${percent.toFixed(1)}%`;
+}
+
 
 
 
