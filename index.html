@@ -241,21 +241,27 @@
 </div>
 
 <!-- Monitoring branch progress area -->
-<div class="mt-4">
-  <div class="flex items-center space-x-4 mb-4">
-    <select id="monthSelect" class="border rounded-lg px-3 py-2 text-sm">
-      <option value="2025-10">October 2025</option>
-      <option value="2025-11">November 2025</option>
-      <option value="2025-12">December 2025</option>
-    </select>
 
-    <select id="uploaderSelect" class="border rounded-lg px-3 py-2 text-sm">
-      <option value="">All Uploaders</option>
-      <option value="Claire">Claire</option>
-      <option value="Melvin">Melvin</option>
-      <option value="Joy">Joy</option>
-    </select>
-  </div>
+<select id="monthSelect" class="border rounded-lg px-3 py-2 text-sm">
+  <option value="01">January</option>
+  <option value="02">February</option>
+  <option value="03">March</option>
+  <option value="04">April</option>
+  <option value="05">May</option>
+  <option value="06">June</option>
+  <option value="07">July</option>
+  <option value="08">August</option>
+  <option value="09">September</option>
+  <option value="10" selected>October</option>
+  <option value="11">November</option>
+  <option value="12">December</option>
+</select>
+
+<select id="yearSelect" class="border rounded-lg px-3 py-2 text-sm">
+  <option value="2025" selected>2025</option>
+  <option value="2026">2026</option>
+</select>
+
 
   <!-- Progress summary -->
   <div class="text-center text-gray-700 mb-4">
@@ -734,6 +740,25 @@ let monitoringData = [
 if (!localStorage.getItem('monitoringData')) {
   localStorage.setItem('monitoringData', JSON.stringify(monitoringData));
 }
+// ✅ Remember selected month and year using localStorage
+const monthSelect = document.getElementById('monthSelect');
+const yearSelect = document.getElementById('yearSelect');
+
+// 🟢 Load saved month/year on page load
+const savedMonth = localStorage.getItem('selectedMonth');
+const savedYear = localStorage.getItem('selectedYear');
+
+if (savedMonth) monthSelect.value = savedMonth;
+if (savedYear) yearSelect.value = savedYear;
+
+// 🟢 Save month/year when changed
+monthSelect.addEventListener('change', () => {
+  localStorage.setItem('selectedMonth', monthSelect.value);
+});
+
+yearSelect.addEventListener('change', () => {
+  localStorage.setItem('selectedYear', yearSelect.value);
+});
 
 // ✅ Load monitoring data after all functions are ready
 monitoringData = JSON.parse(localStorage.getItem('monitoringData'));
@@ -756,7 +781,7 @@ function loadMonitoringData() {
         <td class="text-left">${branch.name}</td>
         <td><input type="checkbox" ${branch.checked ? 'checked' : ''} onchange="toggleCheck(${index})"></td>
         <td><input type="checkbox" ${branch.uploaded ? 'checked' : ''} onchange="toggleUpload(${index})"></td>
-        <td>${branch.uploadedBy || ''}</td>
+        <td><input type="text" value="${branch.uploadedBy || ''}" oninput="updateUploader(${index}, this.value)" class="border rounded px-2 py-1 w-full text-center"></td>
         <td><input type="text" value="${branch.remarks || ''}" oninput="updateRemarks(${index}, this.value)" class="border rounded px-2 py-1 w-full"></td>
         <td>${branch.uploaded ? '✅ Done' : branch.checked ? '⏳ Checking' : '❌ Pending'}</td>
       </tr>
@@ -799,6 +824,10 @@ function toggleUpload(index) {
   monitoringData[index].uploadedBy = monitoringData[index].uploaded ? 'HR Staff' : '';
   saveMonitoringData();
   loadMonitoringData();
+}
+function updateUploader(index, value) {
+  monitoringData[index].uploadedBy = value;
+  saveMonitoringData();
 }
 
 function updateRemarks(index, value) {
