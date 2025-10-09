@@ -165,72 +165,96 @@
 <!-- Container for side-by-side layout -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
 
-  <!-- Work Schedule Section -->
-<div class="grid grid-cols-2 gap-6">
+<!-- Schedule Checker Content -->
+<div id="tab-schedule-content">
+  <h1 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-700 to-blue-500 text-transparent bg-clip-text text-center mt-4">
+    Schedule Conflict Checker
+  </h1>
+  <p class="mt-2 text-gray-600 text-sm tracking-wide text-center mb-6">
+    Validate, review, and export work & rest day schedules with ease.
+  </p>
 
-  <!-- LEFT SIDE -->
-  <div class="bg-white p-4 rounded-2xl shadow-md flex flex-col">
-    <div class="flex items-center mb-3 space-x-2">
-      <h3 class="font-semibold text-lg">1. Paste Work Schedule Data</h3>
-      <input id="workBranchName" type="text" placeholder="Enter Branch Name"
-             class="border rounded-lg px-3 py-2 text-sm flex-1" />
-      <button id="generateWorkFile"
-              class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm">
-        Generate File
-      </button>
+  <!-- 🟦 SIDE-BY-SIDE PANELS -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full px-6">
+
+    <!-- LEFT: Work Schedule -->
+    <div class="bg-white p-4 rounded-2xl shadow-md flex flex-col">
+      <div class="flex items-center mb-3 space-x-2">
+        <h3 class="font-semibold text-lg whitespace-nowrap">1. Paste Work Schedule Data</h3>
+        <input id="workBranchName" type="text" placeholder="Enter Branch Name"
+               class="border rounded-lg px-3 py-2 text-sm flex-1" />
+        <button id="generateWorkFile"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm">
+          Generate File
+        </button>
+        <button id="clearWorkData"
+                class="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm">
+          Clear
+        </button>
+      </div>
+
+      <textarea id="workScheduleInput"
+                class="w-full h-64 border border-indigo-400 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-3"></textarea>
+
+      <table id="workScheduleTable" class="w-full text-sm text-center border-collapse">
+        <thead class="bg-gray-50 text-gray-700">
+          <tr>
+            <th class="px-2 py-1 border">NAME</th>
+            <th class="px-2 py-1 border">EMP NO.</th>
+            <th class="px-2 py-1 border">WORK DATE</th>
+            <th class="px-2 py-1 border">SHIFT</th>
+            <th class="px-2 py-1 border">DAY</th>
+            <th class="px-2 py-1 border">POSITION</th>
+          </tr>
+        </thead>
+        <tbody id="workTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+      </table>
     </div>
 
-    <textarea id="workScheduleInput"
-              class="w-full h-64 border border-indigo-400 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-3"></textarea>
+    <!-- RIGHT: Rest Day Schedule -->
+    <div class="bg-white p-4 rounded-2xl shadow-md flex flex-col">
+      <div class="flex items-center mb-3 space-x-2">
+        <h3 class="font-semibold text-lg whitespace-nowrap">2. Paste Rest Day Schedule Data</h3>
+        <input id="restBranchName" type="text" placeholder="Enter Branch Name"
+               class="border rounded-lg px-3 py-2 text-sm flex-1" />
+        <button id="generateRestFile"
+                class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm">
+          Generate File
+        </button>
+        <button id="clearRestData"
+                class="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 text-sm">
+          Clear
+        </button>
+      </div>
 
-    <table id="workScheduleTable" class="w-full text-sm text-center border-collapse">
-      <thead class="bg-gray-50 text-gray-700">
-        <tr>
-          <th class="px-2 py-1 border">NAME</th>
-          <th class="px-2 py-1 border">EMP NO.</th>
-          <th class="px-2 py-1 border">WORK DATE</th>
-          <th class="px-2 py-1 border">SHIFT</th>
-          <th class="px-2 py-1 border">DAY</th>
-          <th class="px-2 py-1 border">POSITION</th>
-        </tr>
-      </thead>
-      <tbody id="workTableBody" class="bg-white divide-y divide-gray-200"></tbody>
-    </table>
-  </div>
+      <textarea id="restScheduleInput"
+                class="w-full h-64 border border-indigo-400 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-3"></textarea>
 
-  <!-- RIGHT SIDE -->
-  <div class="bg-white p-4 rounded-2xl shadow-md flex flex-col">
-    <div class="flex items-center mb-3 space-x-2">
-      <h3 class="font-semibold text-lg">2. Paste Rest Day Schedule Data</h3>
-      <input id="restBranchName" type="text" placeholder="Enter Branch Name"
-             class="border rounded-lg px-3 py-2 text-sm flex-1" />
-      <button id="generateRestFile"
-              class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm">
-        Generate File
-      </button>
+      <table id="restScheduleTable" class="w-full text-sm text-center border-collapse">
+        <thead class="bg-gray-50 text-gray-700">
+          <tr>
+            <th class="px-2 py-1 border">CONFLICT</th>
+            <th class="px-2 py-1 border">NAME</th>
+            <th class="px-2 py-1 border">EMP NO.</th>
+            <th class="px-2 py-1 border">REST DATE</th>
+            <th class="px-2 py-1 border">DAY</th>
+            <th class="px-2 py-1 border">POSITION</th>
+          </tr>
+        </thead>
+        <tbody id="restTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+      </table>
     </div>
-
-    <textarea id="restScheduleInput"
-              class="w-full h-64 border border-indigo-400 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-3"></textarea>
-
-    <table id="restScheduleTable" class="w-full text-sm text-center border-collapse">
-      <thead class="bg-gray-50 text-gray-700">
-        <tr>
-          <th class="px-2 py-1 border">CONFLICT</th>
-          <th class="px-2 py-1 border">NAME</th>
-          <th class="px-2 py-1 border">EMP NO.</th>
-          <th class="px-2 py-1 border">REST DATE</th>
-          <th class="px-2 py-1 border">DAY</th>
-          <th class="px-2 py-1 border">POSITION</th>
-        </tr>
-      </thead>
-      <tbody id="restTableBody" class="bg-white divide-y divide-gray-200"></tbody>
-    </table>
   </div>
 
-</div><!-- ✅ close tab-schedule-content container -->
+  <!-- 🧹 Clear All Button -->
+  <div class="text-center mt-6">
+    <button id="clearAllBtn"
+            class="bg-red-600 text-white px-5 py-2 rounded-lg hover:bg-red-700 text-sm">
+      Clear All (Work + Rest Day)
+    </button>
+  </div>
+</div>
 
-</div> <!-- ✅ End of Schedule Checker Tab -->
 
 
 <!-- ✅ MONITORING TAB -->
@@ -873,6 +897,27 @@ document.getElementById('exportMonitoringBtn').addEventListener('click', () => {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Monitoring');
   XLSX.writeFile(wb, `Branch_Monitoring_${monthName}_${yearValue}.xlsx`);
+});
+// 🧹 Clear buttons
+document.getElementById('clearWorkData').addEventListener('click', () => {
+  document.getElementById('workScheduleInput').value = '';
+  document.getElementById('workBranchName').value = '';
+  document.getElementById('workTableBody').innerHTML = '';
+});
+
+document.getElementById('clearRestData').addEventListener('click', () => {
+  document.getElementById('restScheduleInput').value = '';
+  document.getElementById('restBranchName').value = '';
+  document.getElementById('restTableBody').innerHTML = '';
+});
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  document.getElementById('workScheduleInput').value = '';
+  document.getElementById('restScheduleInput').value = '';
+  document.getElementById('workBranchName').value = '';
+  document.getElementById('restBranchName').value = '';
+  document.getElementById('workTableBody').innerHTML = '';
+  document.getElementById('restTableBody').innerHTML = '';
 });
 
 
