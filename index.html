@@ -168,32 +168,30 @@ tbody tr:hover {
 <div id="tab-monitoring-content" class="tab-content">
   <h2>📈 Branch Monitoring Dashboard</h2>
 
-  <!-- Progress Summary (now only here) -->
-  <div id="progress-summary" style="margin-bottom: 20px;">
-    <p>Total Branches: <span id="totalBranches">0</span></p>
-    <p>Checked: <span id="checkedCount">0</span></p>
-    <p>Uploaded: <span id="uploadedCount">0</span></p>
-    <p>Progress: <span id="progressPercent">0%</span></p>
-
-    <div class="progress-bar" style="width:100%;background:#ddd;border-radius:8px;height:20px;">
-      <div id="progressBarFill" style="height:100%;width:0%;background:#4caf50;border-radius:8px;transition:width 0.3s;"></div>
-    </div>
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-lg font-semibold text-gray-700">📊 Branch Monitoring Dashboard</h2>
+    <button id="exportMonitoringBtn"
+      class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+      ⬇️ Export to Excel
+    </button>
   </div>
 
-  <table id="monitoringTable" border="1" style="width:100%;border-collapse:collapse;">
-    <thead>
+  <table id="monitoringTable" class="min-w-full border-collapse w-full text-sm">
+    <thead class="bg-gray-100 text-gray-700 uppercase text-xs tracking-wide">
       <tr>
-        <th>Branch</th>
-        <th>Check</th>
-        <th>Upload</th>
-        <th>Uploaded By</th>
-        <th>Remarks</th>
-        <th>Progress</th>
+        <th class="px-3 py-2 text-left">Branch</th>
+        <th class="px-3 py-2 text-center">Checked</th>
+        <th class="px-3 py-2 text-center">Uploaded</th>
+        <th class="px-3 py-2 text-left">Uploaded By</th>
+        <th class="px-3 py-2 text-left">Remarks</th>
+        <th class="px-3 py-2 text-center">Status</th>
       </tr>
     </thead>
-    <tbody id="monitoringBody"></tbody>
+    <tbody id="monitoringBody" class="divide-y divide-gray-200"></tbody>
   </table>
 </div>
+
 
 <!-- Monitoring branch progress area -->
 <div class="mt-4">
@@ -863,14 +861,35 @@ function renderMonitoringTable(data) {
       <td class="font-medium text-gray-800">${item.branch}</td>
       <td class="text-center"><input type="checkbox" ${item.checked ? "checked" : ""} onchange="saveMonitoringData()"></td>
       <td class="text-center"><input type="checkbox" ${item.uploaded ? "checked" : ""} onchange="saveMonitoringData()"></td>
-      <td><input type="text" value="${item.uploadedBy}" class="border rounded px-2 py-1 w-full" oninput="saveMonitoringData()"></td>
-      <td><input type="text" value="${item.remarks}" class="border rounded px-2 py-1 w-full" oninput="saveMonitoringData()"></td>
-      <td class="text-center text-blue-600 font-semibold">
-        ${item.checked && item.uploaded ? "✅ Done" : "⏳ Pending"}
+      <td>
+        <select class="border rounded px-2 py-1 w-full text-sm" onchange="saveMonitoringData()">
+          <option value="">Select</option>
+          <option ${item.uploadedBy==='Joy'?'selected':''}>Joy</option>
+          <option ${item.uploadedBy==='Melvin'?'selected':''}>Melvin</option>
+          <option ${item.uploadedBy==='Claire'?'selected':''}>Claire</option>
+        </select>
+      </td>
+      <td><input type="text" value="${item.remarks}" class="border rounded px-2 py-1 w-full text-sm" oninput="saveMonitoringData()"></td>
+      <td class="text-center font-semibold ${item.checked && item.uploaded ? 'text-green-600' : 'text-gray-500'}">
+        ${item.checked && item.uploaded ? '✅ Complete' : '⏳ Pending'}
       </td>
     </tr>
   `).join("");
+  updateMonitoringProgressBar();
 }
+
+function updateMonitoringProgressBar() {
+  const rows = [...document.querySelectorAll("#monitoringBody tr")];
+  const total = rows.length;
+  const done = rows.filter(r =>
+    r.cells[1].querySelector("input").checked &&
+    r.cells[2].querySelector("input").checked
+  ).length;
+  const percent = total ? ((done / total) * 100).toFixed(1) : 0;
+  document.getElementById("progressPercent").textContent = percent + "%";
+  document.getElementById("progressBarFill").style.width = percent + "%";
+}
+
 
 // 🔍 SEARCH FUNCTIONALITY
 document.getElementById("monitoringSearch").addEventListener("input", (e) => {
@@ -899,6 +918,26 @@ monthSelect.addEventListener("change", loadMonitoringData);
 
 // 🔹 Load on page open
 window.addEventListener("load", loadMonitoringData);
+
+// 🔹 Export monitoring table to Excel
+document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
+  const rows = [...document.querySelectorAll("#monitoringBody tr")].map(tr => {
+    const tds = tr.querySelectorAll("td");
+    return {
+      Branch: tds[0].innerText,
+      Checked: tds[1].querySelector("input").checked ? "Yes" : "No",
+      Uploaded: tds[2].querySelector("input").checked ? "Yes" : "No",
+      "Uploaded By": tds[3].querySelector("select").value,
+      Remarks: tds[4].querySelector("input").value,
+      Status: tds[5].innerText
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Monitoring");
+  const month = document.getElementById("monthSelect").value;
+  XLSX.writeFile(wb, `Branch_Monitoring_${month}.xlsx`);
+});
 
 
 </script>
