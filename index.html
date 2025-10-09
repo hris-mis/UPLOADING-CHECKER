@@ -883,6 +883,15 @@ function renderMonitoringTable(data) {
         </select>
       </td>
       <td><input type="text" class="remarks" data-index="${index}" value="${item.remarks || ""}"></td>
+      <td>
+        ${
+          (item.checked && item.uploaded)
+            ? '<span class="text-green-600 font-bold">✅</span>'
+            : (item.checked || item.uploaded)
+              ? '<span class="text-yellow-600 font-bold">⏳</span>'
+              : '<span class="text-gray-400">—</span>'
+        }
+      </td>
     `;
     monitoringBody.appendChild(row);
   });
