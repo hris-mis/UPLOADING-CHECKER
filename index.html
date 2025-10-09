@@ -203,7 +203,6 @@ button#generate-work-btn, button#generate-rest-btn {
     Validate, review, and export work & rest day schedules with ease.
   </p>
 
-
 <!-- Container for side-by-side layout -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
 
@@ -240,7 +239,7 @@ button#generate-work-btn, button#generate-rest-btn {
     </div>
   </div>
 
-  <!-- Rest Day Schedule Section -->
+  <!-- Rest Day Schedule + Conflict Table (this is the key part) -->
   <div class="bg-white p-6 rounded-lg shadow-sm flex flex-col h-full">
     <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
       <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
@@ -257,12 +256,30 @@ button#generate-work-btn, button#generate-rest-btn {
       class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mx-auto w-full"
       onpaste="handlePaste(event, 'rest')"></div>
     <p class="text-xs text-gray-500 mt-2">Paste your Rest Day data here.</p>
-    <div id="restDayTableContainer" class="mt-6 overflow-x-auto"></div>
+    <!-- Conflict table inside same column -->
+    <div class="table-container mt-4">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead>
+          <tr>
+            <th class="px-2 py-2 text-xs">Conflict</th>
+            <th class="px-2 py-2 text-xs">Name</th>
+            <th class="px-2 py-2 text-xs">Emp No.</th>
+            <th class="px-2 py-2 text-xs">Rest Date</th>
+            <th class="px-2 py-2 text-xs">Day</th>
+            <th class="px-2 py-2 text-xs">Position</th>
+          </tr>
+        </thead>
+        <tbody id="rest-day-body">
+          <!-- JS will populate this -->
+        </tbody>
+      </table>
+      <p id="summary" class="mt-4 text-sm font-medium text-gray-700"></p>
+    </div>
   </div>
 
-</div>
+</div> <!-- end grid container -->
 
-<!-- Table -->
+</div>
 <div class="table-container mt-4">
   <table class="min-w-full divide-y divide-gray-200">
     <thead>
