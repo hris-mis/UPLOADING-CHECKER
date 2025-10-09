@@ -806,8 +806,9 @@ let monitoringData = [
   { name: 'AASP GLORIETTA', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
   { name: 'ASP ILOILO', checked: false, uploaded: false, uploadedBy: '', remarks: '' }
 ];
-loadMonitoringData(); // Call to refresh table immediately
-localStorage.setItem('monitoringData', JSON.stringify(monitoringData));
+
+localStorage.setItem('monitoringData', JSON.stringify(monitoringData)); // Save initial data
+loadMonitoringData(); // Then load the data into the table
 
 function saveMonitoringData() {
   localStorage.setItem('monitoringData', JSON.stringify(monitoringData));
