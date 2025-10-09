@@ -204,36 +204,33 @@ button#generate-work-btn, button#generate-rest-btn {
   </p>
 
 
-<!-- 🟦 WIDER SIDE-BY-SIDE LAYOUT -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+<!-- Container for side-by-side layout -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
 
   <!-- Work Schedule Section -->
-  <div class="bg-white p-6 rounded-lg shadow-sm">
+  <div class="bg-white p-6 rounded-lg shadow-sm flex flex-col h-full">
     <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
       <h2 class="text-xl font-semibold text-gray-700">1. Paste Work Schedule Data</h2>
       <div class="flex items-center">
         <input type="text" id="work-branch-name" placeholder="Enter Branch Name"
-          class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2">
+          class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2" />
         <button id="generate-work-btn" onclick="generateHrisFile('work')"
           class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
           Generate File
         </button>
       </div>
     </div>
-
     <div id="work-schedule-paste" contenteditable="true" class="paste-area" onpaste="handlePaste(event, 'work')"></div>
-
     <div class="table-container mt-4">
       <table class="min-w-full divide-y divide-gray-200">
         <thead>
           <tr>
-<th class="px-2 py-2 text-xs">Name</th>
-<th class="px-2 py-2 text-xs">Emp No.</th>
-<th class="px-2 py-2 text-xs">Work Date</th>
-<th class="px-2 py-2 text-xs">Shift</th>
-<th class="px-2 py-2 text-xs">Day</th>
-<th class="px-2 py-2 text-xs">Position</th>
-
+            <th class="px-2 py-2 text-xs">Name</th>
+            <th class="px-2 py-2 text-xs">Emp No.</th>
+            <th class="px-2 py-2 text-xs">Work Date</th>
+            <th class="px-2 py-2 text-xs">Shift</th>
+            <th class="px-2 py-2 text-xs">Day</th>
+            <th class="px-2 py-2 text-xs">Position</th>
           </tr>
         </thead>
         <tbody id="work-schedule-body">
@@ -244,28 +241,26 @@ button#generate-work-btn, button#generate-rest-btn {
   </div>
 
   <!-- Rest Day Schedule Section -->
-<div class="bg-white p-6 rounded-lg shadow-sm mt-8">
-  <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-<div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-  <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
-  <div class="flex items-center">
-    <input type="text" id="rest-branch-name" placeholder="Enter Branch Name"
-      class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2" />
-    <button id="generate-rest-btn" onclick="generateHrisFile('rest')"
-      class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors whitespace-nowrap">
-      📄 Generate File
-    </button>
+  <div class="bg-white p-6 rounded-lg shadow-sm flex flex-col h-full">
+    <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+      <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
+      <div class="flex items-center">
+        <input type="text" id="rest-branch-name" placeholder="Enter Branch Name"
+          class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2" />
+        <button id="generate-rest-btn" onclick="generateHrisFile('rest')"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors whitespace-nowrap">
+          📄 Generate File
+        </button>
+      </div>
+    </div>
+    <div id="rest-day-paste" contenteditable="true"
+      class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mx-auto w-full"
+      onpaste="handlePaste(event, 'rest')"></div>
+    <p class="text-xs text-gray-500 mt-2">Paste your Rest Day data here.</p>
+    <div id="restDayTableContainer" class="mt-6 overflow-x-auto"></div>
   </div>
+
 </div>
-
-<div id="rest-day-paste" contenteditable="true"
-class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mx-auto w-full"
-  onpaste="handlePaste(event, 'rest')"></div>
-
-<p class="text-xs text-gray-500 mt-2">Paste your Rest Day data here.</p>
-
-<div id="restDayTableContainer" class="mt-6 overflow-x-auto"></div>
-
 
 <!-- Table -->
 <div class="table-container mt-4">
