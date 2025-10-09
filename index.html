@@ -390,31 +390,6 @@ class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] text-sm te
   <script>
 
 
-
-
-// ✅ Default tab setup (Schedule Checker first)
-window.addEventListener('DOMContentLoaded', () => {
-  console.log("✅ Page Loaded: Initializing Tabs and Monitoring Data...");
-
-  // Show Schedule Checker first, hide Monitoring
-  const scheduleTab = document.getElementById('tab-schedule-content');
-  const monitoringTab = document.getElementById('tab-monitoring-content');
-
-  if (scheduleTab && monitoringTab) {
-    scheduleTab.classList.remove('hidden');
-    monitoringTab.classList.add('hidden');
-
-    loadMonitoringData();
-updateMonitoringProgress();
-
-  }
-
-  document.getElementById('tab-schedule').classList.add('bg-indigo-600', 'text-white');
-  document.getElementById('tab-monitoring').classList.remove('bg-indigo-600', 'text-white');
-  document.getElementById('tab-monitoring').classList.add('bg-gray-200', 'text-gray-700');
-});
-
-
     // Data stores
     let workScheduleData = [];
     let restDayData = [];
@@ -850,11 +825,26 @@ document.getElementById("clearMonitoringBtn").addEventListener("click", () => {
 
 // 🔹 Initialize everything only once after full DOM load
 window.addEventListener("DOMContentLoaded", () => {
-  console.log("🚀 Initializing Monitoring System...");
+  console.log("✅ Page Loaded: Initializing Tabs, Schedule, and Monitoring...");
+
+  // Default tab setup
+  const scheduleTab = document.getElementById('tab-schedule-content');
+  const monitoringTab = document.getElementById('tab-monitoring-content');
+
+  scheduleTab.classList.remove('hidden');
+  monitoringTab.classList.add('hidden');
+
+  // Highlight Schedule tab button
+  document.getElementById('tab-schedule').classList.add('bg-indigo-600', 'text-white');
+  document.getElementById('tab-monitoring').classList.remove('bg-indigo-600', 'text-white');
+  document.getElementById('tab-monitoring').classList.add('bg-gray-200', 'text-gray-700');
+
+  // Initialize monitoring table correctly
   initializeMonitoringTable();
   loadMonitoringData();
   updateMonitoringProgress();
 });
+
 
 
 // 🔹 Also refresh table when month is changed
@@ -863,29 +853,44 @@ monthSelect.addEventListener("change", () => {
 });
 
 function initializeMonitoringTable() {
-  const defaultData = [
-    { branch: "Branch A", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
-    { branch: "Branch B", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
+  const branches = [
+    "AASP CEBU",
+    "AASP CLARK",
+    "AASP ABREEZA",
+    "AASP NES - ATLAS",
+    "AASP ANNEX"
   ];
-  localStorage.setItem(getStorageKey(), JSON.stringify(defaultData));
-  renderMonitoringTable(defaultData);
+
+  const data = branches.map(branch => ({
+    branch,
+    status: "Not Started",
+    remarks: ""
+  }));
+
+  const key = getStorageKey();
+  localStorage.setItem(key, JSON.stringify(data));
+  renderMonitoringTable(data);
+  updateMonitoringProgress();
 }
 
 
 // 🔹 Load saved data when page opens or month changes
 function loadMonitoringData() {
   const key = getStorageKey();
-  let data = JSON.parse(localStorage.getItem(key)) || [];
+  let data = JSON.parse(localStorage.getItem(key));
 
-  // 🟦 If empty, initialize defaults
-  if (data.length === 0) {
+  // 🟦 if nothing is stored yet, create starter rows
+  if (!data || data.length === 0) {
+    console.log("ℹ️ No saved monitoring data found, creating new table…");
     initializeMonitoringTable();
     return;
   }
 
+  console.log("✅ Loading monitoring data:", data);
   renderMonitoringTable(data);
   updateMonitoringProgress();
 }
+
 
 
 // 🔹 Save data to localStorage
@@ -1068,9 +1073,11 @@ document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
 });
 
 window.addEventListener("DOMContentLoaded", () => {
+  initializeMonitoringTable();
   loadMonitoringData();
   updateMonitoringProgress();
 });
+
 
 
 
