@@ -166,63 +166,66 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
 
   <!-- Work Schedule Section -->
-  <div class="bg-white p-6 rounded-lg shadow-sm flex flex-col h-full">
-    <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-      <h2 class="text-xl font-semibold text-gray-700">1. Paste Work Schedule Data</h2>
-      <div class="flex items-center">
-        <input type="text" id="work-branch-name" placeholder="Enter Branch Name" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2" />
-        <button id="generate-work-btn" onclick="generateHrisFile('work')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">Generate File</button>
-      </div>
+<div class="grid grid-cols-2 gap-6">
+
+  <!-- LEFT SIDE -->
+  <div class="bg-white p-4 rounded-2xl shadow-md flex flex-col">
+    <div class="flex items-center mb-3 space-x-2">
+      <h3 class="font-semibold text-lg">1. Paste Work Schedule Data</h3>
+      <input id="workBranchName" type="text" placeholder="Enter Branch Name"
+             class="border rounded-lg px-3 py-2 text-sm flex-1" />
+      <button id="generateWorkFile"
+              class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm">
+        Generate File
+      </button>
     </div>
-    <div id="work-schedule-paste" contenteditable="true" class="paste-area" onpaste="handlePaste(event, 'work')"></div>
-    <div class="table-container mt-4">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead>
-          <tr>
-            <th class="px-2 py-2 text-xs">Name</th>
-            <th class="px-2 py-2 text-xs">Emp No.</th>
-            <th class="px-2 py-2 text-xs">Work Date</th>
-            <th class="px-2 py-2 text-xs">Shift</th>
-            <th class="px-2 py-2 text-xs">Day</th>
-            <th class="px-2 py-2 text-xs">Position</th>
-          </tr>
-        </thead>
-        <tbody id="work-schedule-body">
-          <!-- JS will populate -->
-        </tbody>
-      </table>
-    </div>
+
+    <textarea id="workScheduleInput"
+              class="w-full h-64 border border-indigo-400 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-3"></textarea>
+
+    <table id="workScheduleTable" class="w-full text-sm text-center border-collapse">
+      <thead class="bg-gray-50 text-gray-700">
+        <tr>
+          <th class="px-2 py-1 border">NAME</th>
+          <th class="px-2 py-1 border">EMP NO.</th>
+          <th class="px-2 py-1 border">WORK DATE</th>
+          <th class="px-2 py-1 border">SHIFT</th>
+          <th class="px-2 py-1 border">DAY</th>
+          <th class="px-2 py-1 border">POSITION</th>
+        </tr>
+      </thead>
+      <tbody id="workTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+    </table>
   </div>
 
-  <!-- Rest Day Schedule + Conflict Table (this is the key part, now inside same column) -->
-  <div class="bg-white p-6 rounded-lg shadow-sm flex flex-col h-full">
-    <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-      <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
-      <div class="flex items-center">
-        <input type="text" id="rest-branch-name" placeholder="Enter Branch Name" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2" />
-        <button id="generate-rest-btn" onclick="generateHrisFile('rest')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">Generate File</button>
-      </div>
+  <!-- RIGHT SIDE -->
+  <div class="bg-white p-4 rounded-2xl shadow-md flex flex-col">
+    <div class="flex items-center mb-3 space-x-2">
+      <h3 class="font-semibold text-lg">2. Paste Rest Day Schedule Data</h3>
+      <input id="restBranchName" type="text" placeholder="Enter Branch Name"
+             class="border rounded-lg px-3 py-2 text-sm flex-1" />
+      <button id="generateRestFile"
+              class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm">
+        Generate File
+      </button>
     </div>
-    <div id="rest-day-paste" contenteditable="true" class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mx-auto w-full" onpaste="handlePaste(event, 'rest')"></div>
-    <!-- Conflict table for Rest Day inside same column -->
-    <div class="table-container mt-4">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead>
-          <tr>
-            <th class="px-2 py-2 text-xs">Conflict</th>
-            <th class="px-2 py-2 text-xs">Name</th>
-            <th class="px-2 py-2 text-xs">Emp No.</th>
-            <th class="px-2 py-2 text-xs">Rest Date</th>
-            <th class="px-2 py-2 text-xs">Day</th>
-            <th class="px-2 py-2 text-xs">Position</th>
-          </tr>
-        </thead>
-        <tbody id="rest-day-body">
-          <!-- JS will populate -->
-        </tbody>
-      </table>
-      <p id="summary" class="mt-4 text-sm font-medium text-gray-700"></p>
-    </div>
+
+    <textarea id="restScheduleInput"
+              class="w-full h-64 border border-indigo-400 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none mb-3"></textarea>
+
+    <table id="restScheduleTable" class="w-full text-sm text-center border-collapse">
+      <thead class="bg-gray-50 text-gray-700">
+        <tr>
+          <th class="px-2 py-1 border">CONFLICT</th>
+          <th class="px-2 py-1 border">NAME</th>
+          <th class="px-2 py-1 border">EMP NO.</th>
+          <th class="px-2 py-1 border">REST DATE</th>
+          <th class="px-2 py-1 border">DAY</th>
+          <th class="px-2 py-1 border">POSITION</th>
+        </tr>
+      </thead>
+      <tbody id="restTableBody" class="bg-white divide-y divide-gray-200"></tbody>
+    </table>
   </div>
 
 </div><!-- ✅ close tab-schedule-content container -->
@@ -847,10 +850,29 @@ document.getElementById('clearMonitoringBtn').addEventListener('click', () => {
 
 document.getElementById('exportMonitoringBtn').addEventListener('click', () => {
   if (monitoringData.length === 0) return alert('No data to export');
+
+  // ✅ Get selected month and year text
+  const monthSelect = document.getElementById('monthSelect');
+  const yearSelect = document.getElementById('yearSelect');
+  const monthName = monthSelect.options[monthSelect.selectedIndex].text;
+  const yearValue = yearSelect.value;
+
+  // ✅ Create a header row
+  const header = [`📊 WS and RD Monitoring for the Month of ${monthName} ${yearValue}`];
+
+  // ✅ Convert data to sheet
   const ws = XLSX.utils.json_to_sheet(monitoringData);
+
+  // ✅ Insert header row above the data
+  XLSX.utils.sheet_add_aoa(ws, [header], { origin: 'A1' });
+
+  // ✅ Adjust columns (shift data down)
+  XLSX.utils.sheet_add_json(ws, monitoringData, { origin: 'A3', skipHeader: false });
+
+  // ✅ Create workbook and save file
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Monitoring');
-  XLSX.writeFile(wb, 'Branch_Monitoring.xlsx');
+  XLSX.writeFile(wb, `Branch_Monitoring_${monthName}_${yearValue}.xlsx`);
 });
 
 
