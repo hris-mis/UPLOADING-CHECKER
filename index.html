@@ -794,7 +794,20 @@ document.getElementById('tab-monitoring').addEventListener('click', () => {
 });
 
 // --- MONITORING DATA LOGIC ---
-let monitoringData = JSON.parse(localStorage.getItem('monitoringData') || '[]');
+let monitoringData = [
+  { name: 'AASP ABREEZA', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+  { name: 'AASP NES - ATLAS', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+  { name: 'AASP ANNEX', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+  { name: 'AASP CDO', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+  { name: 'AASP CEBU', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+  { name: 'AASP CLARK', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+  { name: 'AASP FESTIVAL', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+  { name: 'GREE', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+  { name: 'AASP GLORIETTA', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+  { name: 'ASP ILOILO', checked: false, uploaded: false, uploadedBy: '', remarks: '' }
+];
+loadMonitoringData(); // Call to refresh table immediately
+localStorage.setItem('monitoringData', JSON.stringify(monitoringData));
 
 function saveMonitoringData() {
   localStorage.setItem('monitoringData', JSON.stringify(monitoringData));
