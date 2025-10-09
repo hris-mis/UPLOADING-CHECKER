@@ -401,6 +401,10 @@ window.addEventListener('DOMContentLoaded', () => {
   if (scheduleTab && monitoringTab) {
     scheduleTab.classList.remove('hidden');
     monitoringTab.classList.add('hidden');
+
+    loadMonitoringData();
+updateMonitoringProgress();
+
   }
 
   document.getElementById('tab-schedule').classList.add('bg-indigo-600', 'text-white');
@@ -842,6 +846,19 @@ document.getElementById("clearMonitoringBtn").addEventListener("click", () => {
   updateMonitoringProgressBar();
 });
 
+// 🔹 Initialize monitoring table when page loads
+window.addEventListener("DOMContentLoaded", () => {
+  loadMonitoringData();
+  updateMonitoringProgress();
+});
+
+// 🔹 Also refresh table when month is changed
+monthSelect.addEventListener("change", () => {
+  loadMonitoringData();
+});
+
+
+
 // 🔹 Load saved data when page opens or month changes
 function loadMonitoringData() {
   const key = getStorageKey();
@@ -891,6 +908,32 @@ document.getElementById("addBranchBtn").addEventListener("click", () => {
   document.getElementById("newBranchName").value = "";
 });
 
+// 🟢 Export Monitoring Data to Excel
+document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
+  const key = getStorageKey();
+  const data = JSON.parse(localStorage.getItem(key)) || [];
+
+  if (data.length === 0) {
+    alert("No monitoring data to export for this month.");
+    return;
+  }
+
+  const exportData = data.map(item => ({
+    Branch: item.branch,
+    Checked: item.checked ? "✅ Yes" : "❌ No",
+    Uploaded: item.uploaded ? "✅ Yes" : "❌ No",
+    "Uploaded By": item.uploadedBy || "",
+    Remarks: item.remarks || ""
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Monitoring");
+  const filename = `${monthSelect.value}_Branch_Monitoring.xlsx`;
+  XLSX.writeFile(workbook, filename);
+});
+
+
 // 🟡 Edit Branch Placeholder
 document.getElementById("editBranchBtn").addEventListener("click", () => {
   alert("✏️ Edit Branches feature coming soon!");
@@ -929,7 +972,6 @@ const tableBody = document.getElementById("monitoringBody");
   });
 }
 
-
 function updateMonitoringProgress() {
   const key = getStorageKey();
   const data = JSON.parse(localStorage.getItem(key)) || [];
@@ -948,10 +990,8 @@ function updateMonitoringProgress() {
   const bar = document.getElementById("progressBar");
   bar.style.width = `${percent}%`;
   bar.textContent = `${percent.toFixed(1)}%`;
-
-  // ✅ Persist latest progress after updates
-  localStorage.setItem(`progress_${monthSelect.value}`, JSON.stringify({ total, checked, uploaded, percent }));
 }
+
 
 
 
@@ -965,26 +1005,22 @@ const all = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
 });
 
 
+// 🔹 Default monitoring setup for all branches
 function initializeMonitoringTable() {
-  const defaultBranches = [
-    "AASP CEBU",
-    "AASP CLARK",
-    "AASP ABREEZA",
-    "AASP NES - ATLAS",
-    "AASP ANNEX"
+  const data = [
+    { branch: "AASP CEBU", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
+    { branch: "AASP CLARK", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
+    { branch: "AASP ABREEZA", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
+    { branch: "AASP NES - ATLAS", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
+    { branch: "AASP ANNEX", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
+    // 🔸 add more branches here, same format:
+    // { branch: "AASP DAVAO", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
   ];
-
-  const data = defaultBranches.map(branch => ({
-    branch,
-    checked: false,
-    uploaded: false,
-    uploadedBy: "",
-    remarks: ""
-  }));
-
   localStorage.setItem(getStorageKey(), JSON.stringify(data));
   renderMonitoringTable(data);
+  updateMonitoringProgress();
 }
+
 
 // ✅ Ensure monitoring table loads properly
 monthSelect.addEventListener("change", loadMonitoringData);
