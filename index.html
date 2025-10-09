@@ -940,14 +940,17 @@ function updateMonitoringProgress() {
 
   const percent = total > 0 ? ((checked + uploaded) / (total * 2)) * 100 : 0;
 
- document.getElementById("totalBranches").textContent = total;
-document.getElementById("checkedBranches").textContent = checked;
-document.getElementById("uploadedBranches").textContent = uploaded;
-document.getElementById("progressPercent").textContent = percent.toFixed(1) + "%";
+  document.getElementById("totalBranches").textContent = total;
+  document.getElementById("checkedBranches").textContent = checked;
+  document.getElementById("uploadedBranches").textContent = uploaded;
+  document.getElementById("progressPercent").textContent = percent.toFixed(1) + "%";
 
   const bar = document.getElementById("progressBar");
   bar.style.width = `${percent}%`;
   bar.textContent = `${percent.toFixed(1)}%`;
+
+  // ✅ Persist latest progress after updates
+  localStorage.setItem(`progress_${monthSelect.value}`, JSON.stringify({ total, checked, uploaded, percent }));
 }
 
 
