@@ -161,13 +161,13 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
 
 <!-- Schedule Checker Content -->
-<div id="tab-schedule-content" class="pt-8">
+<div id="tab-schedule-content" class="py-10 px-6 flex justify-center w-full">
 
   <!-- Unified Module Card -->
-  <div class="max-w-[1700px] mx-auto bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+  <div class="w-full max-w-[1600px] bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
 
     <!-- HEADER -->
-    <div class="text-center py-10 px-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-white">
+    <div class="text-center py-10 px-8 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-white">
       <h1 class="text-4xl font-extrabold text-gray-800 tracking-tight">
         Schedule Conflict Checker
       </h1>
@@ -177,17 +177,17 @@
     </div>
 
     <!-- TWO-PANEL GRID -->
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-0">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-x divide-gray-200">
 
       <!-- LEFT: Work Schedule -->
-      <div class="p-10 flex flex-col border-r border-gray-200">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
-          <h3 class="font-semibold text-xl text-gray-800">
+      <div class="p-10 flex flex-col">
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between mb-6 gap-4">
+          <h3 class="font-semibold text-xl text-gray-800 whitespace-nowrap">
             1. Paste Work Schedule Data
           </h3>
-          <div class="flex items-center gap-3 w-full lg:w-auto">
+          <div class="flex items-center gap-3 w-full xl:w-auto">
             <input id="workBranchName" type="text" placeholder="Branch Name"
-                  class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full lg:w-48 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+                  class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full xl:w-48 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
             <button id="generateWorkFile"
                     class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm transition">
               Generate
@@ -221,13 +221,13 @@
 
       <!-- RIGHT: Rest Day Schedule -->
       <div class="p-10 flex flex-col">
-        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
-          <h3 class="font-semibold text-xl text-gray-800">
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between mb-6 gap-4">
+          <h3 class="font-semibold text-xl text-gray-800 whitespace-nowrap">
             2. Paste Rest Day Schedule Data
           </h3>
-          <div class="flex items-center gap-3 w-full lg:w-auto">
+          <div class="flex items-center gap-3 w-full xl:w-auto">
             <input id="restBranchName" type="text" placeholder="Branch Name"
-                  class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full lg:w-48 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+                  class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full xl:w-48 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
             <button id="generateRestFile"
                     class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm transition">
               Generate
@@ -270,7 +270,6 @@
 
   </div>
 </div>
-
 
 
 
