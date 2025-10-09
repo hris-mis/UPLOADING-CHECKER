@@ -368,9 +368,15 @@ const branches = [
 ];
 
 
-// Default: show Schedule tab only
-document.getElementById('tab-schedule-content').classList.remove('hidden');
-document.getElementById('tab-monitoring-content').classList.add('hidden');
+// ✅ Default tab setup (Schedule Checker first)
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('tab-schedule-content').classList.remove('hidden');
+  document.getElementById('tab-monitoring-content').classList.add('hidden');
+
+  document.getElementById('tab-schedule').classList.add('bg-indigo-600', 'text-white');
+  document.getElementById('tab-monitoring').classList.add('bg-gray-200', 'text-gray-700');
+});
+
 
     // Data stores
     let workScheduleData = [];
