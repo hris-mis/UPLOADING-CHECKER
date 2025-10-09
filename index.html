@@ -128,6 +128,23 @@ tbody tr:hover {
   background: #f9fafb;
   transform: scale(1.01);
 }
+#monitoringTable th {
+  background: #f8fafc;
+  color: #1e3a8a;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+
+#monitoringTable td {
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+}
+
+#monitoringBody tr:hover {
+  background-color: #f1f5f9;
+}
 
     </style>
 </head>
@@ -150,11 +167,13 @@ tbody tr:hover {
     class="px-6 py-2 rounded-full font-semibold bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition">
     🗓️ Schedule Checker
   </button>
-  <button id="tab-monitoring" 
-    class="px-6 py-2 rounded-full font-semibold bg-gray-200 text-gray-700 hover:bg-gray-300 transition">
+    <button id="tab-monitoring"
+    class="px-6 py-2 rounded-full font-semibold bg-gray-200 text-gray-700 hover:bg-indigo-100 transition">
     📊 Monitoring
   </button>
-</div>
+
+  
+</header>
 
   <h1 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-700 to-blue-500 text-transparent bg-clip-text">
     Schedule Conflict Checker
@@ -162,66 +181,6 @@ tbody tr:hover {
   <p class="mt-2 text-gray-600 text-sm tracking-wide">
     Validate, review, and export work & rest day schedules with ease.
   </p>
-</header>
-
-<!-- MONITORING TAB -->
-<div id="tab-monitoring-content" class="tab-content">
-  <h2>📈 Branch Monitoring Dashboard</h2>
-
-<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6">
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="text-lg font-semibold text-gray-700">📊 Branch Monitoring Dashboard</h2>
-    <button id="exportMonitoringBtn"
-      class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
-      ⬇️ Export to Excel
-    </button>
-  </div>
-
-  <table id="monitoringTable" class="min-w-full border-collapse w-full text-sm">
-    <thead class="bg-gray-100 text-gray-700 uppercase text-xs tracking-wide">
-      <tr>
-        <th class="px-3 py-2 text-left">Branch</th>
-        <th class="px-3 py-2 text-center">Checked</th>
-        <th class="px-3 py-2 text-center">Uploaded</th>
-        <th class="px-3 py-2 text-left">Uploaded By</th>
-        <th class="px-3 py-2 text-left">Remarks</th>
-        <th class="px-3 py-2 text-center">Status</th>
-      </tr>
-    </thead>
-    <tbody id="monitoringBody" class="divide-y divide-gray-200"></tbody>
-  </table>
-</div>
-
-
-<!-- Monitoring branch progress area -->
-<div class="mt-4">
-  <div class="flex items-center space-x-4 mb-4">
-    <select id="monthSelect" class="border rounded-lg px-3 py-2 text-sm">
-      <option value="2025-10">October 2025</option>
-      <option value="2025-11">November 2025</option>
-      <option value="2025-12">December 2025</option>
-    </select>
-
-    <select id="uploaderSelect" class="border rounded-lg px-3 py-2 text-sm">
-      <option value="">All Uploaders</option>
-      <option value="Claire">Claire</option>
-      <option value="Melvin">Melvin</option>
-      <option value="Joy">Joy</option>
-    </select>
-  </div>
-
-  <div id="branchContainer"
-       class="space-y-2 border p-3 rounded-lg bg-white shadow-inner max-h-[450px] overflow-y-auto">
-  </div>
-
-  <p id="progressCount" class="text-gray-500 text-sm mt-2"></p>
-</div>
-
-<div id="branchContainer" class="space-y-2 border p-3 rounded-lg bg-white max-h-[450px] overflow-y-auto"></div>
-<p id="progressCount" class="text-gray-500 text-sm mt-2"></p>
-
-
-</div> <!-- ✅ End of tab-monitoring-content -->
 
         <!-- Success Message -->
 <div id="success-message"
@@ -308,6 +267,7 @@ tbody tr:hover {
       <!-- JS will populate this -->
     </tbody>
   </table>
+  <p id="summary" class="mt-4 text-sm font-medium text-gray-700"></p>
 </div>
 
 
@@ -324,6 +284,78 @@ tbody tr:hover {
 
     
 </div>
+
+<!-- MONITORING TAB -->
+<div id="tab-monitoring-content" class="tab-content">
+  
+<h2 class="text-xl font-semibold text-gray-700 mb-2">📈 Branch Monitoring Dashboard</h2>
+
+<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6">
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-lg font-semibold text-gray-700">📊 Branch Monitoring Dashboard</h2>
+    <!-- Progress Overview -->
+<div class="my-4 bg-gray-50 p-3 rounded-lg border">
+  <p class="text-sm text-gray-700 mb-2">
+    Total Branches: <span id="totalBranches">0</span> |
+    Checked: <span id="checkedCount">0</span> |
+    Uploaded: <span id="uploadedCount">0</span> |
+    Progress: <span id="progressPercent">0%</span>
+  </p>
+<div class="w-full bg-gray-200 rounded-full h-3">
+<div id="progressBarFill2" class="bg-blue-700 h-3 rounded-full shadow-sm transition-all duration-500" style="width:0%"></div>
+</div>
+<p class="text-right text-sm text-gray-600 mt-1" id="progressPercent2">0%</p>
+
+    <input id="monitoringSearch" type="text" placeholder="Search branch..." 
+  class="border rounded-lg px-3 py-2 text-sm w-64 focus:ring-2 focus:ring-indigo-500" />
+    <button id="exportMonitoringBtn"
+      class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+      ⬇️ Export to Excel
+    </button>
+  </div>
+
+  <table id="monitoringTable" class="min-w-full border-collapse w-full text-sm">
+    <thead class="bg-gray-100 text-gray-700 uppercase text-xs tracking-wide">
+      <tr>
+        <th class="px-3 py-2 text-left">Branch</th>
+        <th class="px-3 py-2 text-center">Checked</th>
+        <th class="px-3 py-2 text-center">Uploaded</th>
+        <th class="px-3 py-2 text-left">Uploaded By</th>
+        <th class="px-3 py-2 text-left">Remarks</th>
+        <th class="px-3 py-2 text-center">Status</th>
+      </tr>
+    </thead>
+    <tbody id="monitoringBody" class="divide-y divide-gray-200"></tbody>
+  </table>
+</div>
+
+
+<!-- Monitoring branch progress area -->
+<div class="mt-4">
+  <div class="flex items-center space-x-4 mb-4">
+    <select id="monthSelect" class="border rounded-lg px-3 py-2 text-sm">
+      <option value="2025-10">October 2025</option>
+      <option value="2025-11">November 2025</option>
+      <option value="2025-12">December 2025</option>
+    </select>
+
+    <select id="uploaderSelect" class="border rounded-lg px-3 py-2 text-sm">
+      <option value="">All Uploaders</option>
+      <option value="Claire">Claire</option>
+      <option value="Melvin">Melvin</option>
+      <option value="Joy">Joy</option>
+    </select>
+  </div>
+
+  <div id="branchContainer"
+       class="space-y-2 border p-3 rounded-lg bg-white shadow-inner max-h-[450px] overflow-y-auto">
+  </div>
+
+  <p id="progressCount" class="text-gray-500 text-sm mt-2"></p>
+
+
+</div> <!-- ✅ End of tab-monitoring-content -->
+
 <script>
 
 const branches = [
@@ -334,67 +366,6 @@ const branches = [
   "AASP ANNEX"
   // ...add the rest of your branches here
 ];
-
-// ✅ Build Monitoring Table
-function loadMonitoring() {
-  const tbody = document.getElementById("monitoringBody");
-  tbody.innerHTML = "";
-  branches.forEach(branch => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${branch}</td>
-      <td><input type="checkbox" class="checkBox" data-branch="${branch}"></td>
-      <td><input type="checkbox" class="uploadBox" data-branch="${branch}"></td>
-      <td>-</td>
-      <td>Pending</td>
-      <td class="branchProgress">0%</td>
-    `;
-    tbody.appendChild(row);
-  });
-  updateProgress(); // initialize
-}
-
-// ✅ Update Totals + Bar
-function updateProgress() {
-  const total = branches.length;
-  const checked = document.querySelectorAll(".checkBox:checked").length;
-  const uploaded = document.querySelectorAll(".uploadBox:checked").length;
-  const progress = ((checked + uploaded) / 2 / total) * 100;
-
-  document.getElementById("totalBranches").textContent = total;
-  document.getElementById("checkedCount").textContent = checked;
-  document.getElementById("uploadedCount").textContent = uploaded;
-  document.getElementById("progressPercent").textContent = progress.toFixed(1) + "%";
-  document.getElementById("progressBarFill").style.width = progress + "%";
-
-  const monthKey = "October_2025"; // dynamic later if needed
-  localStorage.setItem(`progress_${monthKey}`, JSON.stringify({ checked, uploaded }));
-}
-
-// ✅ Auto-update on change
-document.addEventListener("change", e => {
-  if (e.target.classList.contains("checkBox") || e.target.classList.contains("uploadBox")) {
-    updateProgress();
-  }
-});
-
-// ✅ Restore progress if any saved
-function loadSavedProgress() {
-  const monthKey = "October_2025";
-  const saved = JSON.parse(localStorage.getItem(`progress_${monthKey}`) || "{}");
-  if (saved.checked || saved.uploaded) {
-    const checkBoxes = document.querySelectorAll(".checkBox");
-    const uploadBoxes = document.querySelectorAll(".uploadBox");
-    // Optional: can loop to mark saved states if you save by branch later
-    document.getElementById("checkedCount").textContent = saved.checked;
-    document.getElementById("uploadedCount").textContent = saved.uploaded;
-  }
-  updateProgress();
-}
-
-// Initialize
-loadMonitoring();
-loadSavedProgress();
 
 
 // Default: show Schedule tab only
@@ -822,7 +793,7 @@ function editBranches() {
 }
 
 /* --- MONITORING TAB LOCAL SAVE (Per Month Version) --- */
-const monitoringBody = document.getElementById("monitoring-body");
+const monitoringBody = document.getElementById("monitoringBody");
 const monthSelect = document.getElementById("monthSelect");
 
 function getStorageKey() {
@@ -841,7 +812,7 @@ function loadMonitoringData() {
 
 // 🔹 Save data to localStorage
 function saveMonitoringData() {
-  const rows = [...document.querySelectorAll("#monitoring-body tr")].map(tr => {
+  const rows = [...document.querySelectorAll("#monitoringBody tr")].map(tr => {
     const tds = tr.querySelectorAll("td");
     return {
       branch: tds[0].innerText,
@@ -852,6 +823,8 @@ function saveMonitoringData() {
     };
   });
   localStorage.setItem(getStorageKey(), JSON.stringify(rows));
+  updateMonitoringProgressBar();
+
 }
 
 // 🔹 Render table dynamically
@@ -878,23 +851,31 @@ function renderMonitoringTable(data) {
   updateMonitoringProgressBar();
 }
 
-function updateMonitoringProgressBar() {
+function updateMonitoringProgressBar()
+{
   const rows = [...document.querySelectorAll("#monitoringBody tr")];
   const total = rows.length;
+  const checked = rows.filter(r => r.cells[1].querySelector("input").checked).length;
+  const uploaded = rows.filter(r => r.cells[2].querySelector("input").checked).length;
   const done = rows.filter(r =>
     r.cells[1].querySelector("input").checked &&
     r.cells[2].querySelector("input").checked
   ).length;
   const percent = total ? ((done / total) * 100).toFixed(1) : 0;
+
+  document.getElementById("totalBranches").textContent = total;
+  document.getElementById("checkedCount").textContent = checked;
+  document.getElementById("uploadedCount").textContent = uploaded;
   document.getElementById("progressPercent").textContent = percent + "%";
-  document.getElementById("progressBarFill").style.width = percent + "%";
+  document.getElementById("progressPercent2").textContent = percent + "%";
+  document.getElementById("progressBarFill2").style.width = percent + "%";
 }
 
 
 // 🔍 SEARCH FUNCTIONALITY
 document.getElementById("monitoringSearch").addEventListener("input", (e) => {
   const term = e.target.value.toLowerCase();
-  const all = JSON.parse(localStorage.getItem("branchMonitoring") || "[]");
+const all = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
   const filtered = all.filter(b => b.branch.toLowerCase().includes(term));
   renderMonitoringTable(filtered);
 });
@@ -940,66 +921,6 @@ document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
 });
 
 
-</script>
-
-<!-- ✅ Warning Banner -->
-<div id="warning-banner"
-  class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 
-         bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg shadow-md 
-         transition-opacity opacity-0">
-</div>
-
-<script>
-  // ===== MONITORING FUNCTIONALITY =====
-  const container = document.getElementById("branchContainer");
-  const uploader = document.getElementById("uploaderSelect");
-  const month = document.getElementById("monthSelect");
-
-  function renderBranches() {
-    container.innerHTML = "";
-    branches.forEach(branch => {
-      const row = document.createElement("div");
-      row.className = "flex items-center gap-2";
-      row.innerHTML = `
-        <input type="checkbox" id="${branch}" class="branchCheck" />
-        <label for="${branch}" class="text-sm">${branch}</label>
-      `;
-      container.appendChild(row);
-    });
-    loadProgress();
-  }
-
-  function saveProgress() {
-    const key = `${uploader.value}_${month.value}`;
-    const data = {};
-    document.querySelectorAll(".branchCheck").forEach(cb => {
-      data[cb.id] = cb.checked;
-    });
-    localStorage.setItem(key, JSON.stringify(data));
-    updateProgress();
-  }
-
-  function loadProgress() {
-    const key = `${uploader.value}_${month.value}`;
-    const saved = JSON.parse(localStorage.getItem(key) || "{}");
-    document.querySelectorAll(".branchCheck").forEach(cb => {
-      cb.checked = !!saved[cb.id];
-    });
-    updateProgress();
-  }
-
-  function updateProgress() {
-    const total = document.querySelectorAll(".branchCheck").length;
-    const done = document.querySelectorAll(".branchCheck:checked").length;
-    document.getElementById("progressCount").textContent = `${done}/${total} completed`;
-  }
-
-  document.addEventListener("change", e => {
-    if (e.target.classList.contains("branchCheck")) saveProgress();
-    if (e.target.id === "uploaderSelect" || e.target.id === "monthSelect") renderBranches();
-  });
-
-  renderBranches();
 </script>
 
 </body>
