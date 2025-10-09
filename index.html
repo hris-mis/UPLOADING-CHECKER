@@ -795,6 +795,9 @@ document.getElementById('tab-monitoring').addEventListener('click', () => {
   document.getElementById('tab-monitoring').classList.add('bg-indigo-600', 'text-white');
   document.getElementById('tab-schedule').classList.remove('bg-indigo-600', 'text-white');
   document.getElementById('tab-schedule').classList.add('bg-gray-200', 'text-gray-700');
+
+  // 🟢 FIX: Always load monitoring data when switching to this tab
+  loadMonitoringData();
 });
 
 
