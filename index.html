@@ -703,7 +703,6 @@ if (firstConflict) {
     updateButtonStates();
 }
 }
-    // --- FILE GENERATION ---
 // --- FILE GENERATION ---
 function generateHrisFile(type) {
   const banner = document.getElementById('warning-banner');
@@ -973,18 +972,31 @@ const all = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
 });
 
 
-// 🔹 Initialize table for new month
 function initializeMonitoringTable() {
-  const initialData = branches.map(name => ({
-    branch: name,
+  const defaultBranches = [
+    "AASP CEBU",
+    "AASP CLARK",
+    "AASP ABREEZA",
+    "AASP NES - ATLAS",
+    "AASP ANNEX"
+  ];
+
+  const data = defaultBranches.map(branch => ({
+    branch,
     checked: false,
     uploaded: false,
     uploadedBy: "",
     remarks: ""
   }));
-  renderMonitoringTable(initialData);
-  localStorage.setItem(getStorageKey(), JSON.stringify(initialData));
+
+  localStorage.setItem(getStorageKey(), JSON.stringify(data));
+  renderMonitoringTable(data);
 }
+
+// ✅ Ensure monitoring table loads properly
+monthSelect.addEventListener("change", loadMonitoringData);
+window.addEventListener("DOMContentLoaded", loadMonitoringData);
+
 
 // 🔹 When month changes → reload data
 monthSelect.addEventListener("change", loadMonitoringData);
