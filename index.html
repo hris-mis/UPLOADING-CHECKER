@@ -239,21 +239,38 @@ button#generate-work-btn, button#generate-rest-btn {
   </div>
 
   <!-- Rest Day Schedule Section -->
-  <div class="bg-white p-6 rounded-lg shadow-sm">
-    <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-<h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
-<div class="flex items-center">
-  <input type="text" id="rest-branch-name" placeholder="Enter Branch Name"
-    class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2">
-  <button id="generate-rest-btn" onclick="generateHrisFile('rest')"
-    class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
-    Generate File
-  </button>
-</div>
+<div class="bg-white p-6 rounded-lg shadow-sm mt-8">
+  <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+    <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
+    <div class="flex items-center">
+      <input
+        type="text"
+        id="rest-branch-name"
+        placeholder="Enter Branch Name"
+        class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2"
+      />
+      <button
+        id="generate-rest-btn"
+        onclick="generateHrisFile('rest')"
+        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors whitespace-nowrap"
+      >
+        📄 Generate File
+      </button>
+    </div>
+  </div>
 
 <!-- Paste Area -->
 <div id="rest-day-paste" 
   contenteditable="true" class="paste-area" onpaste="handlePaste(event, 'rest')"></div>
+
+  <!-- Make Rest Day Paste Area Match Work Schedule Box -->
+<style>
+  #rest-day-paste.paste-area {
+    min-height: 300px;
+    padding: 1rem;
+  }
+</style>
+
 
 <!-- Table -->
 <div class="table-container mt-4">
@@ -288,7 +305,9 @@ button#generate-work-btn, button#generate-rest-btn {
     </div>
 
     
-</div>
+</div> <!-- ✅ close the grid layout for Schedule Checker -->
+
+</div> <!-- ✅ close tab-schedule-content container -->
 
 <!-- MONITORING TAB -->
 <div id="tab-monitoring-content" class="tab-content hidden">
