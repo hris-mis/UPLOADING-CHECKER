@@ -200,11 +200,10 @@
       <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
       <div class="flex items-center">
         <input type="text" id="rest-branch-name" placeholder="Enter Branch Name" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2" />
-        <button id="generate-rest-btn" onclick="generateHrisFile('rest')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors whitespace-nowrap">📄 Generate File</button>
+        <button id="generate-rest-btn" onclick="generateHrisFile('rest')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">Generate File</button>
       </div>
     </div>
     <div id="rest-day-paste" contenteditable="true" class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mx-auto w-full" onpaste="handlePaste(event, 'rest')"></div>
-    <p class="text-xs text-gray-500 mt-2">Paste your Rest Day data here.</p>
     <!-- Conflict table for Rest Day inside same column -->
     <div class="table-container mt-4">
       <table class="min-w-full divide-y divide-gray-200">
