@@ -916,7 +916,7 @@ document.getElementById("editBranchBtn").addEventListener("click", () => {
 
 // 🔹 Render table dynamically
 function renderMonitoringTable(data) {
-  const tableBody = document.getElementById("monitoringTableBody");
+const tableBody = document.getElementById("monitoringBody");
   tableBody.innerHTML = "";
 
   data.forEach((item, index) => {
@@ -1032,6 +1032,11 @@ document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
   const month = document.getElementById("monthSelect").value;
   XLSX.writeFile(wb, `Branch_Monitoring_${month}.xlsx`);
 });
+
+window.addEventListener("DOMContentLoaded", () => {
+  loadMonitoringData();
+});
+
 
 </script>
 
