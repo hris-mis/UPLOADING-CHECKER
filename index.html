@@ -348,7 +348,7 @@ function handlePaste(e, type) {
     e.preventDefault();
     const text = (e.clipboardData || window.clipboardData).getData('text/plain');
 
-    e.target.innerText = '';
+   e.target.value = '';
 
     const allRows = text.trim().split('\n').map(row => row.split('\t'));
 
@@ -423,8 +423,8 @@ if (type === 'work') {
 
     // --- RENDERING LOGIC ---
     function renderWorkTable() {
-        const tbody = document.getElementById('work-schedule-body');
-        tbody.innerHTML = workScheduleData.map(d => `
+const tbody = document.getElementById('workTableBody');
+      tbody.innerHTML = workScheduleData.map(d => `
             <tr>
                 <td>${d.name}</td>
                 <td>${d.empNo}</td>
@@ -437,7 +437,7 @@ if (type === 'work') {
     }
 
 function renderRestDayTable() {
-    const tbody = document.getElementById('rest-day-body');
+  const tbody = document.getElementById('restTableBody');
     tbody.innerHTML = restDayData.map(d => {
         const isWeekend = d.day === 'Saturday' || d.day === 'Sunday';
         const hasConflict = d.conflicts.length > 0;
@@ -911,6 +911,10 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
   document.getElementById('workTableBody').innerHTML = '';
   document.getElementById('restTableBody').innerHTML = '';
 });
+
+// --- Attach paste listeners for auto column detection ---
+document.getElementById('workScheduleInput').addEventListener('paste', e => handlePaste(e, 'work'));
+document.getElementById('restScheduleInput').addEventListener('paste', e => handlePaste(e, 'rest'));
 
 
 </script>
