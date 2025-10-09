@@ -145,6 +145,13 @@ tbody tr:hover {
 #monitoringBody tr:hover {
   background-color: #f1f5f9;
 }
+/* Align both input+button headers perfectly */
+.flex.items-center input[type="text"] {
+  min-width: 180px;
+}
+button#generate-work-btn, button#generate-rest-btn {
+  min-width: 130px;
+}
 
     </style>
 </head>
@@ -235,9 +242,9 @@ tbody tr:hover {
   <div class="bg-white p-6 rounded-lg shadow-sm">
     <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
 <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
-<div class="flex items-center gap-2">
+<div class="flex items-center">
   <input type="text" id="rest-branch-name" placeholder="Enter Branch Name"
-    class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2">
   <button id="generate-rest-btn" onclick="generateHrisFile('rest')"
     class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap">
     Generate File
@@ -246,9 +253,7 @@ tbody tr:hover {
 
 <!-- Paste Area -->
 <div id="rest-day-paste" 
-  contenteditable="true"
-  class="paste-area"
-  onpaste="handlePaste(event, 'rest')"></div>
+  contenteditable="true" class="paste-area" onpaste="handlePaste(event, 'rest')"></div>
 
 <!-- Table -->
 <div class="table-container mt-4">
@@ -286,7 +291,7 @@ tbody tr:hover {
 </div>
 
 <!-- MONITORING TAB -->
-<div id="tab-monitoring-content" class="tab-content">
+<div id="tab-monitoring-content" class="tab-content hidden">
   
 <h2 class="text-xl font-semibold text-gray-700 mb-2">📈 Branch Monitoring Dashboard</h2>
 
