@@ -241,35 +241,25 @@ button#generate-work-btn, button#generate-rest-btn {
   <!-- Rest Day Schedule Section -->
 <div class="bg-white p-6 rounded-lg shadow-sm mt-8">
   <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-    <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
-    <div class="flex items-center">
-      <input
-        type="text"
-        id="rest-branch-name"
-        placeholder="Enter Branch Name"
-        class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2"
-      />
-      <button
-        id="generate-rest-btn"
-        onclick="generateHrisFile('rest')"
-        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors whitespace-nowrap"
-      >
-        📄 Generate File
-      </button>
-    </div>
+<div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+  <h2 class="text-xl font-semibold text-gray-700">2. Paste Rest Day Schedule Data</h2>
+  <div class="flex items-center">
+    <input type="text" id="rest-branch-name" placeholder="Enter Branch Name"
+      class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2" />
+    <button id="generate-rest-btn" onclick="generateHrisFile('rest')"
+      class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors whitespace-nowrap">
+      📄 Generate File
+    </button>
   </div>
+</div>
 
-<!-- Paste Area -->
-<div id="rest-day-paste" 
-  contenteditable="true" class="paste-area" onpaste="handlePaste(event, 'rest')"></div>
+<div id="rest-day-paste" contenteditable="true"
+  class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+  onpaste="handlePaste(event, 'rest')"></div>
 
-  <!-- Make Rest Day Paste Area Match Work Schedule Box -->
-<style>
-  #rest-day-paste.paste-area {
-    min-height: 300px;
-    padding: 1rem;
-  }
-</style>
+<p class="text-xs text-gray-500 mt-2">Paste your Rest Day data here.</p>
+
+<div id="restDayTableContainer" class="mt-6 overflow-x-auto"></div>
 
 
 <!-- Table -->
@@ -309,48 +299,61 @@ button#generate-work-btn, button#generate-rest-btn {
 
 </div> <!-- ✅ close tab-schedule-content container -->
 
-<!-- MONITORING TAB -->
-<div id="tab-monitoring-content" class="tab-content hidden">
-  
-<h2 class="text-xl font-semibold text-gray-700 mb-2">📈 Branch Monitoring Dashboard</h2>
+<!-- ✅ MONITORING TAB -->
+<div id="tab-monitoring-content" class="hidden p-6">
+  <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">📊 Branch Monitoring Dashboard</h2>
 
-<div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6">
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="text-lg font-semibold text-gray-700">📊 Branch Monitoring Dashboard</h2>
-    <!-- Progress Overview -->
-<div class="my-4 bg-gray-50 p-3 rounded-lg border">
-  <p class="text-sm text-gray-700 mb-2">
-    Total Branches: <span id="totalBranches">0</span> |
-    Checked: <span id="checkedCount">0</span> |
-    Uploaded: <span id="uploadedCount">0</span> |
-    Progress: <span id="progressPercent">0%</span>
-  </p>
-<div class="w-full bg-gray-200 rounded-full h-3">
-<div id="progressBarFill2" class="bg-blue-700 h-3 rounded-full shadow-sm transition-all duration-500" style="width:0%"></div>
-</div>
-<p class="text-right text-sm text-gray-600 mt-1" id="progressPercent2">0%</p>
-
-    <input id="monitoringSearch" type="text" placeholder="Search branch..." 
-  class="border rounded-lg px-3 py-2 text-sm w-64 focus:ring-2 focus:ring-indigo-500" />
-    <button id="exportMonitoringBtn"
-      class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
-      ⬇️ Export to Excel
+  <!-- 🧹 Clear All -->
+  <div class="flex justify-center mb-6">
+    <button id="clearMonitoringBtn"
+      class="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg shadow">
+      🗑️ Clear All Data
     </button>
   </div>
 
-  <table id="monitoringTable" class="min-w-full border-collapse w-full text-sm">
-    <thead class="bg-gray-100 text-gray-700 uppercase text-xs tracking-wide">
-      <tr>
-        <th class="px-3 py-2 text-left">Branch</th>
-        <th class="px-3 py-2 text-center">Checked</th>
-        <th class="px-3 py-2 text-center">Uploaded</th>
-        <th class="px-3 py-2 text-left">Uploaded By</th>
-        <th class="px-3 py-2 text-left">Remarks</th>
-        <th class="px-3 py-2 text-center">Status</th>
-      </tr>
-    </thead>
-    <tbody id="monitoringBody" class="divide-y divide-gray-200"></tbody>
-  </table>
+  <!-- Progress summary -->
+  <div class="text-center text-gray-700 mb-4">
+    <p>Total Branches: <span id="totalBranches">0</span> |
+       Checked: <span id="checkedBranches">0</span> |
+       Uploaded: <span id="uploadedBranches">0</span> |
+       Progress: <span id="progressPercent">0%</span></p>
+    <div class="w-1/2 mx-auto bg-gray-200 rounded-full h-3 mt-2">
+      <div id="progressBar" class="h-3 bg-green-500 rounded-full w-0"></div>
+    </div>
+  </div>
+
+  <!-- Add Branch -->
+  <div class="flex justify-center gap-2 mb-4">
+    <input id="newBranchName" type="text" placeholder="Enter new branch name"
+      class="border border-gray-300 rounded-md px-3 py-2 w-60 focus:ring-2 focus:ring-indigo-500">
+    <button id="addBranchBtn"
+      class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">➕ Add Branch</button>
+  </div>
+
+  <!-- Branch Table -->
+  <div class="overflow-x-auto">
+    <table class="min-w-full border border-gray-300 rounded-lg">
+      <thead class="bg-gray-100 text-gray-700">
+        <tr>
+          <th class="p-2 text-left">Branch</th>
+          <th class="p-2 text-center">Check</th>
+          <th class="p-2 text-center">Upload</th>
+          <th class="p-2 text-center">Uploaded By</th>
+          <th class="p-2 text-center">Remarks</th>
+          <th class="p-2 text-center">Progress</th>
+        </tr>
+      </thead>
+      <tbody id="monitoringBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Export -->
+  <div class="flex justify-center mt-6">
+    <button id="exportMonitoringBtn"
+      class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded-lg shadow">
+      📤 Export Monitoring (Excel)
+    </button>
+  </div>
 </div>
 
 
@@ -893,12 +896,11 @@ function updateMonitoringProgressBar()
   ).length;
   const percent = total ? ((done / total) * 100).toFixed(1) : 0;
 
-  document.getElementById("totalBranches").textContent = total;
-  document.getElementById("checkedCount").textContent = checked;
-  document.getElementById("uploadedCount").textContent = uploaded;
+ document.getElementById("totalBranches").textContent = total;
+  document.getElementById("checkedBranches").textContent = checked;
+  document.getElementById("uploadedBranches").textContent = uploaded;
   document.getElementById("progressPercent").textContent = percent + "%";
-  document.getElementById("progressPercent2").textContent = percent + "%";
-  document.getElementById("progressBarFill2").style.width = percent + "%";
+  document.getElementById("progressBar").style.width = percent + "%";
 }
 
 
@@ -948,6 +950,106 @@ document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
   XLSX.utils.book_append_sheet(wb, ws, "Monitoring");
   const month = document.getElementById("monthSelect").value;
   XLSX.writeFile(wb, `Branch_Monitoring_${month}.xlsx`);
+});
+
+// ✅ MONITORING LOGIC
+let monitoringData = JSON.parse(localStorage.getItem('monitoringData')) || [];
+
+function saveMonitoringData() {
+  localStorage.setItem('monitoringData', JSON.stringify(monitoringData));
+}
+
+function updateMonitoringTable() {
+  const tbody = document.getElementById('monitoringBody');
+  tbody.innerHTML = '';
+
+  monitoringData.forEach((b, i) => {
+    const tr = document.createElement('tr');
+    tr.classList.add('border-b', 'hover:bg-gray-50');
+    tr.innerHTML = `
+      <td class="p-2">${b.name}</td>
+      <td class="text-center p-2"><input type="checkbox" ${b.checked ? 'checked' : ''}></td>
+      <td class="text-center p-2"><input type="checkbox" ${b.uploaded ? 'checked' : ''}></td>
+      <td class="text-center p-2">
+        <select class="border rounded px-2 py-1">
+          <option value="">-</option>
+          <option ${b.uploader==='Joy'?'selected':''}>Joy</option>
+          <option ${b.uploader==='Melvin'?'selected':''}>Melvin</option>
+          <option ${b.uploader==='Claire'?'selected':''}>Claire</option>
+        </select>
+      </td>
+      <td class="text-center p-2">${b.remarks || 'Pending'}</td>
+      <td class="text-center p-2">${b.progress || '0%'}</td>
+    `;
+
+    // checkbox handlers
+    const checkInputs = tr.querySelectorAll('input[type="checkbox"]');
+    checkInputs[0].addEventListener('change', e => {
+      b.checked = e.target.checked;
+      refreshProgress();
+    });
+    checkInputs[1].addEventListener('change', e => {
+      b.uploaded = e.target.checked;
+      refreshProgress();
+    });
+
+    tr.querySelector('select').addEventListener('change', e => {
+      b.uploader = e.target.value;
+      saveMonitoringData();
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  refreshProgress();
+}
+
+function refreshProgress() {
+  const total = monitoringData.length;
+  const checked = monitoringData.filter(b => b.checked).length;
+  const uploaded = monitoringData.filter(b => b.uploaded).length;
+  const progress = total ? ((checked + uploaded) / (total * 2) * 100).toFixed(1) : 0;
+
+  document.getElementById('totalBranches').textContent = total;
+  document.getElementById('checkedBranches').textContent = checked;
+  document.getElementById('uploadedBranches').textContent = uploaded;
+  document.getElementById('progressPercent').textContent = progress + '%';
+  document.getElementById('progressBar').style.width = progress + '%';
+
+  monitoringData.forEach(b => {
+    const branchProgress = (b.checked && b.uploaded) ? 100 :
+                           (b.checked || b.uploaded) ? 50 : 0;
+    b.progress = branchProgress + '%';
+  });
+
+  saveMonitoringData();
+}
+
+document.getElementById('addBranchBtn').addEventListener('click', () => {
+  const name = document.getElementById('newBranchName').value.trim();
+  if (!name) return alert('Enter a branch name');
+  monitoringData.push({ name, checked:false, uploaded:false, uploader:'', remarks:'Pending', progress:'0%' });
+  document.getElementById('newBranchName').value = '';
+  updateMonitoringTable();
+});
+
+document.getElementById('clearMonitoringBtn').addEventListener('click', () => {
+  if (confirm('Clear all monitoring data?')) {
+    monitoringData = [];
+    saveMonitoringData();
+    updateMonitoringTable();
+  }
+});
+
+document.getElementById('exportMonitoringBtn').addEventListener('click', () => {
+  const ws = XLSX.utils.json_to_sheet(monitoringData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Monitoring");
+  XLSX.writeFile(wb, "Monitoring.xlsx");
+});
+
+document.getElementById('tab-monitoring').addEventListener('click', () => {
+  updateMonitoringTable();
 });
 
 
