@@ -387,22 +387,7 @@ class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] text-sm te
     </select>
   </div>
 
-  <div id="branchContainer"
-       class="space-y-2 border p-3 rounded-lg bg-white shadow-inner max-h-[450px] overflow-y-auto">
-  </div>
-
-  <p id="progressCount" class="text-gray-500 text-sm mt-2"></p>
-
   <script>
-
-const branches = [
-  "AASP CEBU",
-  "AASP CLARK",
-  "AASP ABREEZA",
-  "AASP NES - ATLAS",
-  "AASP ANNEX"
-  // ...add the rest of your branches here
-];
 
 
 
@@ -875,20 +860,22 @@ function loadMonitoringData() {
 
 // 🔹 Save data to localStorage
 function saveMonitoringData() {
-  const rows = [...document.querySelectorAll("#monitoringBody tr")].map(tr => {
+  const data = [...document.querySelectorAll("#monitoringBody tr")].map(tr => {
     const tds = tr.querySelectorAll("td");
     return {
       branch: tds[0].innerText,
       checked: tds[1].querySelector("input")?.checked || false,
       uploaded: tds[2].querySelector("input")?.checked || false,
-      uploadedBy: tds[3].querySelector("input")?.value || "",
+      uploadedBy: tds[3].querySelector("select")?.value || "",
       remarks: tds[4].querySelector("input")?.value || ""
     };
   });
-  localStorage.setItem(getStorageKey(), JSON.stringify(rows));
-  updateMonitoringProgressBar();
 
+  localStorage.setItem(getStorageKey(), JSON.stringify(data));
+  renderMonitoringTable(data);
+  updateMonitoringProgress();
 }
+
 // 🟣 Add Branch Logic
 document.getElementById("addBranchBtn").addEventListener("click", () => {
   const name = document.getElementById("newBranchName").value.trim();
@@ -953,12 +940,10 @@ function updateMonitoringProgress() {
 
   const percent = total > 0 ? ((checked + uploaded) / (total * 2)) * 100 : 0;
 
-  document.getElementById("monitoringStats").innerHTML = `
-    <strong>Total Branches:</strong> ${total} |
-    <strong>Checked:</strong> ${checked} |
-    <strong>Uploaded:</strong> ${uploaded} |
-    <strong>Progress:</strong> ${percent.toFixed(1)}%
-  `;
+ document.getElementById("totalBranches").textContent = total;
+document.getElementById("checkedBranches").textContent = checked;
+document.getElementById("uploadedBranches").textContent = uploaded;
+document.getElementById("progressPercent").textContent = percent.toFixed(1) + "%";
 
   const bar = document.getElementById("progressBar");
   bar.style.width = `${percent}%`;
