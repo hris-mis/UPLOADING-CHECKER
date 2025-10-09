@@ -152,6 +152,10 @@ tbody tr:hover {
 button#generate-work-btn, button#generate-rest-btn {
   min-width: 130px;
 }
+#monitoringBody td input, #monitoringBody td select {
+  text-align: center;
+}
+
 
     </style>
 </head>
@@ -181,6 +185,8 @@ button#generate-work-btn, button#generate-rest-btn {
 
   
 </header>
+
+</div>
 
   <h1 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-700 to-blue-500 text-transparent bg-clip-text">
     Schedule Conflict Checker
@@ -254,7 +260,7 @@ button#generate-work-btn, button#generate-rest-btn {
 </div>
 
 <div id="rest-day-paste" contenteditable="true"
-  class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] focus:outline-none focus:ring-2 focus:ring-indigo-500"
+class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 mx-auto w-full"
   onpaste="handlePaste(event, 'rest')"></div>
 
 <p class="text-xs text-gray-500 mt-2">Paste your Rest Day data here.</p>
@@ -302,14 +308,14 @@ button#generate-work-btn, button#generate-rest-btn {
 <!-- ✅ MONITORING TAB -->
 <div id="tab-monitoring-content" class="hidden p-6">
   <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">📊 Branch Monitoring Dashboard</h2>
+  <div class="flex justify-center mb-6 mt-4">
+  <button id="clearMonitoringBtn"
+    class="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg shadow">
+    🧹 Clear All Data
+  </button>
+</div>
 
-  <!-- 🧹 Clear All -->
-  <div class="flex justify-center mb-6">
-    <button id="clearMonitoringBtn"
-      class="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-2 rounded-lg shadow">
-      🗑️ Clear All Data
-    </button>
-  </div>
+
 
   <!-- Progress summary -->
   <div class="text-center text-gray-700 mb-4">
@@ -322,17 +328,26 @@ button#generate-work-btn, button#generate-rest-btn {
     </div>
   </div>
 
-  <!-- Add Branch -->
-  <div class="flex justify-center gap-2 mb-4">
-    <input id="newBranchName" type="text" placeholder="Enter new branch name"
-      class="border border-gray-300 rounded-md px-3 py-2 w-60 focus:ring-2 focus:ring-indigo-500">
-    <button id="addBranchBtn"
-      class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">➕ Add Branch</button>
-  </div>
+<!-- 🔹 Branch Controls -->
+<div class="flex flex-wrap justify-center gap-3 mb-4">
+  <input id="newBranchName" type="text" placeholder="Enter new branch name"
+    class="border border-gray-300 rounded-md px-3 py-2 w-60 focus:ring-2 focus:ring-indigo-500">
+  <button id="addBranchBtn"
+    class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">➕ Add Branch</button>
+  <button id="editBranchBtn"
+    class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-4 py-2 rounded-lg">✏️ Edit Branches</button>
+</div>
+
+<!-- 🔍 Search -->
+<div class="flex justify-center mb-4">
+  <input id="monitoringSearch" type="text" placeholder="Search branch..."
+    class="border border-gray-300 rounded-md px-3 py-2 w-64 focus:ring-2 focus:ring-indigo-500">
+</div>
+
 
   <!-- Branch Table -->
   <div class="overflow-x-auto">
-    <table class="min-w-full border border-gray-300 rounded-lg">
+    <table class="min-w-full border border-gray-300 rounded-lg text-sm text-center align-middle table-auto">
       <thead class="bg-gray-100 text-gray-700">
         <tr>
           <th class="p-2 text-left">Branch</th>
@@ -380,10 +395,7 @@ button#generate-work-btn, button#generate-rest-btn {
 
   <p id="progressCount" class="text-gray-500 text-sm mt-2"></p>
 
-
-</div> <!-- ✅ End of tab-monitoring-content -->
-
-<script>
+  <script>
 
 const branches = [
   "AASP CEBU",
@@ -394,13 +406,24 @@ const branches = [
   // ...add the rest of your branches here
 ];
 
+</div> <!-- ✅ End of tab-monitoring-content -->
+
+
+
 
 // ✅ Default tab setup (Schedule Checker first)
 window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('tab-schedule-content').classList.remove('hidden');
-  document.getElementById('tab-monitoring-content').classList.add('hidden');
+  // Show Schedule Checker first, hide Monitoring
+  const scheduleTab = document.getElementById('tab-schedule-content');
+  const monitoringTab = document.getElementById('tab-monitoring-content');
+
+  if (scheduleTab && monitoringTab) {
+    scheduleTab.classList.remove('hidden');
+    monitoringTab.classList.add('hidden');
+  }
 
   document.getElementById('tab-schedule').classList.add('bg-indigo-600', 'text-white');
+  document.getElementById('tab-monitoring').classList.remove('bg-indigo-600', 'text-white');
   document.getElementById('tab-monitoring').classList.add('bg-gray-200', 'text-gray-700');
 });
 
@@ -832,6 +855,12 @@ const monthSelect = document.getElementById("monthSelect");
 function getStorageKey() {
   return `branchMonitoring_${monthSelect.value}`;
 }
+document.getElementById("clearMonitoringBtn").addEventListener("click", () => {
+  if (!confirm("Clear all monitoring data for this month?")) return;
+  localStorage.removeItem(getStorageKey());
+  initializeMonitoringTable();
+  updateMonitoringProgressBar();
+});
 
 // 🔹 Load saved data when page opens or month changes
 function loadMonitoringData() {
@@ -859,6 +888,26 @@ function saveMonitoringData() {
   updateMonitoringProgressBar();
 
 }
+// 🟣 Add Branch Logic
+document.getElementById("addBranchBtn").addEventListener("click", () => {
+  const name = document.getElementById("newBranchName").value.trim();
+  if (!name) return alert("Please enter a branch name.");
+  const data = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
+  if (data.some(b => b.branch.toLowerCase() === name.toLowerCase())) {
+    alert("Branch already exists!");
+    return;
+  }
+  data.push({ branch: name, checked: false, uploaded: false, uploadedBy: "", remarks: "" });
+  localStorage.setItem(getStorageKey(), JSON.stringify(data));
+  renderMonitoringTable(data);
+  document.getElementById("newBranchName").value = "";
+});
+
+// 🟡 Edit Branch Placeholder
+document.getElementById("editBranchBtn").addEventListener("click", () => {
+  alert("✏️ Edit Branches feature coming soon!");
+});
+
 
 // 🔹 Render table dynamically
 function renderMonitoringTable(data) {
@@ -884,24 +933,35 @@ function renderMonitoringTable(data) {
   updateMonitoringProgressBar();
 }
 
-function updateMonitoringProgressBar()
-{
+function updateMonitoringProgressBar() {
   const rows = [...document.querySelectorAll("#monitoringBody tr")];
   const total = rows.length;
-  const checked = rows.filter(r => r.cells[1].querySelector("input").checked).length;
-  const uploaded = rows.filter(r => r.cells[2].querySelector("input").checked).length;
-  const done = rows.filter(r =>
-    r.cells[1].querySelector("input").checked &&
-    r.cells[2].querySelector("input").checked
-  ).length;
+  let checked = 0, uploaded = 0, done = 0;
+
+  rows.forEach(r => {
+    const isChecked = r.cells[1].querySelector("input").checked;
+    const isUploaded = r.cells[2].querySelector("input").checked;
+    if (isChecked) checked++;
+    if (isUploaded) uploaded++;
+    if (isChecked && isUploaded) done++;
+  });
+
   const percent = total ? ((done / total) * 100).toFixed(1) : 0;
 
- document.getElementById("totalBranches").textContent = total;
+  document.getElementById("totalBranches").textContent = total;
   document.getElementById("checkedBranches").textContent = checked;
   document.getElementById("uploadedBranches").textContent = uploaded;
   document.getElementById("progressPercent").textContent = percent + "%";
   document.getElementById("progressBar").style.width = percent + "%";
+
+  // 🧠 Auto color change for visibility
+  const bar = document.getElementById("progressBar");
+  bar.classList.remove("bg-red-500","bg-yellow-400","bg-green-500");
+  if (percent < 40) bar.classList.add("bg-red-500");
+  else if (percent < 80) bar.classList.add("bg-yellow-400");
+  else bar.classList.add("bg-green-500");
 }
+
 
 
 // 🔍 SEARCH FUNCTIONALITY
