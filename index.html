@@ -388,8 +388,6 @@ class="paste-area border border-gray-300 rounded-md p-4 min-h-[300px] text-sm te
   </div>
 
   <script>
-
-
     // Data stores
     let workScheduleData = [];
     let restDayData = [];
@@ -816,84 +814,39 @@ const monthSelect = document.getElementById("monthSelect");
 function getStorageKey() {
   return `branchMonitoring_${monthSelect.value}`;
 }
-document.getElementById("clearMonitoringBtn").addEventListener("click", () => {
-  if (!confirm("Clear all monitoring data for this month?")) return;
-  localStorage.removeItem(getStorageKey());
-  initializeMonitoringTable();
-  updateMonitoringProgressBar();
-});
 
-// 🔹 Initialize everything only once after full DOM load
-window.addEventListener("DOMContentLoaded", () => {
-  console.log("✅ Page Loaded: Initializing Tabs, Schedule, and Monitoring...");
-
-  // Default tab setup
-  const scheduleTab = document.getElementById('tab-schedule-content');
-  const monitoringTab = document.getElementById('tab-monitoring-content');
-
-  scheduleTab.classList.remove('hidden');
-  monitoringTab.classList.add('hidden');
-
-  // Highlight Schedule tab button
-  document.getElementById('tab-schedule').classList.add('bg-indigo-600', 'text-white');
-  document.getElementById('tab-monitoring').classList.remove('bg-indigo-600', 'text-white');
-  document.getElementById('tab-monitoring').classList.add('bg-gray-200', 'text-gray-700');
-
-  // Initialize monitoring table correctly
-  initializeMonitoringTable();
-  loadMonitoringData();
-  updateMonitoringProgress();
-});
-
-
-
-// 🔹 Also refresh table when month is changed
-monthSelect.addEventListener("change", () => {
-  loadMonitoringData();
-});
+const DEFAULT_BRANCHES = [
+  "AASP CEBU",
+  "AASP CLARK",
+  "AASP ABREEZA",
+  "AASP NES - ATLAS",
+  "AASP ANNEX"
+];
 
 function initializeMonitoringTable() {
-  const branches = [
-    "AASP CEBU",
-    "AASP CLARK",
-    "AASP ABREEZA",
-    "AASP NES - ATLAS",
-    "AASP ANNEX"
-  ];
-
-  const data = branches.map(branch => ({
+  const data = DEFAULT_BRANCHES.map(branch => ({
     branch,
-    status: "Not Started",
+    checked: false,
+    uploaded: false,
+    uploadedBy: "",
     remarks: ""
   }));
-
-  const key = getStorageKey();
-  localStorage.setItem(key, JSON.stringify(data));
+  localStorage.setItem(getStorageKey(), JSON.stringify(data));
   renderMonitoringTable(data);
   updateMonitoringProgress();
 }
 
-
-// 🔹 Load saved data when page opens or month changes
 function loadMonitoringData() {
   const key = getStorageKey();
   let data = JSON.parse(localStorage.getItem(key));
-
-  // 🟦 if nothing is stored yet, create starter rows
   if (!data || data.length === 0) {
-    console.log("ℹ️ No saved monitoring data found, creating new table…");
     initializeMonitoringTable();
     return;
   }
-
-  console.log("✅ Loading monitoring data:", data);
   renderMonitoringTable(data);
   updateMonitoringProgress();
 }
 
-
-
-// 🔹 Save data to localStorage
 function saveMonitoringData() {
   const data = [...document.querySelectorAll("#monitoringBody tr")].map(tr => {
     const tds = tr.querySelectorAll("td");
@@ -905,67 +858,15 @@ function saveMonitoringData() {
       remarks: tds[4].querySelector("input")?.value || ""
     };
   });
-
   localStorage.setItem(getStorageKey(), JSON.stringify(data));
   renderMonitoringTable(data);
   updateMonitoringProgress();
 }
 
-// 🟣 Add Branch Logic
-document.getElementById("addBranchBtn").addEventListener("click", () => {
-  const name = document.getElementById("newBranchName").value.trim();
-  if (!name) return alert("Please enter a branch name.");
-  const data = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
-  if (data.some(b => b.branch.toLowerCase() === name.toLowerCase())) {
-    alert("Branch already exists!");
-    return;
-  }
-  data.push({ branch: name, checked: false, uploaded: false, uploadedBy: "", remarks: "" });
-  localStorage.setItem(getStorageKey(), JSON.stringify(data));
-  renderMonitoringTable(data);
-  document.getElementById("newBranchName").value = "";
-});
-
-// 🟢 Export Monitoring Data to Excel
-document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
-  const key = getStorageKey();
-  const data = JSON.parse(localStorage.getItem(key)) || [];
-
-  if (data.length === 0) {
-    alert("No monitoring data to export for this month.");
-    return;
-  }
-
-  const exportData = data.map(item => ({
-    Branch: item.branch,
-    Checked: item.checked ? "✅ Yes" : "❌ No",
-    Uploaded: item.uploaded ? "✅ Yes" : "❌ No",
-    "Uploaded By": item.uploadedBy || "",
-    Remarks: item.remarks || ""
-  }));
-
-  const worksheet = XLSX.utils.json_to_sheet(exportData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Monitoring");
-  const filename = `${monthSelect.value}_Branch_Monitoring.xlsx`;
-  XLSX.writeFile(workbook, filename);
-});
-
-
-// 🟡 Edit Branch Placeholder
-document.getElementById("editBranchBtn").addEventListener("click", () => {
-  alert("✏️ Edit Branches feature coming soon!");
-});
-
-
-// 🔹 Render table dynamically
 function renderMonitoringTable(data) {
-const tableBody = document.getElementById("monitoringBody");
-  tableBody.innerHTML = "";
-
+  monitoringBody.innerHTML = "";
   data.forEach((item, index) => {
     const row = document.createElement("tr");
-
     row.innerHTML = `
       <td>${item.branch}</td>
       <td style="text-align:center;"><input type="checkbox" class="chk-checked" data-index="${index}" ${item.checked ? "checked" : ""}></td>
@@ -980,11 +881,8 @@ const tableBody = document.getElementById("monitoringBody");
       </td>
       <td><input type="text" class="remarks" data-index="${index}" value="${item.remarks || ""}"></td>
     `;
-
-    tableBody.appendChild(row);
+    monitoringBody.appendChild(row);
   });
-
-  // 🟩 Event listeners
   document.querySelectorAll(".chk-checked, .chk-uploaded, .uploader, .remarks").forEach(el => {
     el.addEventListener("change", saveMonitoringData);
   });
@@ -993,94 +891,80 @@ const tableBody = document.getElementById("monitoringBody");
 function updateMonitoringProgress() {
   const key = getStorageKey();
   const data = JSON.parse(localStorage.getItem(key)) || [];
-
   const total = data.length;
   const checked = data.filter(d => d.checked).length;
   const uploaded = data.filter(d => d.uploaded).length;
-
   const percent = total > 0 ? ((checked + uploaded) / (total * 2)) * 100 : 0;
-
   document.getElementById("totalBranches").textContent = total;
   document.getElementById("checkedBranches").textContent = checked;
   document.getElementById("uploadedBranches").textContent = uploaded;
   document.getElementById("progressPercent").textContent = percent.toFixed(1) + "%";
-
   const bar = document.getElementById("progressBar");
   bar.style.width = `${percent}%`;
   bar.textContent = `${percent.toFixed(1)}%`;
 }
 
+document.getElementById("addBranchBtn").addEventListener("click", () => {
+  const name = document.getElementById("newBranchName").value.trim();
+  if (!name) return alert("Please enter a branch name.");
+  const data = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
+  if (data.some(b => b.branch.toLowerCase() === name.toLowerCase())) {
+    alert("Branch already exists!");
+    return;
+  }
+  data.push({ branch: name, checked: false, uploaded: false, uploadedBy: "", remarks: "" });
+  localStorage.setItem(getStorageKey(), JSON.stringify(data));
+  renderMonitoringTable(data);
+  document.getElementById("newBranchName").value = "";
+  updateMonitoringProgress();
+});
 
+document.getElementById("clearMonitoringBtn").addEventListener("click", () => {
+  if (!confirm("Clear all monitoring data for this month?")) return;
+  localStorage.removeItem(getStorageKey());
+  initializeMonitoringTable();
+  updateMonitoringProgress();
+});
 
+document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
+  const key = getStorageKey();
+  const data = JSON.parse(localStorage.getItem(key)) || [];
+  if (data.length === 0) {
+    alert("No monitoring data to export for this month.");
+    return;
+  }
+  const exportData = data.map(item => ({
+    Branch: item.branch,
+    Checked: item.checked ? "✅ Yes" : "❌ No",
+    Uploaded: item.uploaded ? "✅ Yes" : "❌ No",
+    "Uploaded By": item.uploadedBy || "",
+    Remarks: item.remarks || ""
+  }));
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Monitoring");
+  const filename = `${monthSelect.value}_Branch_Monitoring.xlsx`;
+  XLSX.writeFile(workbook, filename);
+});
 
+document.getElementById("editBranchBtn").addEventListener("click", () => {
+  alert("✏️ Edit Branches feature coming soon!");
+});
 
-// 🔍 SEARCH FUNCTIONALITY
 document.getElementById("monitoringSearch").addEventListener("input", (e) => {
   const term = e.target.value.toLowerCase();
-const all = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
+  const all = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
   const filtered = all.filter(b => b.branch.toLowerCase().includes(term));
   renderMonitoringTable(filtered);
 });
 
-
-// 🔹 Default monitoring setup for all branches
-function initializeMonitoringTable() {
-  const data = [
-    { branch: "AASP CEBU", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
-    { branch: "AASP CLARK", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
-    { branch: "AASP ABREEZA", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
-    { branch: "AASP NES - ATLAS", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
-    { branch: "AASP ANNEX", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
-    // 🔸 add more branches here, same format:
-    // { branch: "AASP DAVAO", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
-  ];
-  localStorage.setItem(getStorageKey(), JSON.stringify(data));
-  renderMonitoringTable(data);
-  updateMonitoringProgress();
-}
-
-
-// ✅ Ensure monitoring table loads properly
 monthSelect.addEventListener("change", loadMonitoringData);
-window.addEventListener("DOMContentLoaded", loadMonitoringData);
-
-
-monthSelect.addEventListener("change", () => {
-  loadMonitoringData();
-});
-
-// 🔹 Load on page open
-window.addEventListener("load", loadMonitoringData);
-
-// 🔹 Export monitoring table to Excel
-document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
-  const rows = [...document.querySelectorAll("#monitoringBody tr")].map(tr => {
-    const tds = tr.querySelectorAll("td");
-    return {
-      Branch: tds[0].innerText,
-      Checked: tds[1].querySelector("input").checked ? "Yes" : "No",
-      Uploaded: tds[2].querySelector("input").checked ? "Yes" : "No",
-      "Uploaded By": tds[3].querySelector("select").value,
-      Remarks: tds[4].querySelector("input").value,
-      Status: tds[5].innerText
-    };
-  });
-  const ws = XLSX.utils.json_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Monitoring");
-  const month = document.getElementById("monthSelect").value;
-  XLSX.writeFile(wb, `Branch_Monitoring_${month}.xlsx`);
-});
 
 window.addEventListener("DOMContentLoaded", () => {
   initializeMonitoringTable();
   loadMonitoringData();
   updateMonitoringProgress();
 });
-
-
-
-
 </script>
 </div>
 </body>
