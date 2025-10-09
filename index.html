@@ -185,6 +185,7 @@ button#generate-work-btn, button#generate-rest-btn {
 
   
 </header>
+</div>
 
         <!-- Success Message -->
 <div id="success-message"
@@ -194,7 +195,7 @@ button#generate-work-btn, button#generate-rest-btn {
 </div>
 
 <!-- ✅ Schedule Checker Tab -->
-<div id="tab-schedule-content" class="hidden">
+<div id="tab-schedule-content">
     <h1 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-700 to-blue-500 text-transparent bg-clip-text text-center mt-4">
     Schedule Conflict Checker
   </h1>
@@ -773,202 +774,111 @@ function clearAllData() {
   }, 3000);
 }
 
-// TAB SWITCHING LOGIC
+// --- TAB SWITCHING LOGIC ---
+
 document.getElementById('tab-schedule').addEventListener('click', () => {
-  // Show Schedule tab content and hide Monitoring content
   document.getElementById('tab-schedule-content').classList.remove('hidden');
   document.getElementById('tab-monitoring-content').classList.add('hidden');
-
-  // Update button styling for active tab
   document.getElementById('tab-schedule').classList.add('bg-indigo-600', 'text-white');
   document.getElementById('tab-monitoring').classList.remove('bg-indigo-600', 'text-white');
   document.getElementById('tab-monitoring').classList.add('bg-gray-200', 'text-gray-700');
 });
 
-
 document.getElementById('tab-monitoring').addEventListener('click', () => {
-  // Show Monitoring tab content and hide Schedule content
   document.getElementById('tab-monitoring-content').classList.remove('hidden');
   document.getElementById('tab-schedule-content').classList.add('hidden');
-
-  // Update button styling for active tab
   document.getElementById('tab-monitoring').classList.add('bg-indigo-600', 'text-white');
   document.getElementById('tab-schedule').classList.remove('bg-indigo-600', 'text-white');
   document.getElementById('tab-schedule').classList.add('bg-gray-200', 'text-gray-700');
-
-  // 🟢 FIX: Always load monitoring data when switching to this tab
   loadMonitoringData();
 });
 
-// --- MONITORING TAB FUNCTIONALITY (deduplicated and fixed) ---
+// --- MONITORING DATA LOGIC ---
+let monitoringData = JSON.parse(localStorage.getItem('monitoringData') || '[]');
 
-const monitoringBody = document.getElementById("monitoringBody");
-const monthSelect = document.getElementById("monthSelect");
-
-function getStorageKey() {
-  return `branchMonitoring_${monthSelect.value}`;
-}
-
-const DEFAULT_BRANCHES = [
-  "AASP CEBU",
-  "AASP CLARK",
-  "AASP ABREEZA",
-  "AASP NES - ATLAS",
-  "AASP ANNEX"
-];
-
-function initializeMonitoringTable() {
-  const data = DEFAULT_BRANCHES.map(branch => ({
-    branch,
-    checked: false,
-    uploaded: false,
-    uploadedBy: "",
-    remarks: ""
-  }));
-  localStorage.setItem(getStorageKey(), JSON.stringify(data));
-  renderMonitoringTable(data);
-  updateMonitoringProgress();
+function saveMonitoringData() {
+  localStorage.setItem('monitoringData', JSON.stringify(monitoringData));
 }
 
 function loadMonitoringData() {
-  const key = getStorageKey();
-  let data = JSON.parse(localStorage.getItem(key));
-  if (!data || data.length === 0) {
-    initializeMonitoringTable();
-    return;
-  }
-  renderMonitoringTable(data);
-  updateMonitoringProgress();
-}
+  const tbody = document.getElementById('monitoringBody');
+  tbody.innerHTML = '';
 
-function saveMonitoringData() {
-  const data = [...document.querySelectorAll("#monitoringBody tr")].map(tr => {
-    const tds = tr.querySelectorAll("td");
-    return {
-      branch: tds[0].innerText,
-      checked: tds[1].querySelector("input")?.checked || false,
-      uploaded: tds[2].querySelector("input")?.checked || false,
-      uploadedBy: tds[3].querySelector("select")?.value || "",
-      remarks: tds[4].querySelector("input")?.value || ""
-    };
-  });
-  localStorage.setItem(getStorageKey(), JSON.stringify(data));
-  renderMonitoringTable(data);
-  updateMonitoringProgress();
-}
-
-function renderMonitoringTable(data) {
-  monitoringBody.innerHTML = "";
-  data.forEach((item, index) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${item.branch}</td>
-      <td style="text-align:center;"><input type="checkbox" class="chk-checked" data-index="${index}" ${item.checked ? "checked" : ""}></td>
-      <td style="text-align:center;"><input type="checkbox" class="chk-uploaded" data-index="${index}" ${item.uploaded ? "checked" : ""}></td>
-      <td>
-        <select class="uploader" data-index="${index}">
-          <option value="">--Select--</option>
-          <option ${item.uploadedBy === "Joy" ? "selected" : ""}>Joy</option>
-          <option ${item.uploadedBy === "Melvin" ? "selected" : ""}>Melvin</option>
-          <option ${item.uploadedBy === "Claire" ? "selected" : ""}>Claire</option>
-        </select>
-      </td>
-      <td><input type="text" class="remarks" data-index="${index}" value="${item.remarks || ""}"></td>
-      <td>
-        ${
-          (item.checked && item.uploaded)
-            ? '<span class="text-green-600 font-bold">✅</span>'
-            : (item.checked || item.uploaded)
-              ? '<span class="text-yellow-600 font-bold">⏳</span>'
-              : '<span class="text-gray-400">—</span>'
-        }
-      </td>
+  monitoringData.forEach((branch, index) => {
+    tbody.innerHTML += `
+      <tr>
+        <td class="text-left">${branch.name}</td>
+        <td><input type="checkbox" ${branch.checked ? 'checked' : ''} onchange="toggleCheck(${index})"></td>
+        <td><input type="checkbox" ${branch.uploaded ? 'checked' : ''} onchange="toggleUpload(${index})"></td>
+        <td>${branch.uploadedBy || ''}</td>
+        <td><input type="text" value="${branch.remarks || ''}" oninput="updateRemarks(${index}, this.value)" class="border rounded px-2 py-1 w-full"></td>
+        <td>${branch.uploaded ? '✅ Done' : branch.checked ? '⏳ Checking' : '❌ Pending'}</td>
+      </tr>
     `;
-    monitoringBody.appendChild(row);
   });
-  document.querySelectorAll(".chk-checked, .chk-uploaded, .uploader, .remarks").forEach(el => {
-    el.addEventListener("change", saveMonitoringData);
-  });
+
+  updateMonitoringProgress();
 }
 
 function updateMonitoringProgress() {
-  const key = getStorageKey();
-  const data = JSON.parse(localStorage.getItem(key)) || [];
-  const total = data.length;
-  const checked = data.filter(d => d.checked).length;
-  const uploaded = data.filter(d => d.uploaded).length;
-  const percent = total > 0 ? ((checked + uploaded) / (total * 2)) * 100 : 0;
-  document.getElementById("totalBranches").textContent = total;
-  document.getElementById("checkedBranches").textContent = checked;
-  document.getElementById("uploadedBranches").textContent = uploaded;
-  document.getElementById("progressPercent").textContent = percent.toFixed(1) + "%";
-  const bar = document.getElementById("progressBar");
-  bar.style.width = `${percent}%`;
-  bar.textContent = `${percent.toFixed(1)}%`;
+  const total = monitoringData.length;
+  const checked = monitoringData.filter(b => b.checked).length;
+  const uploaded = monitoringData.filter(b => b.uploaded).length;
+  const percent = total ? Math.round((uploaded / total) * 100) : 0;
+
+  document.getElementById('totalBranches').innerText = total;
+  document.getElementById('checkedBranches').innerText = checked;
+  document.getElementById('uploadedBranches').innerText = uploaded;
+  document.getElementById('progressPercent').innerText = percent + '%';
+  document.getElementById('progressBar').style.width = percent + '%';
 }
 
-document.getElementById("addBranchBtn").addEventListener("click", () => {
-  const name = document.getElementById("newBranchName").value.trim();
-  if (!name) return alert("Please enter a branch name.");
-  const data = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
-  if (data.some(b => b.branch.toLowerCase() === name.toLowerCase())) {
-    alert("Branch already exists!");
-    return;
-  }
-  data.push({ branch: name, checked: false, uploaded: false, uploadedBy: "", remarks: "" });
-  localStorage.setItem(getStorageKey(), JSON.stringify(data));
-  renderMonitoringTable(data);
-  document.getElementById("newBranchName").value = "";
-  updateMonitoringProgress();
-});
-
-document.getElementById("clearMonitoringBtn").addEventListener("click", () => {
-  if (!confirm("Clear all monitoring data for this month?")) return;
-  localStorage.removeItem(getStorageKey());
-  initializeMonitoringTable();
-  updateMonitoringProgress();
-});
-
-document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
-  const key = getStorageKey();
-  const data = JSON.parse(localStorage.getItem(key)) || [];
-  if (data.length === 0) {
-    alert("No monitoring data to export for this month.");
-    return;
-  }
-  const exportData = data.map(item => ({
-    Branch: item.branch,
-    Checked: item.checked ? "✅ Yes" : "❌ No",
-    Uploaded: item.uploaded ? "✅ Yes" : "❌ No",
-    "Uploaded By": item.uploadedBy || "",
-    Remarks: item.remarks || ""
-  }));
-  const worksheet = XLSX.utils.json_to_sheet(exportData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Monitoring");
-  const filename = `${monthSelect.value}_Branch_Monitoring.xlsx`;
-  XLSX.writeFile(workbook, filename);
-});
-
-document.getElementById("editBranchBtn").addEventListener("click", () => {
-  alert("✏️ Edit Branches feature coming soon!");
-});
-
-document.getElementById("monitoringSearch").addEventListener("input", (e) => {
-  const term = e.target.value.toLowerCase();
-  const all = JSON.parse(localStorage.getItem(getStorageKey()) || "[]");
-  const filtered = all.filter(b => b.branch.toLowerCase().includes(term));
-  renderMonitoringTable(filtered);
-});
-
-monthSelect.addEventListener("change", loadMonitoringData);
-
-// Always initialize on page load
-window.addEventListener("DOMContentLoaded", () => {
-  initializeMonitoringTable();
+function addBranch() {
+  const name = document.getElementById('newBranchName').value.trim();
+  if (!name) return alert('Please enter a branch name');
+  monitoringData.push({ name, checked: false, uploaded: false, uploadedBy: '', remarks: '' });
+  saveMonitoringData();
   loadMonitoringData();
-  updateMonitoringProgress();
+  document.getElementById('newBranchName').value = '';
+}
+
+function toggleCheck(index) {
+  monitoringData[index].checked = !monitoringData[index].checked;
+  saveMonitoringData();
+  loadMonitoringData();
+}
+
+function toggleUpload(index) {
+  monitoringData[index].uploaded = !monitoringData[index].uploaded;
+  monitoringData[index].uploadedBy = monitoringData[index].uploaded ? 'HR Staff' : '';
+  saveMonitoringData();
+  loadMonitoringData();
+}
+
+function updateRemarks(index, value) {
+  monitoringData[index].remarks = value;
+  saveMonitoringData();
+}
+
+document.getElementById('addBranchBtn').addEventListener('click', addBranch);
+
+document.getElementById('clearMonitoringBtn').addEventListener('click', () => {
+  if (confirm('Are you sure you want to clear all monitoring data?')) {
+    monitoringData = [];
+    saveMonitoringData();
+    loadMonitoringData();
+  }
 });
+
+document.getElementById('exportMonitoringBtn').addEventListener('click', () => {
+  if (monitoringData.length === 0) return alert('No data to export');
+  const ws = XLSX.utils.json_to_sheet(monitoringData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Monitoring');
+  XLSX.writeFile(wb, 'Branch_Monitoring.xlsx');
+});
+
+
 </script>
 </div>
 </body>
