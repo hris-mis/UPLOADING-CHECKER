@@ -158,126 +158,85 @@
 </div>
 
 <!-- Container for side-by-side layout -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 divide-x divide-gray-200 px-8 py-10">
 
-<!-- Schedule Checker Content -->
-<div id="tab-schedule-content" class="py-10 px-6 flex justify-center w-full">
-
-  <!-- Unified Module Card -->
-  <div class="w-full max-w-[1800px] bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
-
-    <!-- HEADER -->
-    <div class="text-center py-10 px-8 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-white">
-      <h1 class="text-4xl font-extrabold text-gray-800 tracking-tight">
-        Schedule Conflict Checker
-      </h1>
-      <p class="mt-3 text-gray-500 text-sm max-w-2xl mx-auto">
-        Validate, review, and export employee work and rest day schedules with accuracy and consistency.
-      </p>
+  <!-- LEFT: Work Schedule -->
+  <div>
+    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between mb-6 gap-4">
+      <h3 class="font-semibold text-xl text-gray-800 whitespace-nowrap">
+        1. Paste Work Schedule Data
+      </h3>
+      <div class="flex items-center gap-3 w-full xl:w-auto">
+        <input id="workBranchName" type="text" placeholder="Branch Name"
+          class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full xl:w-56 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+        <button id="generateWorkFile"
+          class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm transition">
+          Generate
+        </button>
+        <button id="clearWorkData"
+          class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 text-sm transition">
+          Clear
+        </button>
+      </div>
     </div>
 
-    <!-- TWO-PANEL GRID -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 divide-x divide-gray-200 px-8">
+    <textarea id="workScheduleInput"
+      class="w-full h-80 border border-gray-300 rounded-lg p-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none mb-6 resize-none"></textarea>
 
-      <!-- LEFT: Work Schedule -->
-      <div class="p-8 flex flex-col">
-        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between mb-6 gap-4">
-          <h3 class="font-semibold text-xl text-gray-800 whitespace-nowrap">
-            1. Paste Work Schedule Data
-          </h3>
-          <div class="flex items-center gap-3 w-full xl:w-auto">
-            <input id="workBranchName" type="text" placeholder="Branch Name"
-              class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full xl:w-56 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
-            <button id="generateWorkFile"
-              class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm transition">
-              Generate
-            </button>
-            <button id="clearWorkData"
-              class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 text-sm transition">
-              Clear
-            </button>
-          </div>
-        </div>
+    <div class="overflow-x-auto rounded-lg border border-gray-100">
+      <table id="workScheduleTable" class="w-full text-sm text-center border-collapse table-fixed">
+        <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
+          <tr>
+            <th class="px-3 py-2 border">Name</th>
+            <th class="px-3 py-2 border">Emp&nbsp;No.</th>
+            <th class="px-3 py-2 border">Work&nbsp;Date</th>
+            <th class="px-3 py-2 border">Shift</th>
+            <th class="px-3 py-2 border">Day</th>
+            <th class="px-3 py-2 border">Position</th>
+          </tr>
+        </thead>
+        <tbody id="workTableBody" class="bg-white divide-y divide-gray-100"></tbody>
+      </table>
+    </div>
+  </div>
 
-        <textarea id="workScheduleInput"
-          class="w-full h-80 border border-gray-300 rounded-lg p-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none mb-6 resize-none"></textarea>
+  <!-- RIGHT: Rest Day Schedule -->
+  <div>
+    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between mb-6 gap-4">
+      <h3 class="font-semibold text-xl text-gray-800 whitespace-nowrap">
+        2. Paste Rest Day Schedule Data
+      </h3>
+      <div class="flex items-center gap-3 w-full xl:w-auto">
+        <input id="restBranchName" type="text" placeholder="Branch Name"
+          class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full xl:w-56 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
+        <button id="generateRestFile"
+          class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm transition">
+          Generate
+        </button>
+        <button id="clearRestData"
+          class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 text-sm transition">
+          Clear
+        </button>
+      </div>
+    </div>
 
-        <div class="overflow-x-auto rounded-lg border border-gray-100">
-<table id="workScheduleTable" class="w-full text-sm text-center border-collapse table-fixed">
-  <colgroup>
-    <col class="w-[20%]">
-    <col class="w-[15%]">
-    <col class="w-[20%]">
-    <col class="w-[15%]">
-    <col class="w-[15%]">
-    <col class="w-[15%]">
-  </colgroup>
-  <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
-    <tr>
-      <th class="px-3 py-2 border">Name</th>
-      <th class="px-3 py-2 border">Emp&nbsp;No.</th>
-      <th class="px-3 py-2 border">Work&nbsp;Date</th>
-      <th class="px-3 py-2 border">Shift</th>
-      <th class="px-3 py-2 border">Day</th>
-      <th class="px-3 py-2 border">Position</th>
-    </tr>
-  </thead>
-  <tbody id="workTableBody" class="bg-white divide-y divide-gray-100"></tbody>
-</table>
+    <textarea id="restScheduleInput"
+      class="w-full h-80 border border-gray-300 rounded-lg p-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none mb-6 resize-none"></textarea>
 
-      <!-- RIGHT: Rest Day Schedule -->
-      <div class="p-8 flex flex-col">
-        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between mb-6 gap-4">
-          <h3 class="font-semibold text-xl text-gray-800 whitespace-nowrap">
-            2. Paste Rest Day Schedule Data
-          </h3>
-          <div class="flex items-center gap-3 w-full xl:w-auto">
-            <input id="restBranchName" type="text" placeholder="Branch Name"
-              class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full xl:w-56 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
-            <button id="generateRestFile"
-              class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm transition">
-              Generate
-            </button>
-            <button id="clearRestData"
-              class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 text-sm transition">
-              Clear
-            </button>
-          </div>
-        </div>
-
-        <textarea id="restScheduleInput"
-          class="w-full h-80 border border-gray-300 rounded-lg p-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none mb-6 resize-none"></textarea>
-
-        <div class="overflow-x-auto rounded-lg border border-gray-100">
-<table id="restScheduleTable" class="w-full text-sm text-center border-collapse table-fixed">
-  <colgroup>
-    <col class="w-[15%]">
-    <col class="w-[20%]">
-    <col class="w-[15%]">
-    <col class="w-[20%]">
-    <col class="w-[15%]">
-    <col class="w-[15%]">
-  </colgroup>
-  <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
-    <tr>
-      <th class="px-3 py-2 border">Conflict</th>
-      <th class="px-3 py-2 border">Name</th>
-      <th class="px-3 py-2 border">Emp&nbsp;No.</th>
-      <th class="px-3 py-2 border">Rest&nbsp;Date</th>
-      <th class="px-3 py-2 border">Day</th>
-      <th class="px-3 py-2 border">Position</th>
-    </tr>
-  </thead>
-  <tbody id="restTableBody" class="bg-white divide-y divide-gray-100"></tbody>
-</table>
-
-
-    <!-- FOOTER ACTION -->
-    <div class="text-center py-8 border-t border-gray-200 bg-gray-50">
-      <button id="clearAllBtn"
-        class="bg-red-600 text-white px-8 py-3 rounded-lg text-sm font-medium hover:bg-red-700 transition shadow-sm">
-        🧹 Clear All (Work + Rest Day)
-      </button>
+    <div class="overflow-x-auto rounded-lg border border-gray-100">
+      <table id="restScheduleTable" class="w-full text-sm text-center border-collapse table-fixed">
+        <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wide">
+          <tr>
+            <th class="px-3 py-2 border">Conflict</th>
+            <th class="px-3 py-2 border">Name</th>
+            <th class="px-3 py-2 border">Emp&nbsp;No.</th>
+            <th class="px-3 py-2 border">Rest&nbsp;Date</th>
+            <th class="px-3 py-2 border">Day</th>
+            <th class="px-3 py-2 border">Position</th>
+          </tr>
+        </thead>
+        <tbody id="restTableBody" class="bg-white divide-y divide-gray-100"></tbody>
+      </table>
     </div>
   </div>
 </div>
