@@ -186,8 +186,6 @@ button#generate-work-btn, button#generate-rest-btn {
   
 </header>
 
-</div>
-
   <h1 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-700 to-blue-500 text-transparent bg-clip-text">
     Schedule Conflict Checker
   </h1>
@@ -1005,8 +1003,9 @@ monthSelect.addEventListener("change", loadMonitoringData);
 window.addEventListener("DOMContentLoaded", loadMonitoringData);
 
 
-// 🔹 When month changes → reload data
-monthSelect.addEventListener("change", loadMonitoringData);
+monthSelect.addEventListener("change", () => {
+  loadMonitoringData();
+});
 
 // 🔹 Load on page open
 window.addEventListener("load", loadMonitoringData);
@@ -1037,8 +1036,8 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 
-</div> <!-- ✅ End of tab-monitoring-content -->
-</script>
 
+</script>
+</div>
 </body>
 </html>
