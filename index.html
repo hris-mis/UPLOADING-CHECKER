@@ -186,13 +186,6 @@ button#generate-work-btn, button#generate-rest-btn {
   
 </header>
 
-  <h1 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-700 to-blue-500 text-transparent bg-clip-text">
-    Schedule Conflict Checker
-  </h1>
-  <p class="mt-2 text-gray-600 text-sm tracking-wide">
-    Validate, review, and export work & rest day schedules with ease.
-  </p>
-
         <!-- Success Message -->
 <div id="success-message"
   class="hidden fixed top-6 right-6 bg-gradient-to-r from-green-600 to-emerald-600 text-white 
@@ -201,7 +194,14 @@ button#generate-work-btn, button#generate-rest-btn {
 </div>
 
 <!-- ✅ Schedule Checker Tab -->
-<div id="tab-schedule-content">
+<div id="tab-schedule-content" class="hidden">
+    <h1 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-700 to-blue-500 text-transparent bg-clip-text text-center mt-4">
+    Schedule Conflict Checker
+  </h1>
+  <p class="mt-2 text-gray-600 text-sm tracking-wide text-center mb-6">
+    Validate, review, and export work & rest day schedules with ease.
+  </p>
+
 
 <!-- 🟦 WIDER SIDE-BY-SIDE LAYOUT -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
