@@ -470,8 +470,8 @@ function showSuccess() {
 
 function normalizeDate(dateString) {
   if (!dateString) return '';
+  dateString = String(dateString).replace(/\u00A0/g,'').trim(); // <-- ADD THIS LINE
   if (!isNaN(dateString)) {
-    // Excel numeric date
     const d = new Date((dateString - 25569) * 86400 * 1000);
     return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
   }
@@ -537,7 +537,7 @@ if (total === 0) {
     restDayData.forEach(r => r.conflicts = []);
 
     // build maps
-    const workMap = new Map(workScheduleData.map(w => [`${w.empNo}-${w.date}`, w]));
+    const workMap = new Map(workScheduleData.map(w => [`${w.empNo}-${(w.date||'').trim()}`, w]));
     const workEmpSet = new Set(workScheduleData.map(w => w.empNo));
     const restByDate = {};
     const weekendCount = {};
@@ -545,7 +545,7 @@ if (total === 0) {
 
     restDayData.forEach(rd => {
       if (!rd) return;
-      const key = `${rd.empNo}-${rd.date}`;
+      const key = `${rd.empNo}-${(rd.date||'').trim()}`;
       if (!restByDate[rd.date]) restByDate[rd.date] = [];
       restByDate[rd.date].push(rd);
 
