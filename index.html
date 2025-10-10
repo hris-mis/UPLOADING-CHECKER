@@ -680,6 +680,27 @@ function generateHrisFile(type) {
     showBanner("⚠️ Invalid generation type.");
     return;
   }
+  // --- CONNECT BUTTONS ---
+document.getElementById('generateWorkFile').addEventListener('click', () => {
+  generateHrisFile('work');
+});
+
+document.getElementById('generateRestFile').addEventListener('click', () => {
+  generateHrisFile('rest');
+});
+
+// --- CLEAR BUTTONS ---
+document.getElementById('clearWorkData').addEventListener('click', clearAllData);
+document.getElementById('clearRestData').addEventListener('click', clearAllData);
+
+// --- AUTO PASTE HANDLER ---
+document.getElementById('workScheduleInput').addEventListener('paste', (e) => {
+  handlePaste(e, 'work');
+});
+document.getElementById('restScheduleInput').addEventListener('paste', (e) => {
+  handlePaste(e, 'rest');
+});
+
 
   // ✅ Generate Excel file
   const worksheet = XLSX.utils.json_to_sheet(data);
@@ -791,7 +812,7 @@ const savedYear = localStorage.getItem('selectedYear');
 if (savedMonth) monthSelect.value = savedMonth;
 if (savedYear) yearSelect.value = savedYear;
 
-// 🟡 Save selection when changed
+// Save when changed
 monthSelect.addEventListener('change', () => {
   localStorage.setItem('selectedMonth', monthSelect.value);
   loadMonitoringData();
@@ -801,79 +822,56 @@ yearSelect.addEventListener('change', () => {
   loadMonitoringData();
 });
 
-// ✅ Load monitoring data on startup
 document.addEventListener('DOMContentLoaded', () => {
   loadMonitoringData();
 });
 
 function loadMonitoringData() {
-  const data = JSON.parse(localStorage.getItem('monitoringData')) || [];
-  const tbody = document.getElementById('monitoringBody');
-  tbody.innerHTML = data.map((branch, i) => `
+  const tbody = document.getElementById("monitoringBody");
+  const data = JSON.parse(localStorage.getItem("monitoringData")) || [
+    { name: "Main Branch", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
+    { name: "North Branch", checked: false, uploaded: false, uploadedBy: "", remarks: "" },
+  ];
+
+  tbody.innerHTML = data.map((b, i) => `
     <tr>
-      <td class="text-left px-3 py-2">${branch.name}</td>
-      <td><input type="checkbox" ${branch.checked ? 'checked' : ''} data-index="${i}" class="check-toggle"></td>
-      <td><input type="checkbox" ${branch.uploaded ? 'checked' : ''} data-index="${i}" class="upload-toggle"></td>
-      <td><input type="text" value="${branch.uploadedBy || ''}" class="uploaded-by border rounded px-1 py-0.5 text-sm w-28" data-index="${i}"></td>
-      <td><input type="text" value="${branch.remarks || ''}" class="remarks border rounded px-1 py-0.5 text-sm w-32" data-index="${i}"></td>
-      <td>${branch.checked && branch.uploaded ? '✅ Done' : branch.checked ? '🟡 Checked' : '❌ Pending'}</td>
+      <td class="text-left p-2">${b.name}</td>
+      <td><input type="checkbox" ${b.checked ? "checked" : ""} data-index="${i}" data-field="checked"></td>
+      <td><input type="checkbox" ${b.uploaded ? "checked" : ""} data-index="${i}" data-field="uploaded"></td>
+      <td><input type="text" value="${b.uploadedBy}" class="border rounded px-2 py-1 text-sm w-32" data-index="${i}" data-field="uploadedBy"></td>
+      <td><input type="text" value="${b.remarks}" class="border rounded px-2 py-1 text-sm w-32" data-index="${i}" data-field="remarks"></td>
+      <td>${b.uploaded ? "✅ Done" : b.checked ? "🟡 Checked" : "❌ Pending"}</td>
     </tr>
   `).join('');
 
-  document.querySelectorAll('.check-toggle').forEach(cb => {
-    cb.addEventListener('change', e => {
-      const idx = e.target.dataset.index;
-      data[idx].checked = e.target.checked;
-      localStorage.setItem('monitoringData', JSON.stringify(data));
+  // Save changes live
+  tbody.querySelectorAll("input").forEach(el => {
+    el.addEventListener("input", e => {
+      const i = e.target.dataset.index;
+      const field = e.target.dataset.field;
+      if (e.target.type === "checkbox") data[i][field] = e.target.checked;
+      else data[i][field] = e.target.value;
+      localStorage.setItem("monitoringData", JSON.stringify(data));
       loadMonitoringData();
     });
   });
 
-  document.querySelectorAll('.upload-toggle').forEach(cb => {
-    cb.addEventListener('change', e => {
-      const idx = e.target.dataset.index;
-      data[idx].uploaded = e.target.checked;
-      localStorage.setItem('monitoringData', JSON.stringify(data));
-      loadMonitoringData();
-    });
-  });
-
-  document.querySelectorAll('.uploaded-by').forEach(input => {
-    input.addEventListener('input', e => {
-      const idx = e.target.dataset.index;
-      data[idx].uploadedBy = e.target.value;
-      localStorage.setItem('monitoringData', JSON.stringify(data));
-    });
-  });
-
-  document.querySelectorAll('.remarks').forEach(input => {
-    input.addEventListener('input', e => {
-      const idx = e.target.dataset.index;
-      data[idx].remarks = e.target.value;
-      localStorage.setItem('monitoringData', JSON.stringify(data));
-    });
-  });
-
-  // ✅ Update progress bar
+  // Update progress bar
   const total = data.length;
-  const checked = data.filter(b => b.checked).length;
   const uploaded = data.filter(b => b.uploaded).length;
-  const percent = total > 0 ? Math.round((uploaded / total) * 100) : 0;
-
-  document.getElementById('totalBranches').innerText = total;
-  document.getElementById('checkedBranches').innerText = checked;
-  document.getElementById('uploadedBranches').innerText = uploaded;
-  document.getElementById('progressPercent').innerText = percent + '%';
-  document.getElementById('progressBar').style.width = percent + '%';
+  const percent = total ? Math.round((uploaded / total) * 100) : 0;
+  document.getElementById("progressPercent").innerText = percent + "%";
+  document.getElementById("progressBar").style.width = percent + "%";
 }
 
-// 🧹 Clear all monitoring data
-document.getElementById('clearMonitoringBtn').addEventListener('click', () => {
-  if (confirm('Are you sure you want to clear all monitoring data?')) {
-    localStorage.removeItem('monitoringData');
+// Clear monitoring data
+document.getElementById("clearMonitoringBtn").addEventListener("click", () => {
+  if (confirm("Clear all monitoring data?")) {
+    localStorage.removeItem("monitoringData");
     loadMonitoringData();
   }
 });
+
 
 // ✅ Add new branch
 document.getElementById("addBranchBtn").addEventListener("click", () => {
