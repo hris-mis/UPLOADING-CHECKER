@@ -625,11 +625,11 @@ if (/saturday|sunday/i.test(rd.day||'')) {
       renderWorkTable();
     } else {
 restDayData = dataRows.map(r => ({
-  empNo: r[colMap.empNo] || r[1] || r[0] || '',
-  name: r[colMap.name] || r[0] || '',
-  date: normalizeDate(r[colMap.date] || r[2] || ''),
-  day: r[colMap.day] || r[4] || r[3] || '',
-  position: r[colMap.position] || r[5] || r[4] || '',
+  empNo: r[colMap.empNo] ?? r[1] ?? r[0] ?? '',
+  name: r[colMap.name] ?? r[0] ?? r[1] ?? '',
+  date: normalizeDate(r[colMap.date] ?? r[2] ?? r[1] ?? ''),
+  day: r[colMap.day] ?? r[4] ?? r[3] ?? '',
+  position: r[colMap.position] ?? r[5] ?? r[4] ?? '',
   conflicts: []
 })).filter(d => d.empNo);
       validateSchedules();
@@ -747,10 +747,8 @@ tabMonitoring.addEventListener('click', () => {
 // initial UI state
 // Show Monitoring tab by default
 tabMonitoring.click(); 
-renderWorkTable(); 
-renderRestTable(); 
-updateButtonStates();
-
+tabMonitoring.classList.add('bg-indigo-600','text-white');
+tabSchedule.classList.remove('bg-indigo-600','text-white');
 
   // End of DOMContentLoaded
 }
