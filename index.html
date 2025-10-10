@@ -730,6 +730,19 @@ function clearAllData() {
   }, 3000);
 }
 
+// --- GENERATE BUTTONS ---
+document.getElementById('generateWorkFile').addEventListener('click', () => {
+  generateHrisFile('work');
+});
+
+document.getElementById('generateRestFile').addEventListener('click', () => {
+  generateHrisFile('rest');
+});
+
+// --- CLEAR BUTTONS ---
+document.getElementById('clearWorkData').addEventListener('click', clearAllData);
+document.getElementById('clearRestData').addEventListener('click', clearAllData);
+
 // --- TAB SWITCHING LOGIC ---
 
 document.getElementById('tab-schedule').addEventListener('click', () => {
