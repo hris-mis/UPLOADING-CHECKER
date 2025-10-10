@@ -680,26 +680,6 @@ function generateHrisFile(type) {
     showBanner("⚠️ Invalid generation type.");
     return;
   }
-  // --- CONNECT BUTTONS ---
-document.getElementById('generateWorkFile').addEventListener('click', () => {
-  generateHrisFile('work');
-});
-
-document.getElementById('generateRestFile').addEventListener('click', () => {
-  generateHrisFile('rest');
-});
-
-// --- CLEAR BUTTONS ---
-document.getElementById('clearWorkData').addEventListener('click', clearAllData);
-document.getElementById('clearRestData').addEventListener('click', clearAllData);
-
-// --- AUTO PASTE HANDLER ---
-document.getElementById('workScheduleInput').addEventListener('paste', (e) => {
-  handlePaste(e, 'work');
-});
-document.getElementById('restScheduleInput').addEventListener('paste', (e) => {
-  handlePaste(e, 'rest');
-});
 
 
   // ✅ Generate Excel file
@@ -760,9 +740,26 @@ document.getElementById('generateRestFile').addEventListener('click', () => {
   generateHrisFile('rest');
 });
 
-// --- CLEAR BUTTONS ---
-document.getElementById('clearWorkData').addEventListener('click', clearAllData);
-document.getElementById('clearRestData').addEventListener('click', clearAllData);
+  // --- CONNECT BUTTONS ---
+  document.getElementById('generateWorkFile').addEventListener('click', () => {
+    generateHrisFile('work');
+  });
+
+  document.getElementById('generateRestFile').addEventListener('click', () => {
+    generateHrisFile('rest');
+  });
+
+  // --- CLEAR BUTTONS ---
+  document.getElementById('clearWorkData').addEventListener('click', clearAllData);
+  document.getElementById('clearRestData').addEventListener('click', clearAllData);
+
+  // --- AUTO PASTE HANDLER ---
+  document.getElementById('workScheduleInput').addEventListener('paste', (e) => {
+    handlePaste(e, 'work');
+  });
+  document.getElementById('restScheduleInput').addEventListener('paste', (e) => {
+    handlePaste(e, 'rest');
+  });
 
 // --- TAB SWITCHING LOGIC ---
 
