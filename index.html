@@ -796,84 +796,100 @@ function saveMonitoringData() {
   localStorage.setItem('monitoringData', JSON.stringify(monitoringData));
 }
 
-
-
 function loadMonitoringData() {
-  const tbody = document.getElementById('monitoringBody');
-  tbody.innerHTML = '';
+  const tbody = document.getElementById("monitoringBody");
+  tbody.innerHTML = "";
 
   monitoringData.forEach((branch, index) => {
+    const checked = branch.checked ? "checked" : "";
+    const uploaded = branch.uploaded ? "checked" : "";
     tbody.innerHTML += `
-      <tr>
-        <td class="text-left">${branch.name}</td>
-        <td><input type="checkbox" ${branch.checked ? 'checked' : ''} onchange="toggleCheck(${index})"></td>
-        <td><input type="checkbox" ${branch.uploaded ? 'checked' : ''} onchange="toggleUpload(${index})"></td>
-        <td><input type="text" value="${branch.uploadedBy || ''}" oninput="updateUploader(${index}, this.value)" class="border rounded px-2 py-1 w-full text-center"></td>
-        <td><input type="text" value="${branch.remarks || ''}" oninput="updateRemarks(${index}, this.value)" class="border rounded px-2 py-1 w-full"></td>
-        <td>${branch.uploaded ? '✅ Done' : branch.checked ? '⏳ Checking' : '❌ Pending'}</td>
+      <tr class="border-t">
+        <td class="text-left px-3 py-2">${branch.name}</td>
+        <td><input type="checkbox" data-index="${index}" data-type="check" ${checked}></td>
+        <td><input type="checkbox" data-index="${index}" data-type="upload" ${uploaded}></td>
+        <td><input type="text" data-index="${index}" data-type="uploadedBy" value="${branch.uploadedBy || ""}" class="border rounded px-2 py-1 w-32"></td>
+        <td><input type="text" data-index="${index}" data-type="remarks" value="${branch.remarks || ""}" class="border rounded px-2 py-1 w-40"></td>
+        <td>${branch.uploaded ? "✅" : branch.checked ? "⏳" : "❌"}</td>
       </tr>
     `;
   });
 
-  updateMonitoringProgress();
+  updateMonitoringStats();
 }
 
-function updateMonitoringProgress() {
+// ✅ Save data whenever any input changes
+document.getElementById("monitoringBody").addEventListener("input", e => {
+  const idx = e.target.dataset.index;
+  const type = e.target.dataset.type;
+
+  if (type === "check") {
+    monitoringData[idx].checked = e.target.checked;
+  } else if (type === "upload") {
+    monitoringData[idx].uploaded = e.target.checked;
+  } else if (type === "uploadedBy") {
+    monitoringData[idx].uploadedBy = e.target.value;
+  } else if (type === "remarks") {
+    monitoringData[idx].remarks = e.target.value;
+  }
+
+  saveMonitoringData();
+  loadMonitoringData();
+});
+
+// ✅ Update progress summary bar
+function updateMonitoringStats() {
   const total = monitoringData.length;
   const checked = monitoringData.filter(b => b.checked).length;
   const uploaded = monitoringData.filter(b => b.uploaded).length;
-  const percent = total ? Math.round((uploaded / total) * 100) : 0;
+  const progress = total ? Math.round((uploaded / total) * 100) : 0;
 
-  document.getElementById('totalBranches').innerText = total;
-  document.getElementById('checkedBranches').innerText = checked;
-  document.getElementById('uploadedBranches').innerText = uploaded;
-  document.getElementById('progressPercent').innerText = percent + '%';
-  document.getElementById('progressBar').style.width = percent + '%';
+  document.getElementById("totalBranches").innerText = total;
+  document.getElementById("checkedBranches").innerText = checked;
+  document.getElementById("uploadedBranches").innerText = uploaded;
+  document.getElementById("progressPercent").innerText = `${progress}%`;
+  document.getElementById("progressBar").style.width = `${progress}%`;
 }
 
-function addBranch() {
-  const name = document.getElementById('newBranchName').value.trim();
-  if (!name) return alert('Please enter a branch name');
-  monitoringData.push({ name, checked: false, uploaded: false, uploadedBy: '', remarks: '' });
+// ✅ Clear all monitoring data
+document.getElementById("clearMonitoringBtn").addEventListener("click", () => {
+  if (!confirm("Are you sure you want to clear all monitoring data?")) return;
+  monitoringData.forEach(b => {
+    b.checked = false;
+    b.uploaded = false;
+    b.uploadedBy = "";
+    b.remarks = "";
+  });
   saveMonitoringData();
   loadMonitoringData();
-  document.getElementById('newBranchName').value = '';
-}
-
-function toggleCheck(index) {
-  monitoringData[index].checked = !monitoringData[index].checked;
-  saveMonitoringData();
-  loadMonitoringData();
-}
-
-function toggleUpload(index) {
-  monitoringData[index].uploaded = !monitoringData[index].uploaded;
-  monitoringData[index].uploadedBy = monitoringData[index].uploaded ? 'HR Staff' : '';
-  saveMonitoringData();
-  loadMonitoringData();
-}
-function updateUploader(index, value) {
-  monitoringData[index].uploadedBy = value;
-  saveMonitoringData();
-}
-
-function updateRemarks(index, value) {
-  monitoringData[index].remarks = value;
-  saveMonitoringData();
-}
-
-document.getElementById('addBranchBtn').addEventListener('click', addBranch);
-
-document.getElementById('clearMonitoringBtn').addEventListener('click', () => {
-  if (confirm('Are you sure you want to clear all monitoring data?')) {
-    monitoringData = [];
-    saveMonitoringData();
-    loadMonitoringData();
-  }
 });
 
-document.getElementById('exportMonitoringBtn').addEventListener('click', () => {
-  if (monitoringData.length === 0) return alert('No data to export');
+// ✅ Add new branch
+document.getElementById("addBranchBtn").addEventListener("click", () => {
+  const name = document.getElementById("newBranchName").value.trim();
+  if (!name) return alert("Enter a branch name first.");
+  monitoringData.push({ name, checked: false, uploaded: false, uploadedBy: "", remarks: "" });
+  document.getElementById("newBranchName").value = "";
+  saveMonitoringData();
+  loadMonitoringData();
+});
+
+// ✅ Search branches
+document.getElementById("monitoringSearch").addEventListener("input", e => {
+  const q = e.target.value.toLowerCase();
+  const rows = document.querySelectorAll("#monitoringBody tr");
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? "" : "none";
+  });
+});
+
+// ✅ Export monitoring table to Excel
+document.getElementById("exportMonitoringBtn").addEventListener("click", () => {
+  const ws = XLSX.utils.json_to_sheet(monitoringData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Monitoring");
+  XLSX.writeFile(wb, `Branch_Monitoring_${monthSelect.value}_${yearSelect.value}.xlsx`);
+});
 
   // ✅ Get selected month and year text
   const monthSelect = document.getElementById('monthSelect');
