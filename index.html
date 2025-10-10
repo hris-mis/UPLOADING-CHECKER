@@ -564,17 +564,14 @@ if (total === 0) {
       if (workMap.has(key)) rd.conflicts.push({type:'Work Conflict', reason:'Employee has a work schedule on same date.'});
 
       // weekend count
-      if (/saturday|sunday/i.test(rd.day||'')) {
-        if (!isNaN(new Date(rd.date).getTime())) {
-  const d = new Date(rd.date);
-  const monthYear = `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  const wkKey = `${rd.empNo}-${monthYear}`;
-  weekendCount[wkKey] = (weekendCount[wkKey]||0) + 1;
-}
+if (/saturday|sunday/i.test(rd.day||'')) {
+    const d = new Date(rd.date);
+    if (!isNaN(d.getTime())) {
+        const monthYear = `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
         const wkKey = `${rd.empNo}-${monthYear}`;
         weekendCount[wkKey] = (weekendCount[wkKey]||0) + 1;
-      }
-    });
+    }
+}
 
     // leadership conflict
     for (const date in restByDate) {
