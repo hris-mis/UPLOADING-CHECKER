@@ -9,20 +9,133 @@
 <!-- Library for Excel file generation -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-  table { table-layout: auto; width: 100%; border-collapse: collapse; }
-  th { background: linear-gradient(to right, #f9fafb, #f3f4f6); text-transform: uppercase; letter-spacing: 0.03em; font-size: 0.85rem; }
-  .paste-area { border: 2px dashed #d1d5db; padding: 1rem; background-color: #ffffff; border-radius: 0.75rem; min-height: 300px; width: 100%; white-space: pre; overflow-x: auto; overflow-y: auto; color: #374151; cursor: text; font-size: 0.9rem; letter-spacing: 0.01em; border: 1px solid #d1d5db; border-left: 4px solid #4f46e5; }
-  .paste-area:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2); }
-  .conflict { background-color: #fff7ed; color: #b45309; font-weight: 500; border-left: 4px solid #f59e0b; white-space: pre-wrap; word-break: break-word; padding: 0.75rem; border-radius: 0.5rem; }
-  .weekend-rest-day { color: #dc2626; font-weight: 500; }
-  th:first-child, td:first-child { position: sticky; left: 0; background-color: #fffbea; z-index: 2; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
-  tbody tr:hover { background: #f9fafb; transform: scale(1.01); }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%);
+    min-height: 100vh;
+    color: #111827;
+  }
+
+  .dashboard-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    padding: 1.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .dashboard-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+
+  table {
+    table-layout: auto;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    background: linear-gradient(to right, #eef2ff, #e0e7ff);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.8rem;
+    color: #4338ca;
+  }
+
+  tr {
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  tr:hover {
+    background-color: #f9fafb;
+    transform: scale(1.01);
+  }
+
+  .paste-area {
+    border: 2px dashed #c7d2fe;
+    background-color: #f9fafb;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    min-height: 300px;
+    width: 100%;
+    white-space: pre;
+    overflow-x: auto;
+    overflow-y: auto;
+    color: #374151;
+    cursor: text;
+    font-size: 0.9rem;
+  }
+
+  .paste-area:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+  }
+
+  .conflict {
+    background-color: #fef3c7;
+    color: #92400e;
+    border-left: 4px solid #f59e0b;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+  }
+
+  .weekend-rest-day {
+    color: #dc2626;
+    font-weight: 600;
+  }
+
+  th:first-child, td:first-child {
+    position: sticky;
+    left: 0;
+    background-color: #eef2ff;
+    z-index: 2;
+  }
+
+  /* Buttons */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition;
+  }
+  .btn-primary {
+    @apply bg-indigo-600 text-white hover:bg-indigo-700 shadow;
+  }
+  .btn-secondary {
+    @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+  }
+  .btn-danger {
+    @apply bg-red-500 text-white hover:bg-red-600;
+  }
+  .btn-success {
+    @apply bg-green-600 text-white hover:bg-green-700;
+  }
+
+  /* Header Gradient */
+  header {
+    background: linear-gradient(90deg, #4f46e5, #6366f1);
+    color: white;
+    padding: 1.5rem 0;
+    border-radius: 1rem;
+    box-shadow: 0 4px 20px rgba(79,70,229,0.2);
+  }
+
+  h1, h2 {
+    font-weight: 800;
+    color: #1e1b4b;
+  }
+
+  .summary-box {
+    background: #f0fdf4;
+    color: #166534;
+    border-left: 4px solid #22c55e;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+  }
 </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
 
 <div id="warning-banner" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg shadow-md transition-opacity opacity-0"></div>
+<div id="success-message" class="hidden fixed top-16 left-1/2 transform -translate-x-1/2 bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow-md transition-opacity opacity-0">✅ File generated successfully!</div>
 <div class="max-w-[1400px] mx-auto">
   <header class="mb-10 text-center">
     <div class="flex justify-center space-x-4 mb-8">
@@ -35,7 +148,7 @@
     <h1 class="text-3xl font-extrabold text-center mt-4">Schedule Conflict Checker</h1>
     <p class="mt-2 text-center text-gray-600 mb-8">Paste, validate, and generate HRIS upload files for Work and Rest Day schedules.</p>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 divide-x divide-gray-200 px-8 py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 px-8 py-6">
       <!-- Work -->
       <div>
         <div class="flex items-center justify-between mb-4 gap-4">
@@ -76,13 +189,14 @@
             <tbody id="restTableBody"></tbody>
           </table>
         </div>
-        <p id="summary" class="mt-3 text-sm text-center text-gray-700"></p>
+        <div id="summary" class="summary-box text-center hidden"></div>
       </div>
     </div>
   </div>
 
   <!-- MONITORING -->
-  <div id="tab-monitoring-content" class="hidden">
+  <div id="tab-monitoring-content" class="hidden dashboard-card mt-6 shadow-lg">
+    <thead class="bg-indigo-50 text-indigo-700 uppercase text-xs">
     <h2 class="text-2xl text-center mb-4">📊 Branch Monitoring Dashboard</h2>
     <div class="flex justify-center gap-3 mb-4">
       <select id="monthSelect" class="border rounded px-3 py-2"><option value="01">January</option><option value="02">February</option><option value="10" selected>October</option></select>
