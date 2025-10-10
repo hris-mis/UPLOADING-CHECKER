@@ -264,6 +264,10 @@ th:first-child, td:first-child {
   90% { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(10px); }
 }
+#tab-monitoring-content {
+  min-height: 300px;
+}
+
 </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
@@ -740,8 +744,13 @@ tabMonitoring.addEventListener('click', () => {
   tabSchedule.classList.remove('bg-indigo-600','text-white');
   renderMonitoring(); // render once per click
 });
-  // initial UI state
-    renderWorkTable(); renderRestTable(); updateButtonStates(); renderMonitoring();
+// initial UI state
+// Show Monitoring tab by default
+tabMonitoring.click(); 
+renderWorkTable(); 
+renderRestTable(); 
+updateButtonStates();
+
 
   // End of DOMContentLoaded
 }
