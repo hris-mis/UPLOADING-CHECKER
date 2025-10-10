@@ -264,10 +264,6 @@ th:first-child, td:first-child {
   90% { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(10px); }
 }
-#tab-monitoring-content {
-  min-height: 300px;
-}
-
 </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
@@ -380,7 +376,6 @@ th:first-child, td:first-child {
 </div>
 
 <script>
-// Wrapped in DOMContentLoaded to ensure elements exist
 document.addEventListener('DOMContentLoaded', () => {
   /***** State *****/
   let workScheduleData = [];
@@ -423,34 +418,37 @@ document.addEventListener('DOMContentLoaded', () => {
     warningBanner.textContent = msg;
     warningBanner.classList.remove('hidden');
     warningBanner.classList.add('opacity-100');
-    setTimeout(() => { warningBanner.classList.remove('opacity-100'); setTimeout(() => warningBanner.classList.add('hidden'), 400); }, 3000);
+    setTimeout(() => {
+      warningBanner.classList.remove('opacity-100');
+      setTimeout(() => warningBanner.classList.add('hidden'), 400);
+    }, 3000);
   }
 
-function showSuccess() {
-  successMsg.classList.remove('hidden');
-  successMsg.style.animation = 'fadeInOut 2.5s ease-in-out';
-  setTimeout(() => { 
-    successMsg.classList.add('hidden'); 
-    successMsg.style.animation = ''; 
-  }, 2500);
-}
+  function showSuccess() {
+    successMsg.classList.remove('hidden');
+    successMsg.style.animation = 'fadeInOut 2.5s ease-in-out';
+    setTimeout(() => {
+      successMsg.classList.add('hidden');
+      successMsg.style.animation = '';
+    }, 2500);
+  }
 
   function parseTabular(text) {
     if (!text) return [];
-    const lines = text.replace(/\r/g,'').split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
     return lines.map(line => line.split(/\t|,|\s{2,}/).map(c => c.trim()));
   }
 
   function detectHeaderAndMap(rows) {
     if (!rows || rows.length === 0) return { dataRows: [], colMap: {} };
-    const first = rows[0].map(c => (c||'').toString().toLowerCase());
+    const first = rows[0].map(c => (c || '').toString().toLowerCase());
     let hasHeader = first.some(cell => /name|emp|employee|date|shift|position|day/.test(cell));
     let colMap = {};
     let dataStart = 0;
 
     if (hasHeader) {
       dataStart = 1;
-      for (let i=0;i<first.length;i++) {
+      for (let i = 0; i < first.length; i++) {
         const h = first[i];
         if (/emp|employee number|employee no|emp no/.test(h)) colMap.empNo = i;
         else if (/name/.test(h)) colMap.name = i;
@@ -462,27 +460,27 @@ function showSuccess() {
     } else {
       // guess typical order
       const sample = rows[0];
-      if (/^\d+$/.test((sample[0]||'').replace(/[^0-9]/g,''))) {
-        colMap = { empNo:0, name:1, date:2, shift:3, day:4, position:5 };
+      if (/^\d+$/.test((sample[0] || '').replace(/[^0-9]/g, ''))) {
+        colMap = { empNo: 0, name: 1, date: 2, shift: 3, day: 4, position: 5 };
       } else {
-        colMap = { name:0, empNo:1, date:2, shift:3, day:4, position:5 };
+        colMap = { name: 0, empNo: 1, date: 2, shift: 3, day: 4, position: 5 };
       }
     }
 
     return { dataRows: rows.slice(dataStart), colMap };
   }
 
-function normalizeDate(dateString) {
-  if (!dateString) return '';
-  dateString = String(dateString).replace(/\u00A0/g,'').trim(); // <-- ADD THIS LINE
-  if (!isNaN(dateString)) {
-    const d = new Date((dateString - 25569) * 86400 * 1000);
-    return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+  function normalizeDate(dateString) {
+    if (!dateString) return '';
+    dateString = String(dateString).replace(/\u00A0/g, '').trim(); // Remove non-breaking spaces
+    if (!isNaN(dateString)) {
+      const d = new Date((dateString - 25569) * 86400 * 1000);
+      return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return dateString; // fallback
+    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
   }
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return dateString; // fallback
-  return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
-}
 
   /***** Rendering *****/
   function renderWorkTable() {
@@ -499,14 +497,24 @@ function normalizeDate(dateString) {
     if (workTableBody.parentElement) workTableBody.parentElement.scrollIntoView({ behavior: 'smooth' });
   }
 
+  function escapeHtml(str) {
+    return (str == null) ? '' : String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   function renderRestTable() {
     restTableBody.innerHTML = restDayData.map(d => {
-      const isWeekend = /saturday|sunday/i.test(d.day || '');
+      const isWeekend = /saturday|sunday/i.test((d.day || '').toLowerCase().trim());
       const conflictHtml = (d.conflicts || []).map(c => `<div><strong>${escapeHtml(c.type)}:</strong> ${escapeHtml(c.reason)}</div>`).join('');
-      const rowClass = (d.conflicts && d.conflicts.length)>0? 'bg-yellow-50 border-l-4 border-yellow-400 conflict-row shadow-sm ring-2 ring-yellow-300/30': '';
+      const rowClass = (d.conflicts && d.conflicts.length > 0)
+        ? 'bg-yellow-50 border-l-4 border-yellow-400 conflict-row shadow-sm ring-2 ring-yellow-300/30'
+        : '';
       return `
         <tr class="${rowClass}">
-          <td class="text-left p-2 max-w-xs">${conflictHtml}</td>
+          <td class="text-left p-2 max-w-xs">${conflictHtml || ''}</td>
           <td>${escapeHtml(d.name)}</td>
           <td>${escapeHtml(d.empNo)}</td>
           <td class="${isWeekend? 'weekend-rest-day':''}">${escapeHtml(d.date)}</td>
@@ -516,24 +524,29 @@ function normalizeDate(dateString) {
       `;
     }).join('');
 
-    const total = restDayData.length;
-    const conflicts = restDayData.filter(r=>r.conflicts && r.conflicts.length>0).length;
-if (total === 0) {
-  summaryEl.textContent = '';
-  summaryEl.classList.add('hidden');
-} else {
-  summaryEl.classList.remove('hidden');
-  if (conflicts === 0) {
-    summaryEl.textContent = `✅ No conflicts detected for ${total} entries.`;
-    summaryEl.classList.add('text-green-600');
-  } else {
-    summaryEl.textContent = `${conflicts} out of ${total} entries have conflicts detected.`;
-    summaryEl.classList.remove('text-green-600');
-  }
-}
+    // Update buttons after table renders
+    updateButtonStates();
 
-  function escapeHtml(str){ return (str==null) ? '' : String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    // Update summary box
+    const total = restDayData.length;
+    const conflicts = restDayData.filter(r => r.conflicts && r.conflicts.length > 0).length;
+
+    if (total === 0) {
+      summaryEl.textContent = '';
+      summaryEl.classList.add('hidden');
+    } else {
+      summaryEl.classList.remove('hidden');
+      if (conflicts === 0) {
+        summaryEl.textContent = `✅ No conflicts detected for ${total} entries.`;
+        summaryEl.classList.remove('text-red-600');
+        summaryEl.classList.add('text-green-600');
+      } else {
+        summaryEl.textContent = `${conflicts} out of ${total} entries have conflicts detected.`;
+        summaryEl.classList.remove('text-green-600');
+        summaryEl.classList.add('text-red-600');
+      }
+    }
+  }
 
   /***** Validation *****/
   function validateSchedules() {
@@ -541,7 +554,7 @@ if (total === 0) {
     restDayData.forEach(r => r.conflicts = []);
 
     // build maps
-    const workMap = new Map(workScheduleData.map(w => [`${w.empNo}-${(w.date||'').trim()}`, w]));
+    const workMap = new Map(workScheduleData.map(w => [`${w.empNo}-${(w.date || '').trim()}`, w]));
     const workEmpSet = new Set(workScheduleData.map(w => w.empNo));
     const restByDate = {};
     const weekendCount = {};
@@ -549,46 +562,50 @@ if (total === 0) {
 
     restDayData.forEach(rd => {
       if (!rd) return;
-      const key = `${rd.empNo}-${(rd.date||'').trim()}`;
+      const key = `${rd.empNo}-${(rd.date || '').trim()}`;
       if (!restByDate[rd.date]) restByDate[rd.date] = [];
       restByDate[rd.date].push(rd);
 
       // duplicate
-      if (seen.has(key)) rd.conflicts.push({type:'Duplicate Entry', reason: 'Duplicate rest day entry for same employee & date.'});
+      if (seen.has(key)) rd.conflicts.push({ type: 'Duplicate Entry', reason: 'Duplicate rest day entry for same employee & date.' });
       else seen.add(key);
 
       // missing employee
-      if (!workEmpSet.has(rd.empNo)) rd.conflicts.push({type:'Missing Employee', reason: 'Employee not found in Work Schedule data.'});
+      if (!workEmpSet.has(rd.empNo))
+        rd.conflicts.push({ type: 'Missing Employee', reason: 'Employee not found in Work Schedule data.' });
 
       // invalid date
       const d = new Date(rd.date);
-      if (isNaN(d.getTime())) rd.conflicts.push({type:'Invalid Date Format', reason: 'Date format unrecognized.'});
+      if (isNaN(d.getTime()))
+        rd.conflicts.push({ type: 'Invalid Date Format', reason: 'Date format unrecognized.' });
 
       // work conflict
-      if (workMap.has(key)) rd.conflicts.push({type:'Work Conflict', reason:'Employee has a work schedule on same date.'});
+      if (workMap.has(key))
+        rd.conflicts.push({ type: 'Work Conflict', reason: 'Employee has a work schedule on same date.' });
 
       // weekend count
-if (/saturday|sunday/i.test(rd.day||'')) {
-    const d = new Date(rd.date);
-    if (!isNaN(d.getTime())) {
-        const monthYear = `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-        const wkKey = `${rd.empNo}-${monthYear}`;
-        weekendCount[wkKey] = (weekendCount[wkKey]||0) + 1;
-    }
-}
+      if (/saturday|sunday/i.test(rd.day || '')) {
+        if (!isNaN(d.getTime())) {
+          const monthYear = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+          const wkKey = `${rd.empNo}-${monthYear}`;
+          weekendCount[wkKey] = (weekendCount[wkKey] || 0) + 1;
+        }
+      }
+    });
 
     // leadership conflict
     for (const date in restByDate) {
       const leaders = restByDate[date].filter(r => LEADERSHIP_POSITIONS.includes(r.position));
-      if (leaders.length > 1) leaders.forEach(l => l.conflicts.push({type:'Leadership Conflict', reason:'Multiple leaders have same rest day.'}));
+      if (leaders.length > 1)
+        leaders.forEach(l => l.conflicts.push({ type: 'Leadership Conflict', reason: 'Multiple leaders have same rest day.' }));
     }
 
     // weekend limit
     for (const wkey in weekendCount) {
       if (weekendCount[wkey] > 2) {
         const [emp] = wkey.split('-');
-        restDayData.filter(r => r.empNo === emp && /saturday|sunday/i.test(r.day||'')).forEach(r => {
-          r.conflicts.push({type:'Weekend Limit Exceeded', reason:`${weekendCount[wkey]} weekend rest days — maximum 2.`});
+        restDayData.filter(r => r.empNo === emp && /saturday|sunday/i.test(r.day || '')).forEach(r => {
+          r.conflicts.push({ type: 'Weekend Limit Exceeded', reason: `${weekendCount[wkey]} weekend rest days — maximum 2.` });
         });
       }
     }
@@ -599,7 +616,7 @@ if (/saturday|sunday/i.test(rd.day||'')) {
 
   function updateButtonStates() {
     generateWorkFileBtn.disabled = workScheduleData.length === 0;
-    const hasConf = restDayData.some(r => r.conflicts && r.conflicts.length>0);
+    const hasConf = restDayData.some(r => r.conflicts && r.conflicts.length > 0);
     generateRestFileBtn.disabled = restDayData.length === 0 || hasConf;
   }
 
@@ -608,30 +625,37 @@ if (/saturday|sunday/i.test(rd.day||'')) {
     e.preventDefault();
     const clipboard = (e.clipboardData || window.clipboardData);
     const text = clipboard.getData('text/plain');
-    const rows = parseTabular(text);
-    if (!rows || rows.length===0) return;
+    let rows = parseTabular(text).filter(r => r.some(c => c.trim() !== ''));
+    if (!rows || rows.length === 0) return;
 
     const { dataRows, colMap } = detectHeaderAndMap(rows);
+    // Ensure colMap has all properties to avoid undefined
+    colMap.empNo = colMap.empNo ?? 1;
+    colMap.name = colMap.name ?? 0;
+    colMap.date = colMap.date ?? 2;
+    colMap.shift = colMap.shift ?? 3;
+    colMap.day = colMap.day ?? 4;
+    colMap.position = colMap.position ?? 5;
 
     if (type === 'work') {
- workScheduleData = dataRows.map(r => ({
-  name: r[colMap.name] || r[0] || '',
-  empNo: r[colMap.empNo] || r[1] || r[0] || '',
-  date: normalizeDate(r[colMap.date] || r[2] || ''),
-  shift: r[colMap.shift] || r[3] || '',
-  day: r[colMap.day] || r[4] || '',
-  position: r[colMap.position] || r[5] || ''
-})).filter(d => d.empNo);
+      workScheduleData = dataRows.map(r => ({
+        name: r[colMap.name] || r[0] || '',
+        empNo: r[colMap.empNo] || r[1] || r[0] || '',
+        date: normalizeDate(r[colMap.date] || r[2] || ''),
+        shift: r[colMap.shift] || r[3] || '',
+        day: r[colMap.day] || r[4] || '',
+        position: r[colMap.position] || r[5] || ''
+      })).filter(d => d.empNo);
       renderWorkTable();
     } else {
-restDayData = dataRows.map(r => ({
-  empNo: r[colMap.empNo] ?? r[1] ?? r[0] ?? '',
-  name: r[colMap.name] ?? r[0] ?? r[1] ?? '',
-  date: normalizeDate(r[colMap.date] ?? r[2] ?? r[1] ?? ''),
-  day: r[colMap.day] ?? r[4] ?? r[3] ?? '',
-  position: r[colMap.position] ?? r[5] ?? r[4] ?? '',
-  conflicts: []
-})).filter(d => d.empNo);
+      restDayData = dataRows.map(r => ({
+        empNo: r[colMap.empNo] || r[1] || r[0] || '',
+        name: r[colMap.name] || r[0] || '',
+        date: normalizeDate(r[colMap.date] || r[2] || ''),
+        day: r[colMap.day] || r[4] || r[3] || '',
+        position: r[colMap.position] || r[5] || r[4] || '',
+        conflicts: []
+      })).filter(d => d.empNo);
       validateSchedules();
     }
 
@@ -639,8 +663,8 @@ restDayData = dataRows.map(r => ({
   }
 
   // attach paste listeners
-  workInput.addEventListener('paste', (e) => handlePaste(e,'work'));
-  restInput.addEventListener('paste', (e) => handlePaste(e,'rest'));
+  workInput.addEventListener('paste', (e) => handlePaste(e, 'work'));
+  restInput.addEventListener('paste', (e) => handlePaste(e, 'rest'));
 
   /***** Button handlers for generate/clear *****/
   function generateHrisFile(type) {
@@ -652,17 +676,20 @@ restDayData = dataRows.map(r => ({
       if (workScheduleData.length === 0) return showBanner('⚠️ No Work Schedule data to generate.');
       const data = workScheduleData.map(r => ({ 'Employee Number': r.empNo, 'Work Date': r.date, 'Shift Code': r.shift }));
       const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
       XLSX.writeFile(wb, `${workBranch}_WORK_SCHEDULE.xlsx`);
       showSuccess();
     } else {
       if (!restBranch) return showBanner('⚠️ Enter Rest Branch Name.');
       if (restDayData.length === 0) return showBanner('⚠️ No Rest Day data to generate.');
-      // ensure no conflicts
-      if (restDayData.some(r => r.conflicts && r.conflicts.length>0)) return showBanner('⚠️ Resolve conflicts before generating Rest Day file.');
+      // check for conflicts
+      if (restDayData.some(r => r.conflicts && r.conflicts.length > 0))
+        return showBanner('⚠️ Resolve conflicts before generating Rest Day file.');
       const data = restDayData.map(r => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
       const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
       XLSX.writeFile(wb, `${restBranch}_REST_DAY_UPLOAD.xlsx`);
       showSuccess();
     }
@@ -680,23 +707,35 @@ restDayData = dataRows.map(r => ({
 
   /***** Monitoring logic *****/
   const defaultMonitoring = [
-    { name: 'AASP ABREEZA', checked:false, uploaded:false, uploadedBy:'', remarks:'' },
-    { name: 'AASP NES - ATLAS', checked:false, uploaded:false, uploadedBy:'', remarks:'' }
+    { name: 'AASP ABREEZA', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+    { name: 'AASP NES - ATLAS', checked: false, uploaded: false, uploadedBy: '', remarks: '' }
   ];
 
-  function getMonitoring() { return JSON.parse(localStorage.getItem('monitoringData') || JSON.stringify(defaultMonitoring)); }
-  function saveMonitoring(d) { localStorage.setItem('monitoringData', JSON.stringify(d)); }
+  function getMonitoring() {
+    const data = localStorage.getItem('monitoringData');
+    if (data) {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        return [...defaultMonitoring];
+      }
+    }
+    return [...defaultMonitoring];
+  }
+  function saveMonitoring(d) {
+    localStorage.setItem('monitoringData', JSON.stringify(d));
+  }
 
   function renderMonitoring() {
     const data = getMonitoring();
-    monitoringBody.innerHTML = data.map((b,i) => `
+    monitoringBody.innerHTML = data.map((b, i) => `
       <tr>
         <td class="text-left p-2">${escapeHtml(b.name)}</td>
-        <td><input type="checkbox" data-index="${i}" data-field="checked" ${b.checked? 'checked':''}></td>
-        <td><input type="checkbox" data-index="${i}" data-field="uploaded" ${b.uploaded? 'checked':''}></td>
+        <td><input type="checkbox" data-index="${i}" data-field="checked" ${b.checked ? 'checked' : ''}></td>
+        <td><input type="checkbox" data-index="${i}" data-field="uploaded" ${b.uploaded ? 'checked' : ''}></td>
         <td><input type="text" data-index="${i}" data-field="uploadedBy" value="${escapeHtml(b.uploadedBy)}" class="px-1 py-0.5"></td>
         <td><input type="text" data-index="${i}" data-field="remarks" value="${escapeHtml(b.remarks)}" class="px-1 py-0.5"></td>
-        <td>${b.uploaded? '✅ Done' : b.checked? '🟡 Checked' : '❌ Pending'}</td>
+        <td>${b.uploaded ? '✅ Done' : b.checked ? '🟡 Checked' : '❌ Pending'}</td>
       </tr>
     `).join('');
 
@@ -709,50 +748,73 @@ restDayData = dataRows.map(r => ({
         if (e.target.type === 'checkbox') d[idx][field] = e.target.checked;
         else d[idx][field] = e.target.value;
         saveMonitoring(d);
-        updateMonitoringStats(); // only update stats, do not re-render whole table
+        updateMonitoringStats(); // only update stats
+      });
+    });
+    // Also handle text input change
+    monitoringBody.querySelectorAll('input[type=text]').forEach(inp => {
+      inp.addEventListener('input', (e) => {
+        const idx = Number(e.target.dataset.index);
+        const field = e.target.dataset.field;
+        const d = getMonitoring();
+        d[idx][field] = e.target.value;
+        saveMonitoring(d);
+        // no need to update stats here
       });
     });
 
     updateMonitoringStats();
   }
 
-  function updateMonitoringStats(){
+  function updateMonitoringStats() {
     const d = getMonitoring();
-    const total = d.length; const checked = d.filter(x=>x.checked).length; const uploaded = d.filter(x=>x.uploaded).length;
+    const total = d.length;
+    const checked = d.filter(x => x.checked).length;
+    const uploaded = d.filter(x => x.uploaded).length;
     totalBranchesEl && (totalBranchesEl.textContent = total);
     checkedBranchesEl && (checkedBranchesEl.textContent = checked);
     uploadedBranchesEl && (uploadedBranchesEl.textContent = uploaded);
-    const pct = total? Math.round((uploaded/total)*100):0; progressPercentEl && (progressPercentEl.textContent = pct + '%');
+    const pct = total ? Math.round((uploaded / total) * 100) : 0;
+    progressPercentEl && (progressPercentEl.textContent = pct + '%');
     progressBar.style.width = pct + '%';
   }
 
-  clearMonitoringBtn.addEventListener('click', () => { if(confirm('Clear monitoring data?')){ localStorage.removeItem('monitoringData'); renderMonitoring(); } });
+  clearMonitoringBtn.addEventListener('click', () => {
+    if (confirm('Clear monitoring data?')) {
+      localStorage.removeItem('monitoringData');
+      renderMonitoring();
+    }
+  });
   exportMonitoringBtn.addEventListener('click', () => {
     const data = getMonitoring();
     const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Monitoring');
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Monitoring');
     const monthText = monthSelect.options[monthSelect.selectedIndex].text;
     XLSX.writeFile(wb, `Monitoring_${monthText}_${yearSelect.value}.xlsx`);
   });
 
   // tabs
-  tabSchedule.addEventListener('click', () => { scheduleContent.classList.remove('hidden'); monitoringContent.classList.add('hidden'); tabSchedule.classList.add('bg-indigo-600','text-white'); tabMonitoring.classList.remove('bg-indigo-600','text-white'); });
-tabMonitoring.addEventListener('click', () => {
-  scheduleContent.classList.add('hidden');
-  monitoringContent.classList.remove('hidden');
-  tabMonitoring.classList.add('bg-indigo-600','text-white');
-  tabSchedule.classList.remove('bg-indigo-600','text-white');
-  renderMonitoring(); // render once per click
-});
-// initial UI state
-// Show Monitoring tab by default
-tabMonitoring.click(); 
-tabMonitoring.classList.add('bg-indigo-600','text-white');
-tabSchedule.classList.remove('bg-indigo-600','text-white');
+  tabSchedule.addEventListener('click', () => {
+    scheduleContent.classList.remove('hidden');
+    monitoringContent.classList.add('hidden');
+    tabSchedule.classList.add('bg-indigo-600', 'text-white');
+    tabMonitoring.classList.remove('bg-indigo-600', 'text-white');
+  });
+  tabMonitoring.addEventListener('click', () => {
+    scheduleContent.classList.add('hidden');
+    monitoringContent.classList.remove('hidden');
+    tabMonitoring.classList.add('bg-indigo-600', 'text-white');
+    tabSchedule.classList.remove('bg-indigo-600', 'text-white');
+    renderMonitoring(); // render once per click
+  });
 
-  // End of DOMContentLoaded
-}
-); 
+  // initial UI state
+  renderWorkTable();
+  renderRestTable();
+  updateButtonStates();
+  renderMonitoring();
+});
 </script>
 <!-- ================================
  🌌 Tech Breeze Animation Layer
