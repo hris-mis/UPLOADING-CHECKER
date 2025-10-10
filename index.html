@@ -671,26 +671,38 @@ restInput.addEventListener('paste', (e) => handlePaste(e, 'rest'));
 
 // --- Helper to fix inconsistent date formats ---
 function normalizeDate(dateStr) {
-  const parsed = new Date(dateStr);
-  if (!isNaN(parsed)) {
-    const yyyy = parsed.getFullYear();
+  if (!dateStr) return '';
+
+  // If it's already like 10/01/25 or 10-01-25
+  const match = dateStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (match) {
+    let [_, mm, dd, yy] = match;
+    mm = mm.padStart(2, '0');
+    dd = dd.padStart(2, '0');
+    if (yy.length === 4) yy = yy.slice(2); // make 2025 → 25
+    return `${mm}/${dd}/${yy}`;
+  }
+
+  // If Excel serial number (e.g., 45812)
+  if (!isNaN(dateStr) && Number(dateStr) > 10000) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const parsed = new Date(excelEpoch.getTime() + (Number(dateStr) * 86400000));
     const mm = String(parsed.getMonth() + 1).padStart(2, '0');
     const dd = String(parsed.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
+    const yy = String(parsed.getFullYear()).slice(2);
+    return `${mm}/${dd}/${yy}`;
   }
 
-  // Try to handle formats like DD/MM/YYYY or MM/DD/YYYY
-  const parts = dateStr.split(/[\/\-\.]/);
-  if (parts.length === 3) {
-    let [a, b, c] = parts.map(p => p.padStart(2, '0'));
-    if (c.length === 4) {
-      // assume a and b are day/month
-      if (parseInt(a) > 12) [a, b] = [b, a]; // swap if day>12
-      return `${c}-${b}-${a}`;
-    }
+  // Fallback: try Date parse
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed)) {
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    const yy = String(parsed.getFullYear()).slice(2);
+    return `${mm}/${dd}/${yy}`;
   }
 
-  return null;
+  return dateStr; // return original if nothing matched
 }
 
 
