@@ -376,12 +376,12 @@ th:first-child, td:first-child {
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  /***** State *****/
+  // --- State variables ---
   let workScheduleData = [];
   let restDayData = [];
   const LEADERSHIP_POSITIONS = ['Branch Head','Site Supervisor','OIC'];
 
-  /***** Element refs *****/
+  // --- DOM elements ---
   const workInput = document.getElementById('workScheduleInput');
   const restInput = document.getElementById('restScheduleInput');
   const workTableBody = document.getElementById('workTableBody');
@@ -400,25 +400,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const scheduleContent = document.getElementById('tab-schedule-content');
   const monitoringContent = document.getElementById('tab-monitoring-content');
 
-  // Monitoring refs
   const monitoringBody = document.getElementById('monitoringBody');
   const clearMonitoringBtn = document.getElementById('clearMonitoringBtn');
   const exportMonitoringBtn = document.getElementById('exportMonitoringBtn');
   const monthSelect = document.getElementById('monthSelect');
   const yearSelect = document.getElementById('yearSelect');
-  const totalBranchesEl = document.getElementById('totalBranches');
-  const checkedBranchesEl = document.getElementById('checkedBranches');
-  const uploadedBranchesEl = document.getElementById('uploadedBranches');
-  const progressPercentEl = document.getElementById('progressPercent');
-  const progressBar = document.getElementById('progressBar');
 
-  /***** Helpers *****/
+  // --- Helper functions ---
   function showBanner(msg) {
     warningBanner.textContent = msg;
-    warningBanner.classList.remove('hidden');
+    warningBanner.classList.remove('hidden', 'opacity-0');
     warningBanner.classList.add('opacity-100');
     setTimeout(() => {
       warningBanner.classList.remove('opacity-100');
+      warningBanner.classList.add('opacity-0');
       setTimeout(() => warningBanner.classList.add('hidden'), 400);
     }, 3000);
   }
@@ -432,13 +427,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 2500);
   }
 
+  // --- Parsing ---
   function parseTabular(text) {
     if (!text) return [];
     const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
     return lines.map(line => line.split(/\t|,|\s{2,}/).map(c => c.trim()));
   }
 
-  // Enhanced header detection with fallback
+  // --- Header detection with fallback ---
   function detectHeaderAndMap(rows) {
     if (!rows || rows.length === 0) return { dataRows: [], colMap: {} };
     const headerRow = rows[0];
@@ -472,57 +468,44 @@ document.addEventListener('DOMContentLoaded', () => {
     if (colMap.day === undefined) colMap.day = 4;
     if (colMap.position === undefined) colMap.position = 5;
 
-    const dataRows = rows.slice(1);
-    return { dataRows, colMap };
+    return { dataRows: rows.slice(1), colMap };
   }
 
-  // Enhanced date normalization
+  // --- Date normalization ---
   function normalizeDate(dateStr) {
     if (!dateStr) return '';
-
     dateStr = dateStr.trim();
 
-    // Handle Excel serial number
     if (!isNaN(dateStr) && Number(dateStr) > 10000) {
       const excelEpoch = new Date(1899, 11, 30);
       const parsed = new Date(excelEpoch.getTime() + (Number(dateStr) * 86400000));
       return formatDate(parsed);
     }
 
-    // Common patterns
-    const datePatterns = [
-      /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/, // MM/DD/YY or DD/MM/YY
-      /^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/ // YYYY-MM-DD
+    const patterns = [
+      /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/,
+      /^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/
     ];
 
-    for (const pattern of datePatterns) {
-      const match = dateStr.match(pattern);
-      if (match) {
-        let [_, part1, part2, part3] = match;
-        if (pattern === datePatterns[0]) {
-          // Determine if MM/DD or DD/MM based on plausible date ranges
-          let month = parseInt(part1, 10);
-          let day = parseInt(part2, 10);
-          if (month > 12) {
-            [month, day] = [day, month];
-          }
-          let year = part3.length === 2 ? '20' + part3 : part3;
-          return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/${year}`;
-        } else if (pattern === datePatterns[1]) {
-          const year = part1;
-          const month = parseInt(part2, 10);
-          const day = parseInt(part3, 10);
-          return `${String(month).padStart(2, '0')}/${String(day).padStart(2, '0')}/${year}`;
+    for (const p of patterns) {
+      const m = dateStr.match(p);
+      if (m) {
+        if (p === patterns[0]) {
+          let [_, mm, dd, yy] = m;
+          let month = parseInt(mm, 10);
+          let day = parseInt(dd, 10);
+          if (month > 12) [month, day] = [day, month];
+          const year = yy.length === 2 ? '20' + yy : yy;
+          return `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}/${year}`;
+        } else {
+          const [_, yyyy, mm, dd] = m;
+          return `${String(mm).padStart(2,'0')}/${String(dd).padStart(2,'0')}/${yyyy}`;
         }
       }
     }
 
-    // Fallback to Date parse
     const parsed = new Date(dateStr);
-    if (!isNaN(parsed)) {
-      return formatDate(parsed);
-    }
-
+    if (!isNaN(parsed)) return formatDate(parsed);
     return dateStr;
   }
 
@@ -533,23 +516,18 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${mm}/${dd}/${yy}`;
   }
 
-  // Validation function to collect errors
+  // --- Validation ---
   function validateRow(row) {
     const errors = [];
-
     if (!row.empNo) errors.push('Missing Employee No.');
     if (!row.date || isNaN(new Date(row.date).getTime())) errors.push('Invalid Date');
-
-    // Optional: validate shift pattern
     if (row.shift && !/^(Morning|Afternoon|Night)$/i.test(row.shift))
       errors.push('Invalid Shift');
-
     return errors;
   }
 
-  // Validate entire schedule data
+  // --- Schedule validation ---
   function validateSchedules() {
-    // reset conflicts
     restDayData.forEach(r => r.conflicts = []);
 
     const workMap = new Map(workScheduleData.map(w => [`${w.empNo}-${(w.date || '').trim()}`, w]));
@@ -564,50 +542,39 @@ document.addEventListener('DOMContentLoaded', () => {
       const key = `${rd.empNo}-${(rd.date || '').trim()}`;
       if (!restByDate[rd.date]) restByDate[rd.date] = [];
       restByDate[rd.date].push(rd);
-
-      // duplicate
-      if (seen.has(key)) {
-        rd.conflicts.push({ type: 'Duplicate Entry', reason: 'Duplicate rest day entry for same employee & date.' });
-      } else {
+      if (seen.has(key))
+        rd.conflicts.push({ type: 'Duplicate Entry', reason: 'Duplicate rest day for same employee & date.' });
+      else
         seen.add(key);
-      }
-
-      // missing employee
       if (!workEmpSet.has(rd.empNo))
-        rd.conflicts.push({ type: 'Missing Employee', reason: 'Employee not found in Work Schedule data.' });
-
-      // invalid date
+        rd.conflicts.push({ type: 'Missing Employee', reason: 'Employee not found in Work Schedule.' });
       const d = new Date(rd.date);
       if (isNaN(d.getTime()))
-        rd.conflicts.push({ type: 'Invalid Date Format', reason: 'Date format unrecognized.' });
-
-      // work conflict
+        rd.conflicts.push({ type: 'Invalid Date Format', reason: 'Unrecognized date format.' });
       if (workMap.has(key))
-        rd.conflicts.push({ type: 'Work Conflict', reason: 'Employee has a work schedule on same date.' });
-
-      // weekend count
+        rd.conflicts.push({ type: 'Work Conflict', reason: 'Employee has work on same date.' });
       if (/saturday|sunday/i.test(rd.day || '')) {
         if (!isNaN(d.getTime())) {
-          const monthYear = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+          const monthYear = `${String(d.getMonth() + 1).padStart(2,'0')}/${d.getFullYear()}`;
           const wkKey = `${rd.empNo}-${monthYear}`;
           weekendCount[wkKey] = (weekendCount[wkKey] || 0) + 1;
         }
       }
     });
 
-    // leadership conflict
+    // Leadership conflict
     for (const date in restByDate) {
       const leaders = restByDate[date].filter(r => LEADERSHIP_POSITIONS.includes(r.position));
       if (leaders.length > 1)
-        leaders.forEach(l => l.conflicts.push({ type: 'Leadership Conflict', reason: 'Multiple leaders have same rest day.' }));
+        leaders.forEach(l => l.conflicts.push({ type: 'Leadership Conflict', reason: 'Multiple leaders on same rest day.' }));
     }
 
-    // weekend limit
+    // Weekend limit
     for (const wkey in weekendCount) {
       if (weekendCount[wkey] > 2) {
         const [emp] = wkey.split('-');
         restDayData.filter(r => r.empNo === emp && /saturday|sunday/i.test(r.day || '')).forEach(r => {
-          r.conflicts.push({ type: 'Weekend Limit Exceeded', reason: `${weekendCount[wkey]} weekend rest days — maximum 2.` });
+          r.conflicts.push({ type: 'Weekend Limit', reason: `${weekendCount[wkey]} weekend rest days, max 2.` });
         });
       }
     }
@@ -618,188 +585,241 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateButtonStates() {
     generateWorkFileBtn.disabled = workScheduleData.length === 0;
-    const hasConf = restDayData.some(r => r.conflicts && r.conflicts.length > 0);
-    generateRestFileBtn.disabled = restDayData.length === 0 || hasConf;
+    const hasConflicts = restDayData.some(r => r.conflicts && r.conflicts.length > 0);
+    generateRestFileBtn.disabled = restDayData.length === 0 || hasConflicts;
   }
 
-  /***** Paste handler (shared) *****/
-function handlePaste(e, type) {
-  e.preventDefault();
-  const clipboardData = e.clipboardData || window.clipboardData;
-  const pastedData = clipboardData.getData('text/plain').trim();
+  // --- Handle paste ---
+  function handlePaste(e, type) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain').trim();
+    if (!text) return;
 
-  if (!pastedData) return;
+    const parsed = parseTabular(text);
+    const { dataRows, colMap } = detectHeaderAndMap(parsed);
+    const cleaned = dataRows.map(row => ({
+      name: row[colMap.name] || '',
+      empNo: row[colMap.empNo] || '',
+      date: normalizeDate(row[colMap.date]),
+      shift: row[colMap.shift] || '',
+      day: row[colMap.day] || '',
+      position: row[colMap.position] || ''
+    })).filter(r => r.empNo && r.date);
 
-  // Parse pasted text into rows/columns
-  const parsed = parseTabular(pastedData);
-  const { dataRows, colMap } = detectHeaderAndMap(parsed);
-
-  const cleaned = dataRows.map(row => ({
-    name: row[colMap.name] || '',
-    empNo: row[colMap.empNo] || '',
-    date: normalizeDate(row[colMap.date]),
-    shift: row[colMap.shift] || '',
-    day: row[colMap.day] || '',
-    position: row[colMap.position] || ''
-  })).filter(r => r.empNo && r.date);
-
-  if (type === 'work') {
-    workScheduleData = cleaned;
-    renderWorkTable();
-    workInput.value = '';
-    showBanner(`✅ ${cleaned.length} work schedule rows pasted.`);
-  } else {
-    restDayData = cleaned;
-    validateSchedules();
-    renderRestTable();
-    restInput.value = '';
-    showBanner(`✅ ${cleaned.length} rest day rows pasted.`);
+    if (type === 'work') {
+      workScheduleData = cleaned;
+      renderWorkTable();
+      workInput.value = '';
+      showBanner(`✅ ${cleaned.length} work rows pasted.`);
+    } else {
+      restDayData = cleaned;
+      validateSchedules();
+      renderRestTable();
+      restInput.value = '';
+      showBanner(`✅ ${cleaned.length} rest rows pasted.`);
+    }
+    updateButtonStates();
   }
 
-  updateButtonStates();
-}
-
-// Attach paste listeners
-workInput.addEventListener('paste', (e) => handlePaste(e, 'work'));
-restInput.addEventListener('paste', (e) => handlePaste(e, 'rest'));
-
-// --- Helper to fix inconsistent date formats ---
-function normalizeDate(dateStr) {
-  if (!dateStr) return '';
-
-  // Use the enhanced normalizeDate function above
-  const date = dateStr.trim();
-
-  if (!isNaN(date) && Number(date) > 10000) {
-    const excelEpoch = new Date(1899, 11, 30);
-    const parsed = new Date(excelEpoch.getTime() + (Number(date) * 86400000));
-    return formatDate(parsed);
+  // --- Render tables ---
+  function renderWorkTable() {
+    workTableBody.innerHTML = workScheduleData.map(r => `
+      <tr>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.empNo)}</td>
+        <td>${escapeHtml(r.date)}</td>
+        <td>${escapeHtml(r.shift)}</td>
+        <td>${escapeHtml(r.day)}</td>
+        <td>${escapeHtml(r.position)}</td>
+      </tr>
+    `).join('');
   }
 
-  const patterns = [
-    /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/,
-    /^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/
-  ];
-
-  for (const p of patterns) {
-    const m = date.match(p);
-    if (m) {
-      if (p === patterns[0]) {
-        let [_, mm, dd, yy] = m;
-        let month = parseInt(mm,10);
-        let day = parseInt(dd,10);
-        if (month > 12) [month, day] = [day, month];
-        const year = yy.length === 2 ? '20' + yy : yy;
-        return `${String(month).padStart(2,'0')}/${String(day).padStart(2,'0')}/${year}`;
+  function renderRestTable() {
+    restTableBody.innerHTML = restDayData.map(r => {
+      const isWeekend = /saturday|sunday/i.test((r.day || '').toLowerCase());
+      const conflictHtml = (r.conflicts || []).map(c => `<div><strong>${escapeHtml(c.type)}:</strong> ${escapeHtml(c.reason)}</div>`).join('');
+      const rowClass = (r.conflicts && r.conflicts.length > 0)
+        ? 'bg-yellow-50 border-l-4 border-yellow-400 conflict-row shadow-sm ring-2 ring-yellow-300/30'
+        : '';
+      return `
+        <tr class="${rowClass}">
+          <td class="text-left p-2 max-w-xs">${conflictHtml || ''}</td>
+          <td>${escapeHtml(r.name)}</td>
+          <td>${escapeHtml(r.empNo)}</td>
+          <td class="${isWeekend? 'weekend-rest-day':''}">${escapeHtml(r.date)}</td>
+          <td class="${isWeekend? 'weekend-rest-day':''}">${escapeHtml(r.day)}</td>
+          <td>${escapeHtml(r.position)}</td>
+        </tr>
+      `;
+    }).join('');
+    // Update summary
+    const total = restDayData.length;
+    const conflictsCount = restDayData.filter(r => r.conflicts && r.conflicts.length > 0).length;
+    if (total === 0) {
+      summaryEl.classList.add('hidden');
+    } else {
+      summaryEl.classList.remove('hidden');
+      if (conflictsCount === 0) {
+        summaryEl.textContent = `✅ No conflicts for ${total} entries.`;
+        summaryEl.classList.remove('text-red-600');
+        summaryEl.classList.add('text-green-600');
       } else {
-        const [_, yyyy, mm, dd] = m;
-        return `${String(mm).padStart(2,'0')}/${String(dd).padStart(2,'0')}/${yyyy}`;
+        summaryEl.textContent = `${conflictsCount} out of ${total} entries have conflicts.`;
+        summaryEl.classList.remove('text-green-600');
+        summaryEl.classList.add('text-red-600');
       }
     }
   }
 
-  const parsed = new Date(date);
-  if (!isNaN(parsed)) {
-    return formatDate(parsed);
+  // --- Attach paste event listeners ---
+  document.getElementById('workScheduleInput').addEventListener('paste', (e) => handlePaste(e, 'work'));
+  document.getElementById('restScheduleInput').addEventListener('paste', (e) => handlePaste(e, 'rest'));
+
+  // --- Generate files ---
+  function generateHrisFile(type) {
+    const branchName = (type === 'work') ? document.getElementById('workBranchName').value.trim() : document.getElementById('restBranchName').value.trim();
+    if (type === 'work') {
+      if (!branchName) return showBanner('⚠️ Enter Work Branch Name.');
+      if (workScheduleData.length === 0) return showBanner('⚠️ No Work Schedule data.');
+      const data = [['Employee Number', 'Work Date', 'Shift Code'], ...workScheduleData.map(r => [r.empNo, r.date, r.shift])];
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
+      XLSX.writeFile(wb, `${branchName}_WORK_SCHEDULE.xlsx`);
+      showSuccess();
+    } else {
+      if (!branchName) return showBanner('⚠️ Enter Rest Branch Name.');
+      if (restDayData.length === 0) return showBanner('⚠️ No Rest Day data.');
+      if (restDayData.some(r => r.conflicts && r.conflicts.length > 0))
+        return showBanner('⚠️ Resolve conflicts before generating.');
+      const data = restDayData.map(r => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
+      XLSX.writeFile(wb, `${branchName}_REST_DAY_UPLOAD.xlsx`);
+      showSuccess();
+    }
   }
+  document.getElementById('generateWorkFile').addEventListener('click', () => generateHrisFile('work'));
+  document.getElementById('generateRestFile').addEventListener('click', () => generateHrisFile('rest'));
+  document.getElementById('clearWorkData').addEventListener('click', () => {
+    workScheduleData = []; workInput.value = ''; renderWorkTable(); updateButtonStates(); showBanner('Work schedule cleared.');
+  });
+  document.getElementById('clearRestData').addEventListener('click', () => {
+    restDayData = []; restInput.value = ''; renderRestTable(); updateButtonStates(); showBanner('Rest schedule cleared.');
+  });
 
-  return date;
-}
-
-// Generate HRIS file with validation
-function generateHrisFile(type) {
-  const workBranch = document.getElementById('workBranchName').value.trim();
-  const restBranch = document.getElementById('restBranchName').value.trim();
-
-  if (type === 'work') {
-    if (!workBranch) return showBanner('⚠️ Enter Work Branch Name.');
-    if (workScheduleData.length === 0) return showBanner('⚠️ No Work Schedule data to generate.');
-    const data = [
-      ['Employee Number', 'Work Date', 'Shift Code'],
-      ...workScheduleData.map(r => [r.empNo, r.date, r.shift])
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
-    XLSX.writeFile(wb, `${workBranch}_WORK_SCHEDULE.xlsx`);
-    showSuccess();
-  } else {
-    if (!restBranch) return showBanner('⚠️ Enter Rest Branch Name.');
-    if (restDayData.length === 0) return showBanner('⚠️ No Rest Day data to generate.');
-    // check for conflicts
-    if (restDayData.some(r => r.conflicts && r.conflicts.length > 0))
-      return showBanner('⚠️ Resolve conflicts before generating Rest Day file.');
-    const data = restDayData.map(r => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
+  // --- Export Rejected Rows ---
+  function exportRejectedRows() {
+    const rejected = restDayData.filter(r => r.conflicts && r.conflicts.length > 0);
+    if (rejected.length === 0) { showBanner('No rejected rows.'); return; }
+    const data = rejected.map(r => ({
+      Name: r.name,
+      EmpNo: r.empNo,
+      Date: r.date,
+      Conflicts: r.conflicts.map(c => c.reason).join('; ')
+    }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
-    XLSX.writeFile(wb, `${restBranch}_REST_DAY_UPLOAD.xlsx`);
-    showSuccess();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rejected Rows');
+    XLSX.writeFile(wb, 'Rejected_Rows.xlsx');
   }
-}
+  // Add a button in your HTML to trigger exportRejectedRows()
 
-// Export rejected rows
-function exportRejectedRows() {
-  const rejectedRows = restDayData.filter(r => r.conflicts && r.conflicts.length > 0);
-  if (rejectedRows.length === 0) {
-    showBanner('No rejected rows to export.');
-    return;
+  // --- Monitoring tab rendering ---
+  function renderMonitoring() {
+    // dummy data for demo
+    const data = [
+      { name: 'AASP ABREEZA', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+      { name: 'AASP NES - ATLAS', checked: false, uploaded: false, uploadedBy: '', remarks: '' }
+    ];
+
+    // load from localStorage if available
+    const stored = localStorage.getItem('monitoringData');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          data.splice(0, data.length, ...parsed);
+        }
+      } catch(e) {}
+    }
+
+    monitoringBody.innerHTML = data.map((b, i) => `
+      <tr>
+        <td class="text-left p-2">${escapeHtml(b.name)}</td>
+        <td><input type="checkbox" data-index="${i}" data-field="checked" ${b.checked ? 'checked' : ''}></td>
+        <td><input type="checkbox" data-index="${i}" data-field="uploaded" ${b.uploaded ? 'checked' : ''}></td>
+        <td><input type="text" data-index="${i}" data-field="uploadedBy" value="${escapeHtml(b.uploadedBy)}" class="px-1 py-0.5"></td>
+        <td><input type="text" data-index="${i}" data-field="remarks" value="${escapeHtml(b.remarks)}" class="px-1 py-0.5"></td>
+        <td>${b.uploaded ? '✅ Done' : b.checked ? '🟡 Checked' : '❌ Pending'}</td>
+      </tr>
+    `).join('');
+
+    // add event listeners for checkboxes and text inputs
+    monitoringBody.querySelectorAll('input').forEach(input => {
+      input.addEventListener('change', () => {
+        const idx = Number(input.dataset.index);
+        const field = input.dataset.field;
+        const currentData = JSON.parse(localStorage.getItem('monitoringData')) || [];
+        currentData[idx][field] = input.type === 'checkbox' ? input.checked : input.value;
+        localStorage.setItem('monitoringData', JSON.stringify(currentData));
+        renderMonitoring(); // re-render to update status
+        updateMonitoringStats();
+      });
+    });
+    // update stats
+    updateMonitoringStats();
   }
-  const data = rejectedRows.map(r => ({
-    Name: r.name,
-    EmpNo: r.empNo,
-    Date: r.date,
-    Conflicts: r.conflicts.map(c => c.reason).join('; ')
-  }));
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Rejected Rows');
-  XLSX.writeFile(wb, 'Rejected_Rows.xlsx');
-}
 
-// Optional: Add a button for "Clean Data" to trim and normalize
-function cleanScheduleData() {
-  workScheduleData = workScheduleData.map(r => ({
-    ...r,
-    name: r.name.trim(),
-    empNo: r.empNo.trim(),
-    date: normalizeDate(r.date),
-    shift: r.shift.trim(),
-    day: r.day.trim(),
-    position: r.position.trim()
-  }));
-  restDayData = restDayData.map(r => ({
-    ...r,
-    name: r.name.trim(),
-    empNo: r.empNo.trim(),
-    date: normalizeDate(r.date),
-    shift: r.shift.trim(),
-    day: r.day.trim(),
-    position: r.position.trim()
-  }));
-  showBanner('✅ Data cleaned and normalized.');
+  function updateMonitoringStats() {
+    const data = JSON.parse(localStorage.getItem('monitoringData')) || [];
+    document.getElementById('totalBranches').textContent = data.length;
+    document.getElementById('checkedBranches').textContent = data.filter(d => d.checked).length;
+    document.getElementById('uploadedBranches').textContent = data.filter(d => d.uploaded).length;
+    const percent = data.length ? Math.round((data.filter(d => d.uploaded).length / data.length) * 100) : 0;
+    document.getElementById('progressPercent').textContent = percent + '%';
+    progressBar.style.width = percent + '%';
+  }
+
+  document.getElementById('clearMonitoringBtn').addEventListener('click', () => {
+    if (confirm('Clear monitoring data?')) {
+      localStorage.removeItem('monitoringData');
+      renderMonitoring();
+    }
+  });
+  document.getElementById('exportMonitoringBtn').addEventListener('click', () => {
+    const data = JSON.parse(localStorage.getItem('monitoringData')) || [];
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Monitoring');
+    const monthText = document.querySelector('#monthSelect option:checked').textContent;
+    XLSX.writeFile(wb, `Monitoring_${monthText}_${document.querySelector('#yearSelect').value}.xlsx`);
+  });
+
+  // --- Tabs ---
+  document.getElementById('tab-schedule').addEventListener('click', () => {
+    scheduleContent.classList.remove('hidden');
+    monitoringContent.classList.add('hidden');
+    document.getElementById('tab-schedule').classList.add('bg-indigo-600', 'text-white');
+    document.getElementById('tab-monitoring').classList.remove('bg-indigo-600', 'text-white');
+    renderWorkTable();
+    renderRestTable();
+  });
+  document.getElementById('tab-monitoring').addEventListener('click', () => {
+    scheduleContent.classList.add('hidden');
+    monitoringContent.classList.remove('hidden');
+    document.getElementById('tab-monitoring').classList.add('bg-indigo-600', 'text-white');
+    document.getElementById('tab-schedule').classList.remove('bg-indigo-600', 'text-white');
+    renderMonitoring();
+  });
+
+  // --- Initial render ---
   renderWorkTable();
   renderRestTable();
-}
-
-// Attach event listeners
-document.getElementById('generateWorkFile').addEventListener('click', () => generateHrisFile('work'));
-document.getElementById('generateRestFile').addEventListener('click', () => generateHrisFile('rest'));
-document.getElementById('clearWorkData').addEventListener('click', () => {
-  workScheduleData = []; workInput.value = ''; renderWorkTable(); updateButtonStates(); showBanner('Work schedule cleared.');
-});
-document.getElementById('clearRestData').addEventListener('click', () => {
-  restDayData = []; restInput.value = ''; renderRestTable(); updateButtonStates(); showBanner('Rest day schedule cleared.');
-});
-// Add button for exporting rejected rows
-// e.g., <button onclick="exportRejectedRows()">Export Rejected Rows</button>
-
-// Initialize
-renderWorkTable();
-renderRestTable();
-updateButtonStates();
-renderMonitoring();
-
+  updateButtonStates();
+  renderMonitoring();
 });
 </script>
 
