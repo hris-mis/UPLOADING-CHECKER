@@ -86,6 +86,7 @@ header {
   position: relative;
   overflow: hidden;
   z-index: 2;
+  header { position: sticky; top: 0; z-index: 20; }
 }
 header::before {
   content: "";
@@ -223,6 +224,12 @@ th:first-child, td:first-child {
 @keyframes toastFadeOut {
   to { opacity: 0; transform: translateY(10px); }
 }
+/* 🔝 Fix toast & banner visibility */
+#warning-banner,
+#success-message,
+.toast {
+  z-index: 9999 !important;
+}
 
 /* 🌈 Scrollbar */
 ::-webkit-scrollbar {
@@ -246,6 +253,7 @@ th:first-child, td:first-child {
 @keyframes fadeInUp {
   to { opacity: 1; transform: translateY(0); }
 }
+.dashboard-card { transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.3s ease; }
 </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
@@ -311,25 +319,50 @@ th:first-child, td:first-child {
   </div>
 
   <!-- MONITORING -->
-  <div id="tab-monitoring-content" class="hidden dashboard-card mt-6 shadow-lg">
-    <thead class="bg-indigo-50 text-indigo-700 uppercase text-xs">
-    <h2 class="text-2xl text-center mb-4">📊 Branch Monitoring Dashboard</h2>
-    <div class="flex justify-center gap-3 mb-4">
-      <select id="monthSelect" class="border rounded px-3 py-2"><option value="01">January</option><option value="02">February</option><option value="10" selected>October</option></select>
-      <select id="yearSelect" class="border rounded px-3 py-2"><option value="2025" selected>2025</option><option value="2026">2026</option></select>
-      <button id="clearMonitoringBtn" class="bg-red-500 text-white px-4 py-2 rounded">Clear</button>
-      <button id="exportMonitoringBtn" class="bg-green-600 text-white px-4 py-2 rounded">Export</button>
-    </div>
-    <div class="overflow-auto bg-white rounded border">
-      <table class="w-full text-sm text-center">
-        <thead class="bg-gray-100"><tr><th>Branch</th><th>Check</th><th>Upload</th><th>Uploaded By</th><th>Remarks</th><th>Progress</th></tr></thead>
-        <tbody id="monitoringBody"></tbody>
-      </table>
-    </div>
-    <p class="mt-4 text-center">Total: <span id="totalBranches">0</span> | Checked: <span id="checkedBranches">0</span> | Uploaded: <span id="uploadedBranches">0</span> | <span id="progressPercent">0%</span></p>
-    <div class="w-1/2 mx-auto bg-gray-200 rounded-full h-3 mt-2"><div id="progressBar" class="h-3 bg-green-500 rounded-full w-0"></div></div>
+<!-- MONITORING -->
+<div id="tab-monitoring-content" class="hidden dashboard-card mt-6 shadow-lg">
+  <h2 class="text-2xl text-center mb-4">📊 Branch Monitoring Dashboard</h2>
+
+  <div class="flex justify-center gap-3 mb-4">
+    <select id="monthSelect" class="border rounded px-3 py-2">
+      <option value="01">January</option>
+      <option value="02">February</option>
+      <option value="10" selected>October</option>
+    </select>
+    <select id="yearSelect" class="border rounded px-3 py-2">
+      <option value="2025" selected>2025</option>
+      <option value="2026">2026</option>
+    </select>
+    <button id="clearMonitoringBtn" class="bg-red-500 text-white px-4 py-2 rounded">Clear</button>
+    <button id="exportMonitoringBtn" class="bg-green-600 text-white px-4 py-2 rounded">Export</button>
   </div>
 
+  <div class="overflow-auto bg-white rounded border">
+    <table class="w-full text-sm text-center">
+      <thead class="bg-gray-100">
+        <tr>
+          <th>Branch</th>
+          <th>Check</th>
+          <th>Upload</th>
+          <th>Uploaded By</th>
+          <th>Remarks</th>
+          <th>Progress</th>
+        </tr>
+      </thead>
+      <tbody id="monitoringBody"></tbody>
+    </table>
+  </div>
+
+  <p class="mt-4 text-center">
+    Total: <span id="totalBranches">0</span> |
+    Checked: <span id="checkedBranches">0</span> |
+    Uploaded: <span id="uploadedBranches">0</span> |
+    <span id="progressPercent">0%</span>
+  </p>
+
+  <div class="w-1/2 mx-auto bg-gray-200 rounded-full h-3 mt-2">
+    <div id="progressBar" class="h-3 bg-green-500 rounded-full w-0"></div>
+  </div>
 </div>
 
 <script>
@@ -680,8 +713,13 @@ function showSuccess() {
 
   // tabs
   tabSchedule.addEventListener('click', () => { scheduleContent.classList.remove('hidden'); monitoringContent.classList.add('hidden'); tabSchedule.classList.add('bg-indigo-600','text-white'); tabMonitoring.classList.remove('bg-indigo-600','text-white'); });
-  tabMonitoring.addEventListener('click', () => { monitoringContent.classList.remove('hidden'); scheduleContent.classList.add('hidden'); tabMonitoring.classList.add('bg-indigo-600','text-white'); tabSchedule.classList.remove('bg-indigo-600','text-white'); renderMonitoring(); });
-
+tabMonitoring.addEventListener('click', () => {
+  monitoringContent.classList.remove('hidden');
+  scheduleContent.classList.add('hidden');
+  tabMonitoring.classList.add('bg-indigo-600', 'text-white');
+  tabSchedule.classList.remove('bg-indigo-600', 'text-white');
+  renderMonitoring();
+});
   // initial UI state
   renderWorkTable(); renderRestTable(); updateButtonStates(); renderMonitoring();
 
