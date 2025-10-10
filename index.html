@@ -439,36 +439,43 @@ document.addEventListener('DOMContentLoaded', () => {
     return lines.map(line => line.split(/\t|,|\s{2,}/).map(c => c.trim()));
   }
 
-  function detectHeaderAndMap(rows) {
-    if (!rows || rows.length === 0) return { dataRows: [], colMap: {} };
-    const first = rows[0].map(c => (c || '').toString().toLowerCase());
-    let hasHeader = first.some(cell => /name|emp|employee|date|shift|position|day/.test(cell));
-    let colMap = {};
-    let dataStart = 0;
-
-    if (hasHeader) {
-      dataStart = 1;
-      for (let i = 0; i < first.length; i++) {
-        const h = first[i];
-        if (/emp|employee number|employee no|emp no/.test(h)) colMap.empNo = i;
-        else if (/name/.test(h)) colMap.name = i;
-        else if (/rest.*date|work.*date|date/.test(h)) colMap.date = i;
-        else if (/shift/.test(h)) colMap.shift = i;
-        else if (/day/.test(h)) colMap.day = i;
-        else if (/position|pos/.test(h)) colMap.position = i;
-      }
-    } else {
-      // guess typical order
-      const sample = rows[0];
-      if (/^\d+$/.test((sample[0] || '').replace(/[^0-9]/g, ''))) {
-        colMap = { empNo: 0, name: 1, date: 2, shift: 3, day: 4, position: 5 };
-      } else {
-        colMap = { name: 0, empNo: 1, date: 2, shift: 3, day: 4, position: 5 };
+function detectHeaderAndMap(rows) {
+  if (!rows || rows.length === 0) return { dataRows: [], colMap: {} };
+  
+  const headerRow = rows[0];
+  const headerLower = headerRow.map(c => (c || '').toString().toLowerCase().trim());
+  
+  // Detect headers based on common patterns
+  const headerMap = {
+    name: /name|employee\s*name|full\s*name/,
+    empNo: /emp.*no|employee.*no|employee|emp\s*no|employee\s*number/,
+    date: /date|work.*date|rest.*date/,
+    shift: /shift|shift\s*code|work\s*shift/,
+    day: /day|day\s*of\s*week/,
+    position: /position|pos|job\s*title/
+  };
+  
+  const colMap = {};
+  headerLower.forEach((header, index) => {
+    for (const key in headerMap) {
+      if (headerMap[key].test(header)) {
+        colMap[key] = index;
+        break;
       }
     }
-
-    return { dataRows: rows.slice(dataStart), colMap };
-  }
+  });
+  
+  // Assign defaults if some columns are missing
+  if (colMap.empNo === undefined) colMap.empNo = 1;
+  if (colMap.name === undefined) colMap.name = 0;
+  if (colMap.date === undefined) colMap.date = 2;
+  if (colMap.shift === undefined) colMap.shift = 3;
+  if (colMap.day === undefined) colMap.day = 4;
+  if (colMap.position === undefined) colMap.position = 5;
+  
+  const dataRows = rows.slice(1);
+  return { dataRows, colMap };
+}
 
   function normalizeDate(dateString) {
     if (!dateString) return '';
@@ -621,46 +628,38 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /***** Paste handler (shared) *****/
-  function handlePaste(e, type) {
-    e.preventDefault();
-    const clipboard = (e.clipboardData || window.clipboardData);
-    const text = clipboard.getData('text/plain');
-    let rows = parseTabular(text).filter(r => r.some(c => c.trim() !== ''));
-    if (!rows || rows.length === 0) return;
-
-    const { dataRows, colMap } = detectHeaderAndMap(rows);
-    // Ensure colMap has all properties to avoid undefined
-    colMap.empNo = colMap.empNo ?? 1;
-    colMap.name = colMap.name ?? 0;
-    colMap.date = colMap.date ?? 2;
-    colMap.shift = colMap.shift ?? 3;
-    colMap.day = colMap.day ?? 4;
-    colMap.position = colMap.position ?? 5;
-
-    if (type === 'work') {
-      workScheduleData = dataRows.map(r => ({
-        name: r[colMap.name] || r[0] || '',
-        empNo: r[colMap.empNo] || r[1] || r[0] || '',
-        date: normalizeDate(r[colMap.date] || r[2] || ''),
-        shift: r[colMap.shift] || r[3] || '',
-        day: r[colMap.day] || r[4] || '',
-        position: r[colMap.position] || r[5] || ''
-      })).filter(d => d.empNo);
-      renderWorkTable();
-    } else {
-      restDayData = dataRows.map(r => ({
-        empNo: r[colMap.empNo] || r[1] || r[0] || '',
-        name: r[colMap.name] || r[0] || '',
-        date: normalizeDate(r[colMap.date] || r[2] || ''),
-        day: r[colMap.day] || r[4] || r[3] || '',
-        position: r[colMap.position] || r[5] || r[4] || '',
-        conflicts: []
-      })).filter(d => d.empNo);
-      validateSchedules();
-    }
-
-    updateButtonStates();
+function handlePaste(e, type) {
+  e.preventDefault();
+  const clipboard = (e.clipboardData || window.clipboardData);
+  const text = clipboard.getData('text/plain');
+  let rows = parseTabular(text).filter(r => r.some(c => c.trim() !== ''));
+  if (!rows || rows.length === 0) return;
+  
+  const { dataRows, colMap } = detectHeaderAndMap(rows);
+  
+  if (type === 'work') {
+    workScheduleData = dataRows.map(r => ({
+      name: r[colMap.name] || r[0] || '',
+      empNo: r[colMap.empNo] || r[1] || '',
+      date: normalizeDate(r[colMap.date] || r[2] || ''),
+      shift: r[colMap.shift] || r[3] || '',
+      day: r[colMap.day] || r[4] || '',
+      position: r[colMap.position] || r[5] || ''
+    })).filter(d => d.empNo);
+    renderWorkTable();
+  } else {
+    restDayData = dataRows.map(r => ({
+      empNo: r[colMap.empNo] || r[1] || '',
+      name: r[colMap.name] || r[0] || '',
+      date: normalizeDate(r[colMap.date] || r[2] || ''),
+      day: r[colMap.day] || r[4] || r[3] || '',
+      position: r[colMap.position] || r[5] || r[4] || '',
+      conflicts: []
+    })).filter(d => d.empNo);
+    validateSchedules();
   }
+  updateButtonStates();
+}
 
   // attach paste listeners
   workInput.addEventListener('paste', (e) => handlePaste(e, 'work'));
