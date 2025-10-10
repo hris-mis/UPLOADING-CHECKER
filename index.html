@@ -468,15 +468,17 @@ function showSuccess() {
     return { dataRows: rows.slice(dataStart), colMap };
   }
 
-  function normalizeDate(dateString) {
-    if (!dateString) return '';
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString;
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
-    const yyyy = d.getFullYear();
-    return `${mm}/${dd}/${yyyy}`;
+function normalizeDate(dateString) {
+  if (!dateString) return '';
+  if (!isNaN(dateString)) {
+    // Excel numeric date
+    const d = new Date((dateString - 25569) * 86400 * 1000);
+    return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
   }
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return dateString; // fallback
+  return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}/${d.getFullYear()}`;
+}
 
   /***** Rendering *****/
   function renderWorkTable() {
@@ -611,24 +613,24 @@ if (total === 0) {
     const { dataRows, colMap } = detectHeaderAndMap(rows);
 
     if (type === 'work') {
-      workScheduleData = dataRows.map(r => ({
-        name: r[colMap.name] || r[0] || '',
-        empNo: r[colMap.empNo] || r[1] || '',
-        date: normalizeDate(r[colMap.date] || r[2] || ''),
-        shift: r[colMap.shift] || r[3] || '',
-        day: r[colMap.day] || r[4] || '',
-        position: r[colMap.position] || r[5] || ''
-      })).filter(d => d.empNo && d.date);
+ workScheduleData = dataRows.map(r => ({
+  name: r[colMap.name] || r[0] || '',
+  empNo: r[colMap.empNo] || r[1] || r[0] || '',
+  date: normalizeDate(r[colMap.date] || r[2] || ''),
+  shift: r[colMap.shift] || r[3] || '',
+  day: r[colMap.day] || r[4] || '',
+  position: r[colMap.position] || r[5] || ''
+})).filter(d => d.empNo);
       renderWorkTable();
     } else {
-      restDayData = dataRows.map(r => ({
-        empNo: r[colMap.empNo] || r[1] || '',
-        name: r[colMap.name] || r[0] || '',
-        date: normalizeDate(r[colMap.date] || r[2] || ''),
-        day: r[colMap.day] || r[4] || r[3] || '',
-        position: r[colMap.position] || r[5] || r[4] || '',
-        conflicts: []
-      })).filter(d => d.empNo && d.date);
+restDayData = dataRows.map(r => ({
+  empNo: r[colMap.empNo] || r[1] || r[0] || '',
+  name: r[colMap.name] || r[0] || '',
+  date: normalizeDate(r[colMap.date] || r[2] || ''),
+  day: r[colMap.day] || r[4] || r[3] || '',
+  position: r[colMap.position] || r[5] || r[4] || '',
+  conflicts: []
+})).filter(d => d.empNo);
       validateSchedules();
     }
 
@@ -706,8 +708,7 @@ if (total === 0) {
         if (e.target.type === 'checkbox') d[idx][field] = e.target.checked;
         else d[idx][field] = e.target.value;
         saveMonitoring(d);
-        renderMonitoring();
-        updateMonitoringStats();
+        updateMonitoringStats(); // only update stats, do not re-render whole table
       });
     });
 
@@ -736,16 +737,18 @@ if (total === 0) {
   // tabs
   tabSchedule.addEventListener('click', () => { scheduleContent.classList.remove('hidden'); monitoringContent.classList.add('hidden'); tabSchedule.classList.add('bg-indigo-600','text-white'); tabMonitoring.classList.remove('bg-indigo-600','text-white'); });
 tabMonitoring.addEventListener('click', () => {
-  monitoringContent.classList.remove('hidden');
   scheduleContent.classList.add('hidden');
-  tabMonitoring.classList.add('bg-indigo-600', 'text-white');
-  tabSchedule.classList.remove('bg-indigo-600', 'text-white');
-  renderMonitoring();
+  monitoringContent.classList.remove('hidden');
+  tabMonitoring.classList.add('bg-indigo-600','text-white');
+  tabSchedule.classList.remove('bg-indigo-600','text-white');
+  renderMonitoring(); // render once per click
 });
   // initial UI state
-  renderWorkTable(); renderRestTable(); updateButtonStates(); renderMonitoring();
+    renderWorkTable(); renderRestTable(); updateButtonStates(); renderMonitoring();
 
-}); // DOMContentLoaded
+  // End of DOMContentLoaded
+}
+); 
 </script>
 <!-- ================================
  🌌 Tech Breeze Animation Layer
