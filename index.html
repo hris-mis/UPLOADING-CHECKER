@@ -792,63 +792,55 @@ if (savedMonth) monthSelect.value = savedMonth;
 if (savedYear) yearSelect.value = savedYear;
 
 // 🟢 Save month/year when changed
+
+// 🟢 Save month/year when changed
 monthSelect.addEventListener('change', () => {
   localStorage.setItem('selectedMonth', monthSelect.value);
 });
-
 yearSelect.addEventListener('change', () => {
   localStorage.setItem('selectedYear', yearSelect.value);
 });
 
-// ✅ Load monitoring data after all functions are ready
-monitoringData = JSON.parse(localStorage.getItem('monitoringData'));
-loadMonitoringData();
-
-// ✅ Save monitoring data to localStorage
-function saveMonitoringData() {
-  localStorage.setItem('monitoringData', JSON.stringify(monitoringData));
-}
-
+// --- Load and Render Monitoring Data ---
 function loadMonitoringData() {
-  const tbody = document.getElementById("monitoringBody");
-  tbody.innerHTML = "";
-
-  monitoringData.forEach((branch, index) => {
-    const checked = branch.checked ? "checked" : "";
-    const uploaded = branch.uploaded ? "checked" : "";
-    tbody.innerHTML += `
-      <tr class="border-t">
-        <td class="text-left px-3 py-2">${branch.name}</td>
-        <td><input type="checkbox" data-index="${index}" data-type="check" ${checked}></td>
-        <td><input type="checkbox" data-index="${index}" data-type="upload" ${uploaded}></td>
-        <td><input type="text" data-index="${index}" data-type="uploadedBy" value="${branch.uploadedBy || ""}" class="border rounded px-2 py-1 w-32"></td>
-        <td><input type="text" data-index="${index}" data-type="remarks" value="${branch.remarks || ""}" class="border rounded px-2 py-1 w-40"></td>
-        <td>${branch.uploaded ? "✅" : branch.checked ? "⏳" : "❌"}</td>
-      </tr>
-    `;
-  });
-
-  updateMonitoringStats();
+  const savedData = JSON.parse(localStorage.getItem('monitoringData')) || [];
+  renderMonitoringTable(savedData);
 }
 
-// ✅ Save data whenever any input changes
-document.getElementById("monitoringBody").addEventListener("input", e => {
-  const idx = e.target.dataset.index;
-  const type = e.target.dataset.type;
+function renderMonitoringTable(data) {
+  const tbody = document.getElementById('monitoringBody');
+  tbody.innerHTML = data.map((branch, index) => `
+    <tr>
+      <td class="text-left p-2">${branch.name}</td>
+      <td><input type="checkbox" ${branch.checked ? 'checked' : ''} data-index="${index}" data-field="checked"></td>
+      <td><input type="checkbox" ${branch.uploaded ? 'checked' : ''} data-index="${index}" data-field="uploaded"></td>
+      <td><input type="text" value="${branch.uploadedBy || ''}" data-index="${index}" data-field="uploadedBy"
+        class="border rounded px-2 py-1 text-sm w-32"></td>
+      <td><input type="text" value="${branch.remarks || ''}" data-index="${index}" data-field="remarks"
+        class="border rounded px-2 py-1 text-sm w-40"></td>
+      <td>${branch.uploaded ? '✅ Done' : '⏳ Pending'}</td>
+    </tr>
+  `).join('');
+}
 
-  if (type === "check") {
-    monitoringData[idx].checked = e.target.checked;
-  } else if (type === "upload") {
-    monitoringData[idx].uploaded = e.target.checked;
-  } else if (type === "uploadedBy") {
-    monitoringData[idx].uploadedBy = e.target.value;
-  } else if (type === "remarks") {
-    monitoringData[idx].remarks = e.target.value;
-  }
-
-  saveMonitoringData();
-  loadMonitoringData();
+// ✅ Export Monitoring Data
+document.getElementById('exportMonitoringBtn').addEventListener('click', () => {
+  const data = JSON.parse(localStorage.getItem('monitoringData')) || [];
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Monitoring');
+  XLSX.writeFile(workbook, 'Branch_Monitoring.xlsx');
 });
+
+// ✅ Clear Monitoring Data
+document.getElementById('clearMonitoringBtn').addEventListener('click', () => {
+  if (confirm('Are you sure you want to clear all monitoring data?')) {
+    localStorage.removeItem('monitoringData');
+    loadMonitoringData();
+  }
+});
+
+loadMonitoringData();
 
 // ✅ Update progress summary bar
 function updateMonitoringStats() {
