@@ -629,12 +629,14 @@ function detectHeaderAndMap(rows) {
   }
 
   /***** Paste handler (shared) *****/
-/***** Paste handler (shared) *****/
 function handlePaste(e, type) {
   e.preventDefault();
   const clipboardData = e.clipboardData || window.clipboardData;
-  const pastedData = clipboardData.getData('text/plain');
-  const rows = pastedData.split(/\r?\n/).filter(row => row.trim() !== '');
+  const pastedData = clipboardData.getData('text/plain').trim();
+
+  if (!pastedData) return;
+
+  // Parse pasted text into rows/columns
   const parsed = parseTabular(pastedData);
   const { dataRows, colMap } = detectHeaderAndMap(parsed);
 
@@ -650,11 +652,13 @@ function handlePaste(e, type) {
   if (type === 'work') {
     workScheduleData = cleaned;
     renderWorkTable();
+    workInput.value = ''; // clear textarea visually
     showBanner(`✅ ${cleaned.length} work schedule rows pasted.`);
   } else {
     restDayData = cleaned;
     validateSchedules();
     renderRestTable();
+    restInput.value = ''; // clear textarea visually
     showBanner(`✅ ${cleaned.length} rest day rows pasted.`);
   }
 
@@ -664,15 +668,6 @@ function handlePaste(e, type) {
 // Attach paste listeners
 workInput.addEventListener('paste', (e) => handlePaste(e, 'work'));
 restInput.addEventListener('paste', (e) => handlePaste(e, 'rest'));
-
-    // Replace empty position with "N/A"
-    if (!position) position = 'N/A';
-
-    cleanedRows.push([name, empNo, workDate, position, shift]);
-  }
-
-  insertRows(cleanedRows);
-}
 
 // --- Helper to fix inconsistent date formats ---
 function normalizeDate(dateStr) {
@@ -697,6 +692,7 @@ function normalizeDate(dateStr) {
 
   return null;
 }
+
 
   /***** Button handlers for generate/clear *****/
   function generateHrisFile(type) {
