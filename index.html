@@ -444,8 +444,7 @@ function detectHeaderAndMap(rows) {
   
   const headerRow = rows[0];
   const headerLower = headerRow.map(c => (c || '').toString().toLowerCase().trim());
-  
-  // Detect headers based on common patterns
+
   const headerMap = {
     name: /name|employee\s*name|full\s*name/,
     empNo: /emp.*no|employee.*no|employee|emp\s*no|employee\s*number/,
@@ -454,8 +453,10 @@ function detectHeaderAndMap(rows) {
     day: /day|day\s*of\s*week/,
     position: /position|pos|job\s*title/
   };
-  
+
   const colMap = {};
+
+  // Detect columns based on header regex
   headerLower.forEach((header, index) => {
     for (const key in headerMap) {
       if (headerMap[key].test(header)) {
@@ -464,16 +465,16 @@ function detectHeaderAndMap(rows) {
       }
     }
   });
-  
-  // Assign defaults if some columns are missing
+
+  // Set default column indices if some headers are missing
   if (colMap.empNo === undefined) colMap.empNo = 1;
   if (colMap.name === undefined) colMap.name = 0;
   if (colMap.date === undefined) colMap.date = 2;
   if (colMap.shift === undefined) colMap.shift = 3;
   if (colMap.day === undefined) colMap.day = 4;
   if (colMap.position === undefined) colMap.position = 5;
-  
-  const dataRows = rows.slice(1);
+
+  const dataRows = rows.slice(1); // skip header row
   return { dataRows, colMap };
 }
 
