@@ -328,7 +328,6 @@ th:first-child, td:first-child {
     </div>
   </div>
 
-  <!-- MONITORING -->
 <!-- MONITORING -->
 <div id="tab-monitoring-content" class="hidden dashboard-card mt-6 shadow-lg">
   <h2 class="text-2xl text-center mb-4">📊 Branch Monitoring Dashboard</h2>
@@ -477,18 +476,6 @@ function detectHeaderAndMap(rows) {
   const dataRows = rows.slice(1); // skip header row
   return { dataRows, colMap };
 }
-
-  function normalizeDate(dateString) {
-    if (!dateString) return '';
-    dateString = String(dateString).replace(/\u00A0/g, '').trim(); // Remove non-breaking spaces
-    if (!isNaN(dateString)) {
-      const d = new Date((dateString - 25569) * 86400 * 1000);
-      return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
-    }
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return dateString; // fallback
-    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
-  }
 
   /***** Rendering *****/
   function renderWorkTable() {
@@ -714,8 +701,13 @@ function normalizeDate(dateStr) {
     if (type === 'work') {
       if (!workBranch) return showBanner('⚠️ Enter Work Branch Name.');
       if (workScheduleData.length === 0) return showBanner('⚠️ No Work Schedule data to generate.');
-      const data = workScheduleData.map(r => ({ 'Employee Number': r.empNo, 'Work Date': r.date, 'Shift Code': r.shift }));
-      const ws = XLSX.utils.json_to_sheet(data);
+      const data = [
+  ['Employee Number', 'Work Date', 'Shift Code'], // single header
+  ...workScheduleData.map(r => [r.empNo, r.date, r.shift])
+];
+
+// Ensure no duplicate headers like EMPLOYEE NO. etc.
+const ws = XLSX.utils.aoa_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
       XLSX.writeFile(wb, `${workBranch}_WORK_SCHEDULE.xlsx`);
@@ -741,9 +733,13 @@ function normalizeDate(dateStr) {
   clearWorkBtn.addEventListener('click', () => {
     workScheduleData = []; workInput.value = ''; renderWorkTable(); updateButtonStates(); showBanner('Work schedule cleared.');
   });
-  clearRestBtn.addEventListener('click', () => {
-    restDayData = []; restInput.value = ''; renderRestTable(); updateButtonStates(); showBanner('Rest day schedule cleared.');
-  });
+ clearRestBtn.addEventListener('click', () => {
+  restDayData = [];
+  restInput.value = '';
+  renderRestTable();
+  updateButtonStates();
+  showBanner('Rest day schedule cleared.');
+});
 
   /***** Monitoring logic *****/
   const defaultMonitoring = [
