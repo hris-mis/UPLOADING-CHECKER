@@ -187,6 +187,8 @@
     </div>
 
     <textarea id="workScheduleInput"
+  onpaste="handlePaste(event, 'work')"
+
       class="w-full h-80 border border-gray-300 rounded-lg p-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none mb-6 resize-none"></textarea>
 
     <div class="overflow-x-auto rounded-lg border border-gray-100">
@@ -227,6 +229,7 @@
     </div>
 
     <textarea id="restScheduleInput"
+  onpaste="handlePaste(event, 'rest')"
       class="w-full h-80 border border-gray-300 rounded-lg p-3 text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none mb-6 resize-none"></textarea>
 
     <div class="overflow-x-auto rounded-lg border border-gray-100">
@@ -915,12 +918,11 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
   document.getElementById('restTableBody').innerHTML = '';
 });
 // ✅ Auto-parse Excel-like pasted data
-document.getElementById('workScheduleInput').addEventListener('paste', () => {
-  setTimeout(parseWorkSchedule, 100);
-});
-document.getElementById('restScheduleInput').addEventListener('paste', () => {
-  setTimeout(parseRestSchedule, 100);
-});
+document.getElementById('workScheduleInput')
+  .addEventListener('paste', e => handlePaste(e, 'work'));
+
+document.getElementById('restScheduleInput')
+  .addEventListener('paste', e => handlePaste(e, 'rest'));
 
 // ✅ Button Handlers
 document.getElementById('generateWorkFile').addEventListener('click', () => generateHrisFile('work'));
