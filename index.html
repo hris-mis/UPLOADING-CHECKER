@@ -86,7 +86,11 @@ header {
   position: relative;
   overflow: hidden;
   z-index: 2;
-  header { position: sticky; top: 0; z-index: 20; }
+}
+header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 header::before {
   content: "";
@@ -254,6 +258,12 @@ th:first-child, td:first-child {
   to { opacity: 1; transform: translateY(0); }
 }
 .dashboard-card { transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.3s ease; }
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(10px); }
+}
 </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
@@ -480,7 +490,7 @@ function showSuccess() {
         <td>${escapeHtml(d.position)}</td>
       </tr>
     `).join('');
-    document.getElementById('workTable').scrollIntoView({ behavior: 'smooth' });
+    if (workTableBody.parentElement) workTableBody.parentElement.scrollIntoView({ behavior: 'smooth' });
   }
 
   function renderRestTable() {
@@ -502,12 +512,19 @@ function showSuccess() {
 
     const total = restDayData.length;
     const conflicts = restDayData.filter(r=>r.conflicts && r.conflicts.length>0).length;
-    if (total === 0) { summaryEl.textContent = ''; }
-    else if (conflicts === 0) { summaryEl.textContent = `✅ No conflicts detected for ${total} entries.`; summaryEl.classList.add('text-green-600'); }
-    else { summaryEl.textContent = `${conflicts} out of ${total} entries have conflicts detected.`; summaryEl.classList.remove('text-green-600'); }
-    document.getElementById('restTable').scrollIntoView({ behavior: 'smooth' });
-
+if (total === 0) {
+  summaryEl.textContent = '';
+  summaryEl.classList.add('hidden');
+} else {
+  summaryEl.classList.remove('hidden');
+  if (conflicts === 0) {
+    summaryEl.textContent = `✅ No conflicts detected for ${total} entries.`;
+    summaryEl.classList.add('text-green-600');
+  } else {
+    summaryEl.textContent = `${conflicts} out of ${total} entries have conflicts detected.`;
+    summaryEl.classList.remove('text-green-600');
   }
+}
 
   function escapeHtml(str){ return (str==null) ? '' : String(str)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -546,7 +563,12 @@ function showSuccess() {
 
       // weekend count
       if (/saturday|sunday/i.test(rd.day||'')) {
-        const monthYear = (rd.date || '').substr(0,2) + '/' + (rd.date || '').substr(rd.date.length-4);
+        if (!isNaN(new Date(rd.date).getTime())) {
+  const d = new Date(rd.date);
+  const monthYear = `${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  const wkKey = `${rd.empNo}-${monthYear}`;
+  weekendCount[wkKey] = (weekendCount[wkKey]||0) + 1;
+}
         const wkKey = `${rd.empNo}-${monthYear}`;
         weekendCount[wkKey] = (weekendCount[wkKey]||0) + 1;
       }
