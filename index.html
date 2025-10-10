@@ -629,38 +629,73 @@ function detectHeaderAndMap(rows) {
   }
 
   /***** Paste handler (shared) *****/
-function handlePaste(e, type) {
+function handlePaste(e) {
   e.preventDefault();
-  const clipboard = (e.clipboardData || window.clipboardData);
-  const text = clipboard.getData('text/plain');
-  let rows = parseTabular(text).filter(r => r.some(c => c.trim() !== ''));
-  if (!rows || rows.length === 0) return;
-  
-  const { dataRows, colMap } = detectHeaderAndMap(rows);
-  
-  if (type === 'work') {
-    workScheduleData = dataRows.map(r => ({
-      name: r[colMap.name] || r[0] || '',
-      empNo: r[colMap.empNo] || r[1] || '',
-      date: normalizeDate(r[colMap.date] || r[2] || ''),
-      shift: r[colMap.shift] || r[3] || '',
-      day: r[colMap.day] || r[4] || '',
-      position: r[colMap.position] || r[5] || ''
-    })).filter(d => d.empNo);
-    renderWorkTable();
-  } else {
-    restDayData = dataRows.map(r => ({
-      empNo: r[colMap.empNo] || r[1] || '',
-      name: r[colMap.name] || r[0] || '',
-      date: normalizeDate(r[colMap.date] || r[2] || ''),
-      day: r[colMap.day] || r[4] || r[3] || '',
-      position: r[colMap.position] || r[5] || r[4] || '',
-      conflicts: []
-    })).filter(d => d.empNo);
-    validateSchedules();
+  const clipboardData = e.clipboardData || window.clipboardData;
+  const pastedData = clipboardData.getData('text/plain');
+  const rows = pastedData.split(/\r?\n/).filter(row => row.trim() !== '');
+
+  const cleanedRows = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const columns = rows[i].split('\t').map(c => c.trim());
+
+    // Skip headers like "Name", "Emp No.", etc.
+    if (/^name\s*$/i.test(columns[0]) || /emp\s*no/i.test(columns[1]) || /work\s*date/i.test(columns[2])) {
+      continue;
+    }
+
+    // Pad missing columns to avoid shifting
+    while (columns.length < 5) {
+      columns.push('');
+    }
+
+    let [name, empNo, workDate, position, shift] = columns;
+
+    // --- Date validation and normalization ---
+    if (workDate) {
+      const normalized = normalizeDate(workDate);
+      if (normalized) {
+        workDate = normalized;
+      } else {
+        console.warn(`Invalid date format found: "${workDate}"`);
+        continue; // skip this row
+      }
+    }
+
+    // Replace empty position with "N/A"
+    if (!position) position = 'N/A';
+
+    cleanedRows.push([name, empNo, workDate, position, shift]);
   }
-  updateButtonStates();
+
+  insertRows(cleanedRows);
 }
+
+// --- Helper to fix inconsistent date formats ---
+function normalizeDate(dateStr) {
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed)) {
+    const yyyy = parsed.getFullYear();
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  // Try to handle formats like DD/MM/YYYY or MM/DD/YYYY
+  const parts = dateStr.split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    let [a, b, c] = parts.map(p => p.padStart(2, '0'));
+    if (c.length === 4) {
+      // assume a and b are day/month
+      if (parseInt(a) > 12) [a, b] = [b, a]; // swap if day>12
+      return `${c}-${b}-${a}`;
+    }
+  }
+
+  return null;
+}
+
 
   // attach paste listeners
   workInput.addEventListener('paste', (e) => handlePaste(e, 'work'));
