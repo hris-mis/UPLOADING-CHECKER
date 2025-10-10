@@ -246,6 +246,7 @@
         </thead>
         <tbody id="restTableBody" class="bg-white divide-y divide-gray-100"></tbody>
       </table>
+      <p id="summary" class="mt-4 text-sm text-gray-700 text-center"></p>
     </div>
   </div>
 </div>
@@ -480,8 +481,8 @@ function renderRestDayTable() {
     
     // --- BUTTON AND STATE MANAGEMENT ---
     function updateButtonStates() {
-        const workBtn = document.getElementById('generate-work-btn');
-        const restBtn = document.getElementById('generate-rest-btn');
+        const workBtn = document.getElementById('generateWorkFile')
+        const restBtn = document.getElementById('generateRestFile');
 
         workBtn.disabled = workScheduleData.length === 0;
 
@@ -1003,6 +1004,18 @@ document.getElementById("restDayData").addEventListener("paste", (event) => {
     });
   }, 50);
 });
+// 🔗 Button connections
+document.getElementById('generateWorkFile')
+  .addEventListener('click', () => generateHrisFile('work'));
+
+document.getElementById('generateRestFile')
+  .addEventListener('click', () => generateHrisFile('rest'));
+
+document.getElementById('clearWorkData')
+  .addEventListener('click', clearAllData);
+
+document.getElementById('clearRestData')
+  .addEventListener('click', clearAllData);
 
 </script>
 </body>
