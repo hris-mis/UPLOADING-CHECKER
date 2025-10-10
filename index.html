@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Schedule Conflict Checker — Fixed</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
+<!-- Library for Excel file generation -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
@@ -31,7 +32,7 @@ body {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: -1;
+  z-index: 0;
 }
 
 /* 🌫️ Glass Cards */
@@ -60,13 +61,12 @@ body {
   border-radius: 0.75rem;
   min-height: 260px;
   width: 100%;
-  white-space: pre-wrap; /* Changed for better text wrapping */
+  white-space: pre;
   overflow: auto;
   font-size: 0.9rem;
   color: #0f766e;
   cursor: text;
   transition: all 0.3s ease;
-  font-family: monospace; /* Better for tabular data */
 }
 .paste-area:focus {
   outline: none;
@@ -80,13 +80,17 @@ header {
   background: linear-gradient(90deg, #0ea5e9, #14b8a6, #06b6d4);
   background-size: 300% 300%;
   color: white;
-  padding: 1.5rem;
+  padding: 1.5rem 0;
   border-radius: 1rem;
   box-shadow: 0 4px 25px rgba(14,165,233,0.25);
-  position: sticky;
-  top: 1rem;
-  z-index: 20;
+  position: relative;
   overflow: hidden;
+  z-index: 2;
+}
+header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 header::before {
   content: "";
@@ -102,11 +106,7 @@ header::before {
 }
 
 /* 🌤️ Typography */
-h1 {
-  font-weight: 800;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-h2 {
+h1, h2 {
   font-weight: 800;
   background: linear-gradient(to right, #0ea5e9, #14b8a6);
   -webkit-background-clip: text;
@@ -139,25 +139,25 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-tbody tr:hover {
-  background: rgba(224, 242, 254, 0.8);
+tr:hover {
+  background: rgba(240,249,255,0.7);
+  transform: scale(1.005);
+  transition: all 0.2s ease;
 }
 th:first-child, td:first-child {
   position: sticky;
   left: 0;
-  background: inherit; /* Inherit row background color */
+  background: rgba(240,249,255,0.95);
   z-index: 2;
 }
 
 /* ⚠️ Conflict Row */
 .conflict-row {
-  background-color: rgba(254, 243, 199, 0.8) !important;
-  border-left: 4px solid #f59e0b;
-  animation: pulseConflict 2.5s ease-in-out infinite;
+  animation: pulseConflict 2s ease-in-out infinite;
 }
 @keyframes pulseConflict {
-  0%, 100% { box-shadow: 0 0 12px rgba(251, 191, 36, 0.1); }
-  50% { box-shadow: 0 0 16px rgba(251, 191, 36, 0.4); }
+  0%, 100% { background-color: rgba(254, 243, 199, 0.8); }
+  50% { background-color: rgba(253, 230, 138, 0.9); }
 }
 
 /* ✅ Summary Boxes */
@@ -170,11 +170,6 @@ th:first-child, td:first-child {
   margin-top: 1rem;
   box-shadow: 0 2px 12px rgba(13,148,136,0.1);
 }
-.summary-box.error {
-  background: linear-gradient(90deg, #fff1f2, #fff1f2);
-  color: #9f1239;
-  border-left-color: #f43f5e;
-}
 
 /* 🎛️ Buttons */
 .btn {
@@ -184,85 +179,123 @@ th:first-child, td:first-child {
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
-  cursor: pointer;
 }
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: translateY(0) !important;
-  box-shadow: none !important;
+.btn-primary {
+  background: linear-gradient(90deg, #0ea5e9, #14b8a6);
+  color: white;
+  box-shadow: 0 4px 15px rgba(14,165,233,0.25);
+}
+.btn-primary:hover {
+  background-position: 100% 0;
+  box-shadow: 0 8px 25px rgba(14,165,233,0.35);
+  transform: translateY(-2px);
+}
+.btn-secondary {
+  background: rgba(240,249,255,0.9);
+  color: #0369a1;
+}
+.btn-danger {
+  background: linear-gradient(90deg, #f43f5e, #fb7185);
+  color: white;
+}
+.btn-success {
+  background: linear-gradient(90deg, #10b981, #34d399);
+  color: white;
 }
 
 /* 💬 Toast Notifications */
-.toast-container {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
 .toast {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   padding: 1rem 1.25rem;
   border-radius: 0.75rem;
   box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-  min-width: 280px;
+  min-width: 260px;
   font-weight: 600;
   opacity: 0;
-  transform: translateX(100%);
-  animation: toastSlideIn 0.6s ease forwards;
+  transform: translateY(20px);
+  animation: toastSlideIn 0.6s ease forwards, toastFadeOut 0.5s ease 4s forwards;
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 .toast.success { border-left: 4px solid #10b981; color: #065f46; }
 .toast.error { border-left: 4px solid #ef4444; color: #991b1b; }
-.toast.info { border-left: 4px solid #3b82f6; color: #1e40af; }
 @keyframes toastSlideIn {
-  to { opacity: 1; transform: translateX(0); }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 @keyframes toastFadeOut {
-  to { opacity: 0; transform: translateX(50%); }
+  to { opacity: 0; transform: translateY(10px); }
+}
+/* 🔝 Fix toast & banner visibility */
+#warning-banner,
+#success-message,
+.toast {
+  z-index: 9999 !important;
 }
 
 /* 🌈 Scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #0ea5e9, #14b8a6); border-radius: 4px; }
-::-webkit-scrollbar-track { background: rgba(240,249,255,0.5); }
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #0ea5e9, #14b8a6);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(240,249,255,0.5);
+}
+
+/* 🩵 Animations for sections */
+.fade-in {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.8s ease forwards;
+}
+@keyframes fadeInUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+.dashboard-card { transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.3s ease; }
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(10px); }
+}
 </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
 
-<div id="toast-container" class="toast-container"></div>
-
-<div class="max-w-7xl mx-auto">
-  <header class="mb-6 text-center">
-    <h1 class="text-4xl font-extrabold text-white tracking-tight">Schedule Conflict Checker</h1>
-    <p class="mt-2 text-sky-100">Paste, validate, and generate HRIS upload files for Work and Rest Day schedules.</p>
+<div id="warning-banner" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg shadow-md transition-opacity opacity-0"></div>
+<div id="success-message" class="hidden fixed top-16 left-1/2 transform -translate-x-1/2 bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow-md transition-opacity opacity-0">✅ File generated successfully!</div>
+<div class="max-w-[1400px] mx-auto">
+  <header class="mb-10 text-center">
+    <div class="flex justify-center space-x-4 mb-8">
+      <button id="tab-schedule" class="px-6 py-2 rounded-full font-semibold bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition">🗓️ Schedule Checker</button>
+      <button id="tab-monitoring" class="px-6 py-2 rounded-full font-semibold bg-gray-200 text-gray-700 hover:bg-indigo-100 transition">📊 Monitoring</button>
+    </div>
   </header>
 
-  <nav class="flex justify-center space-x-4 mb-8">
-    <button id="tab-schedule" class="btn bg-indigo-600 text-white shadow-md hover:bg-indigo-700">🗓️ Schedule Checker</button>
-    <button id="tab-monitoring" class="btn bg-gray-200 text-gray-700 hover:bg-indigo-100">📊 Monitoring</button>
-  </nav>
-
   <div id="tab-schedule-content">
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <div class="dashboard-card">
-        <div class="flex flex-wrap items-center justify-between mb-4 gap-4">
-          <h3 class="text-lg">1. Paste Work Schedule Data</h3>
+    <h1 class="text-3xl font-extrabold text-center mt-4">Schedule Conflict Checker</h1>
+    <p class="mt-2 text-center text-gray-600 mb-8">Paste, validate, and generate HRIS upload files for Work and Rest Day schedules.</p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 px-8 py-6">
+      <!-- Work -->
+      <div>
+        <div class="flex items-center justify-between mb-4 gap-4">
+          <h3 class="font-semibold text-lg">1. Paste Work Schedule Data</h3>
           <div class="flex items-center gap-3">
-            <input id="workBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-1.5 w-32"/>
-            <button id="generateWorkFile" class="btn bg-indigo-600 text-white text-sm">Generate</button>
-            <button id="clearWorkData" class="btn bg-gray-200 text-gray-700 text-sm">Clear</button>
+            <input id="workBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-2" />
+            <button id="generateWorkFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button>
+            <button id="clearWorkData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
           </div>
         </div>
-        <textarea id="workScheduleInput" class="paste-area" placeholder="Paste work schedule (Excel copy) here..."></textarea>
-        <div class="overflow-auto bg-white/30 rounded border mt-4 max-h-80">
-          <table class="w-full text-sm">
+        <textarea id="workScheduleInput" class="w-full h-64 border rounded p-3 mb-4" placeholder="Paste work schedule (Excel copy) here"></textarea>
+        <div class="overflow-auto bg-white rounded border">
+          <table class="w-full text-sm text-center">
             <thead class="bg-gray-50 text-gray-600 text-xs">
               <tr><th>Name</th><th>Emp No.</th><th>Work Date</th><th>Shift</th><th>Day</th><th>Position</th></tr>
             </thead>
@@ -271,18 +304,19 @@ th:first-child, td:first-child {
         </div>
       </div>
 
-      <div class="dashboard-card">
-        <div class="flex flex-wrap items-center justify-between mb-4 gap-4">
-          <h3 class="text-lg">2. Paste Rest Day Schedule Data</h3>
+      <!-- Rest -->
+      <div>
+        <div class="flex items-center justify-between mb-4 gap-4">
+          <h3 class="font-semibold text-lg">2. Paste Rest Day Schedule Data</h3>
           <div class="flex items-center gap-3">
-            <input id="restBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-1.5 w-32" />
-            <button id="generateRestFile" class="btn bg-indigo-600 text-white text-sm">Generate</button>
-            <button id="clearRestData" class="btn bg-gray-200 text-gray-700 text-sm">Clear</button>
+            <input id="restBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-2" />
+            <button id="generateRestFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button>
+            <button id="clearRestData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
           </div>
         </div>
-        <textarea id="restScheduleInput" class="paste-area" placeholder="Paste rest day schedule (Excel copy) here..."></textarea>
-        <div class="overflow-auto bg-white/30 rounded border mt-4 max-h-80">
-          <table class="w-full text-sm">
+        <textarea id="restScheduleInput" class="w-full h-64 border rounded p-3 mb-4" placeholder="Paste rest day schedule (Excel copy) here"></textarea>
+        <div class="overflow-auto bg-white rounded border">
+          <table class="w-full text-sm text-center">
             <thead class="bg-gray-50 text-gray-600 text-xs">
               <tr><th>Conflict</th><th>Name</th><th>Emp No.</th><th>Rest Date</th><th>Day</th><th>Position</th></tr>
             </thead>
@@ -294,297 +328,600 @@ th:first-child, td:first-child {
     </div>
   </div>
 
-  <div id="tab-monitoring-content" class="hidden">
-    <div class="dashboard-card mt-6 shadow-lg">
-      <h2 class="text-2xl text-center mb-4">📊 Branch Monitoring Dashboard</h2>
-      <div class="flex flex-wrap justify-center items-center gap-3 mb-4 p-2 bg-sky-50 rounded-lg">
-        <select id="monthSelect" class="border rounded px-3 py-2 bg-white"></select>
-        <select id="yearSelect" class="border rounded px-3 py-2 bg-white"></select>
-        <button id="clearMonitoringBtn" class="btn bg-red-500 text-white">Clear Data</button>
-        <button id="exportMonitoringBtn" class="btn bg-green-600 text-white">Export to Excel</button>
-      </div>
-      <div class="overflow-auto bg-white/30 rounded border">
-        <table class="w-full text-sm">
-          <thead class="bg-gray-100">
-            <tr>
-              <th>Branch</th><th>Checked</th><th>Uploaded</th><th>Uploaded By</th><th>Remarks</th><th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="monitoringBody"></tbody>
-        </table>
-      </div>
-      <div class="mt-4 text-center text-slate-600">
-        Total: <b id="totalBranches">0</b> |
-        Checked: <b id="checkedBranches">0</b> |
-        Uploaded: <b id="uploadedBranches">0</b> |
-        Progress: <b id="progressPercent">0%</b>
-        <div class="w-full max-w-md mx-auto bg-gray-200 rounded-full h-2.5 mt-2">
-            <div id="progressBar" class="h-2.5 bg-green-500 rounded-full transition-all duration-500 w-0"></div>
-        </div>
-      </div>
-    </div>
+<!-- MONITORING -->
+<div id="tab-monitoring-content" class="hidden dashboard-card mt-6 shadow-lg">
+  <h2 class="text-2xl text-center mb-4">📊 Branch Monitoring Dashboard</h2>
+
+  <div class="flex justify-center gap-3 mb-4">
+    <select id="monthSelect" class="border rounded px-3 py-2">
+      <option value="01">January</option>
+      <option value="02">February</option>
+      <option value="10" selected>October</option>
+    </select>
+    <select id="yearSelect" class="border rounded px-3 py-2">
+      <option value="2025" selected>2025</option>
+      <option value="2026">2026</option>
+    </select>
+    <button id="clearMonitoringBtn" class="bg-red-500 text-white px-4 py-2 rounded">Clear</button>
+    <button id="exportMonitoringBtn" class="bg-green-600 text-white px-4 py-2 rounded">Export</button>
+  </div>
+
+  <div class="overflow-auto bg-white rounded border">
+    <table class="w-full text-sm text-center">
+      <thead class="bg-gray-100">
+        <tr>
+          <th>Branch</th>
+          <th>Check</th>
+          <th>Upload</th>
+          <th>Uploaded By</th>
+          <th>Remarks</th>
+          <th>Progress</th>
+        </tr>
+      </thead>
+      <tbody id="monitoringBody"></tbody>
+    </table>
+  </div>
+
+  <p class="mt-4 text-center">
+    Total: <span id="totalBranches">0</span> |
+    Checked: <span id="checkedBranches">0</span> |
+    Uploaded: <span id="uploadedBranches">0</span> |
+    <span id="progressPercent">0%</span>
+  </p>
+
+  <div class="w-1/2 mx-auto bg-gray-200 rounded-full h-3 mt-2">
+    <div id="progressBar" class="h-3 bg-green-500 rounded-full w-0"></div>
   </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // --- State variables ---
+  /***** State *****/
   let workScheduleData = [];
   let restDayData = [];
   const LEADERSHIP_POSITIONS = ['Branch Head','Site Supervisor','OIC'];
 
-  // --- DOM elements ---
+  /***** Element refs *****/
   const workInput = document.getElementById('workScheduleInput');
   const restInput = document.getElementById('restScheduleInput');
   const workTableBody = document.getElementById('workTableBody');
   const restTableBody = document.getElementById('restTableBody');
   const summaryEl = document.getElementById('summary');
+  const warningBanner = document.getElementById('warning-banner');
+  const successMsg = document.getElementById('success-message');
+
   const generateWorkFileBtn = document.getElementById('generateWorkFile');
   const generateRestFileBtn = document.getElementById('generateRestFile');
+  const clearWorkBtn = document.getElementById('clearWorkData');
+  const clearRestBtn = document.getElementById('clearRestData');
 
-  const tabScheduleBtn = document.getElementById('tab-schedule');
-  const tabMonitoringBtn = document.getElementById('tab-monitoring');
-
+  const tabSchedule = document.getElementById('tab-schedule');
+  const tabMonitoring = document.getElementById('tab-monitoring');
   const scheduleContent = document.getElementById('tab-schedule-content');
   const monitoringContent = document.getElementById('tab-monitoring-content');
 
+  // Monitoring refs
   const monitoringBody = document.getElementById('monitoringBody');
+  const clearMonitoringBtn = document.getElementById('clearMonitoringBtn');
+  const exportMonitoringBtn = document.getElementById('exportMonitoringBtn');
   const monthSelect = document.getElementById('monthSelect');
   const yearSelect = document.getElementById('yearSelect');
+  const totalBranchesEl = document.getElementById('totalBranches');
+  const checkedBranchesEl = document.getElementById('checkedBranches');
+  const uploadedBranchesEl = document.getElementById('uploadedBranches');
+  const progressPercentEl = document.getElementById('progressPercent');
+  const progressBar = document.getElementById('progressBar');
 
-  // --- Helper functions ---
-  function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
+  /***** Helpers *****/
+  function showBanner(msg) {
+    warningBanner.textContent = msg;
+    warningBanner.classList.remove('hidden');
+    warningBanner.classList.add('opacity-100');
     setTimeout(() => {
-      toast.style.animation = 'toastFadeOut 0.5s ease forwards';
-      setTimeout(() => toast.remove(), 500);
-    }, 4000);
+      warningBanner.classList.remove('opacity-100');
+      setTimeout(() => warningBanner.classList.add('hidden'), 400);
+    }, 3000);
   }
 
-  // Fixed: escapeHtml function
-  function escapeHtml(unsafe) {
-    if (typeof unsafe !== 'string') return '';
-    return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
+  function showSuccess() {
+    successMsg.classList.remove('hidden');
+    successMsg.style.animation = 'fadeInOut 2.5s ease-in-out';
+    setTimeout(() => {
+      successMsg.classList.add('hidden');
+      successMsg.style.animation = '';
+    }, 2500);
   }
 
-  // --- Parsing ---
   function parseTabular(text) {
     if (!text) return [];
-    return text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean).map(line => line.split('\t'));
+    const lines = text.replace(/\r/g, '').split('\n').map(l => l.trim()).filter(Boolean);
+    return lines.map(line => line.split(/\t|,|\s{2,}/).map(c => c.trim()));
   }
 
-  function detectHeaderAndMap(rows) {
-    if (!rows || rows.length === 0) return { dataRows: [], colMap: {} };
-    const headerRow = rows[0];
-    const headerLower = headerRow.map(c => (c || '').toString().toLowerCase().trim());
-    const headerMap = {
-      name: ['name', 'employee name'], empNo: ['emp no', 'employee no'], date: ['date', 'work date', 'rest date'],
-      shift: ['shift', 'shift code'], day: ['day', 'day of week'], position: ['position', 'pos', 'job title']
-    };
-    const colMap = {};
-    Object.keys(headerMap).forEach(key => {
-      const idx = headerLower.findIndex(h => headerMap[key].some(alias => h.includes(alias)));
-      if (idx !== -1) colMap[key] = idx;
-    });
-    // Fallback indices
-    if (colMap.name === undefined) colMap.name = 0;
-    if (colMap.empNo === undefined) colMap.empNo = 1;
-    if (colMap.date === undefined) colMap.date = 2;
-    if (colMap.shift === undefined) colMap.shift = 3;
-    if (colMap.day === undefined) colMap.day = 4;
-    if (colMap.position === undefined) colMap.position = 5;
-    return { dataRows: rows.slice(1), colMap };
-  }
+function detectHeaderAndMap(rows) {
+  if (!rows || rows.length === 0) return { dataRows: [], colMap: {} };
+  
+  const headerRow = rows[0];
+  const headerLower = headerRow.map(c => (c || '').toString().toLowerCase().trim());
 
-  function normalizeDate(dateStr) {
-    if (!dateStr) return '';
-    if (!isNaN(dateStr) && Number(dateStr) > 10000) {
-      const excelEpoch = new Date(1899, 11, 30);
-      const date = new Date(excelEpoch.getTime() + (Number(dateStr) * 86400000));
-      return !isNaN(date) ? formatDate(date) : '';
+  const headerMap = {
+    name: /name|employee\s*name|full\s*name/,
+    empNo: /emp.*no|employee.*no|employee|emp\s*no|employee\s*number/,
+    date: /date|work.*date|rest.*date/,
+    shift: /shift|shift\s*code|work\s*shift/,
+    day: /day|day\s*of\s*week/,
+    position: /position|pos|job\s*title/
+  };
+
+  const colMap = {};
+
+  // Detect columns based on header regex
+  headerLower.forEach((header, index) => {
+    for (const key in headerMap) {
+      if (headerMap[key].test(header)) {
+        colMap[key] = index;
+        break;
+      }
     }
-    const parsed = new Date(dateStr);
-    return !isNaN(parsed) ? formatDate(parsed) : dateStr;
+  });
+
+  // Set default column indices if some headers are missing
+  if (colMap.empNo === undefined) colMap.empNo = 1;
+  if (colMap.name === undefined) colMap.name = 0;
+  if (colMap.date === undefined) colMap.date = 2;
+  if (colMap.shift === undefined) colMap.shift = 3;
+  if (colMap.day === undefined) colMap.day = 4;
+  if (colMap.position === undefined) colMap.position = 5;
+
+  const dataRows = rows.slice(1); // skip header row
+  return { dataRows, colMap };
+}
+
+  /***** Rendering *****/
+  function renderWorkTable() {
+    workTableBody.innerHTML = workScheduleData.map(d => `
+      <tr>
+        <td>${escapeHtml(d.name)}</td>
+        <td>${escapeHtml(d.empNo)}</td>
+        <td>${escapeHtml(d.date)}</td>
+        <td>${escapeHtml(d.shift)}</td>
+        <td>${escapeHtml(d.day)}</td>
+        <td>${escapeHtml(d.position)}</td>
+      </tr>
+    `).join('');
+    if (workTableBody.parentElement) workTableBody.parentElement.scrollIntoView({ behavior: 'smooth' });
   }
 
-  function formatDate(d) {
-    return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+  function escapeHtml(str) {
+    return (str == null) ? '' : String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
-  // --- Validation ---
+  function renderRestTable() {
+    restTableBody.innerHTML = restDayData.map(d => {
+      const isWeekend = /saturday|sunday/i.test((d.day || '').toLowerCase().trim());
+      const conflictHtml = (d.conflicts || []).map(c => `<div><strong>${escapeHtml(c.type)}:</strong> ${escapeHtml(c.reason)}</div>`).join('');
+      const rowClass = (d.conflicts && d.conflicts.length > 0)
+        ? 'bg-yellow-50 border-l-4 border-yellow-400 conflict-row shadow-sm ring-2 ring-yellow-300/30'
+        : '';
+      return `
+        <tr class="${rowClass}">
+          <td class="text-left p-2 max-w-xs">${conflictHtml || ''}</td>
+          <td>${escapeHtml(d.name)}</td>
+          <td>${escapeHtml(d.empNo)}</td>
+          <td class="${isWeekend? 'weekend-rest-day':''}">${escapeHtml(d.date)}</td>
+          <td class="${isWeekend? 'weekend-rest-day':''}">${escapeHtml(d.day)}</td>
+          <td>${escapeHtml(d.position)}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // Update buttons after table renders
+    updateButtonStates();
+
+    // Update summary box
+    const total = restDayData.length;
+    const conflicts = restDayData.filter(r => r.conflicts && r.conflicts.length > 0).length;
+
+    if (total === 0) {
+      summaryEl.textContent = '';
+      summaryEl.classList.add('hidden');
+    } else {
+      summaryEl.classList.remove('hidden');
+      if (conflicts === 0) {
+        summaryEl.textContent = `✅ No conflicts detected for ${total} entries.`;
+        summaryEl.classList.remove('text-red-600');
+        summaryEl.classList.add('text-green-600');
+      } else {
+        summaryEl.textContent = `${conflicts} out of ${total} entries have conflicts detected.`;
+        summaryEl.classList.remove('text-green-600');
+        summaryEl.classList.add('text-red-600');
+      }
+    }
+  }
+
+  /***** Validation *****/
   function validateSchedules() {
-    const workMap = new Map(workScheduleData.map(w => [`${w.empNo}-${w.date}`, w]));
-    restDayData.forEach(r => {
-      r.conflicts = [];
-      if (workMap.has(`${r.empNo}-${r.date}`)) {
-        r.conflicts.push({ type: 'Work Conflict', reason: 'Has scheduled work on this rest day.' });
+    // reset conflicts
+    restDayData.forEach(r => r.conflicts = []);
+
+    // build maps
+    const workMap = new Map(workScheduleData.map(w => [`${w.empNo}-${(w.date || '').trim()}`, w]));
+    const workEmpSet = new Set(workScheduleData.map(w => w.empNo));
+    const restByDate = {};
+    const weekendCount = {};
+    const seen = new Set();
+
+    restDayData.forEach(rd => {
+      if (!rd) return;
+      const key = `${rd.empNo}-${(rd.date || '').trim()}`;
+      if (!restByDate[rd.date]) restByDate[rd.date] = [];
+      restByDate[rd.date].push(rd);
+
+      // duplicate
+      if (seen.has(key)) rd.conflicts.push({ type: 'Duplicate Entry', reason: 'Duplicate rest day entry for same employee & date.' });
+      else seen.add(key);
+
+      // missing employee
+      if (!workEmpSet.has(rd.empNo))
+        rd.conflicts.push({ type: 'Missing Employee', reason: 'Employee not found in Work Schedule data.' });
+
+      // invalid date
+      const d = new Date(rd.date);
+      if (isNaN(d.getTime()))
+        rd.conflicts.push({ type: 'Invalid Date Format', reason: 'Date format unrecognized.' });
+
+      // work conflict
+      if (workMap.has(key))
+        rd.conflicts.push({ type: 'Work Conflict', reason: 'Employee has a work schedule on same date.' });
+
+      // weekend count
+      if (/saturday|sunday/i.test(rd.day || '')) {
+        if (!isNaN(d.getTime())) {
+          const monthYear = `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+          const wkKey = `${rd.empNo}-${monthYear}`;
+          weekendCount[wkKey] = (weekendCount[wkKey] || 0) + 1;
+        }
       }
     });
+
+    // leadership conflict
+    for (const date in restByDate) {
+      const leaders = restByDate[date].filter(r => LEADERSHIP_POSITIONS.includes(r.position));
+      if (leaders.length > 1)
+        leaders.forEach(l => l.conflicts.push({ type: 'Leadership Conflict', reason: 'Multiple leaders have same rest day.' }));
+    }
+
+    // weekend limit
+    for (const wkey in weekendCount) {
+      if (weekendCount[wkey] > 2) {
+        const [emp] = wkey.split('-');
+        restDayData.filter(r => r.empNo === emp && /saturday|sunday/i.test(r.day || '')).forEach(r => {
+          r.conflicts.push({ type: 'Weekend Limit Exceeded', reason: `${weekendCount[wkey]} weekend rest days — maximum 2.` });
+        });
+      }
+    }
+
     renderRestTable();
     updateButtonStates();
   }
 
   function updateButtonStates() {
     generateWorkFileBtn.disabled = workScheduleData.length === 0;
-    const hasConflicts = restDayData.some(r => r.conflicts && r.conflicts.length > 0);
-    generateRestFileBtn.disabled = restDayData.length === 0 || hasConflicts;
+    const hasConf = restDayData.some(r => r.conflicts && r.conflicts.length > 0);
+    generateRestFileBtn.disabled = restDayData.length === 0 || hasConf;
   }
 
-  // --- Paste handling ---
-  function handlePaste(e, type) {
-    e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain').trim();
-    if (!text) return;
+  /***** Paste handler (shared) *****/
+function handlePaste(e, type) {
+  e.preventDefault();
+  const clipboardData = e.clipboardData || window.clipboardData;
+  const pastedData = clipboardData.getData('text/plain').trim();
 
-    const parsed = parseTabular(text);
-    if (parsed.length < 2) {
-      showToast('Paste at least a header and one data row.', 'error');
-      return;
-    }
-    const { dataRows, colMap } = detectHeaderAndMap(parsed);
-    const cleaned = dataRows.map(row => ({
-      name: row[colMap.name] || '', empNo: row[colMap.empNo] || '', date: normalizeDate(row[colMap.date]),
-      shift: row[colMap.shift] || '', day: row[colMap.day] || '', position: row[colMap.position] || ''
-    })).filter(r => r.empNo && r.date);
+  if (!pastedData) return;
+
+  // Parse pasted text into rows/columns
+  const parsed = parseTabular(pastedData);
+  const { dataRows, colMap } = detectHeaderAndMap(parsed);
+
+  const cleaned = dataRows.map(row => ({
+    name: row[colMap.name] || '',
+    empNo: row[colMap.empNo] || '',
+    date: normalizeDate(row[colMap.date]),
+    shift: row[colMap.shift] || '',
+    day: row[colMap.day] || '',
+    position: row[colMap.position] || ''
+  })).filter(r => r.empNo && r.date);
+
+  if (type === 'work') {
+    workScheduleData = cleaned;
+    renderWorkTable();
+    workInput.value = ''; // clear textarea visually
+    showBanner(`✅ ${cleaned.length} work schedule rows pasted.`);
+  } else {
+    restDayData = cleaned;
+    validateSchedules();
+    renderRestTable();
+    restInput.value = ''; // clear textarea visually
+    showBanner(`✅ ${cleaned.length} rest day rows pasted.`);
+  }
+
+  updateButtonStates();
+}
+
+// Attach paste listeners
+workInput.addEventListener('paste', (e) => handlePaste(e, 'work'));
+restInput.addEventListener('paste', (e) => handlePaste(e, 'rest'));
+
+// --- Helper to fix inconsistent date formats ---
+function normalizeDate(dateStr) {
+  if (!dateStr) return '';
+
+  // If it's already like 10/01/25 or 10-01-25
+  const match = dateStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (match) {
+    let [_, mm, dd, yy] = match;
+    mm = mm.padStart(2, '0');
+    dd = dd.padStart(2, '0');
+    if (yy.length === 4) yy = yy.slice(2); // make 2025 → 25
+    return `${mm}/${dd}/${yy}`;
+  }
+
+  // If Excel serial number (e.g., 45812)
+  if (!isNaN(dateStr) && Number(dateStr) > 10000) {
+    const excelEpoch = new Date(1899, 11, 30);
+    const parsed = new Date(excelEpoch.getTime() + (Number(dateStr) * 86400000));
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    const yy = String(parsed.getFullYear()).slice(2);
+    return `${mm}/${dd}/${yy}`;
+  }
+
+  // Fallback: try Date parse
+  const parsed = new Date(dateStr);
+  if (!isNaN(parsed)) {
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    const yy = String(parsed.getFullYear()).slice(2);
+    return `${mm}/${dd}/${yy}`;
+  }
+
+  return dateStr; // return original if nothing matched
+}
+
+
+  /***** Button handlers for generate/clear *****/
+  function generateHrisFile(type) {
+    const workBranch = document.getElementById('workBranchName').value.trim();
+    const restBranch = document.getElementById('restBranchName').value.trim();
 
     if (type === 'work') {
-      workScheduleData = cleaned;
-      renderWorkTable();
-      e.target.value = ''; // Clear the textarea after processing
-      showToast(`${cleaned.length} work rows parsed successfully.`, 'success');
+      if (!workBranch) return showBanner('⚠️ Enter Work Branch Name.');
+      if (workScheduleData.length === 0) return showBanner('⚠️ No Work Schedule data to generate.');
+      const data = [
+  ['Employee Number', 'Work Date', 'Shift Code'], // single header
+  ...workScheduleData.map(r => [r.empNo, r.date, r.shift])
+];
+
+// Ensure no duplicate headers like EMPLOYEE NO. etc.
+const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
+      XLSX.writeFile(wb, `${workBranch}_WORK_SCHEDULE.xlsx`);
+      showSuccess();
     } else {
-      restDayData = cleaned;
-      renderRestTable();
-      e.target.value = ''; // Clear the textarea
-      showToast(`${cleaned.length} rest day rows parsed.`, 'info');
+      if (!restBranch) return showBanner('⚠️ Enter Rest Branch Name.');
+      if (restDayData.length === 0) return showBanner('⚠️ No Rest Day data to generate.');
+      // check for conflicts
+      if (restDayData.some(r => r.conflicts && r.conflicts.length > 0))
+        return showBanner('⚠️ Resolve conflicts before generating Rest Day file.');
+      const data = restDayData.map(r => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
+      XLSX.writeFile(wb, `${restBranch}_REST_DAY_UPLOAD.xlsx`);
+      showSuccess();
     }
-    validateSchedules();
   }
 
-  // --- Table rendering ---
-  function renderWorkTable() {
-    workTableBody.innerHTML = workScheduleData.map(r => `
-      <tr>
-        <td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.empNo)}</td><td>${escapeHtml(r.date)}</td>
-        <td>${escapeHtml(r.shift)}</td><td>${escapeHtml(r.day)}</td><td>${escapeHtml(r.position)}</td>
-      </tr>`).join('');
-  }
+  generateWorkFileBtn.addEventListener('click', () => generateHrisFile('work'));
+  generateRestFileBtn.addEventListener('click', () => generateHrisFile('rest'));
 
-  function renderRestTable() {
-    restTableBody.innerHTML = restDayData.map(r => {
-      const conflictHtml = (r.conflicts || []).map(c => `<div><b class="text-red-700">${escapeHtml(c.type)}:</b> ${escapeHtml(c.reason)}</div>`).join('');
-      const rowClass = (r.conflicts && r.conflicts.length > 0) ? 'conflict-row' : '';
-      return `<tr class="${rowClass}">
-          <td class="text-xs max-w-xs">${conflictHtml || '✅'}</td>
-          <td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.empNo)}</td><td>${escapeHtml(r.date)}</td>
-          <td>${escapeHtml(r.day)}</td><td>${escapeHtml(r.position)}</td>
-        </tr>`;
-    }).join('');
-    const total = restDayData.length;
-    const conflictsCount = restDayData.filter(r => r.conflicts && r.conflicts.length > 0).length;
-    summaryEl.classList.toggle('hidden', total === 0);
-    summaryEl.classList.toggle('error', conflictsCount > 0);
-    summaryEl.textContent = conflictsCount > 0 ? `🚨 ${conflictsCount} of ${total} entries have conflicts.` : `✅ All ${total} entries are valid.`;
-  }
-
-  // --- File Generation ---
-  function generateHrisFile(type) {
-    const isWork = type === 'work';
-    const branchName = document.getElementById(isWork ? 'workBranchName' : 'restBranchName').value.trim();
-    const data = isWork ? workScheduleData : restDayData;
-    if (!branchName) return showToast('Please enter a Branch Name.', 'error');
-    if (data.length === 0) return showToast('No data to generate file.', 'error');
-
-    let sheetData, fileName;
-    if (isWork) {
-      sheetData = [['Employee Number', 'Work Date', 'Shift Code'], ...data.map(r => [r.empNo, r.date, r.shift])];
-      fileName = `${branchName}_WORK_SCHEDULE.xlsx`;
-    } else {
-      if (restDayData.some(r => r.conflicts.length > 0)) return showToast('Resolve conflicts before generating.', 'error');
-      sheetData = data.map(r => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
-      fileName = `${branchName}_REST_DAY_UPLOAD.xlsx`;
-    }
-    const ws = isWork ? XLSX.utils.aoa_to_sheet(sheetData) : XLSX.utils.json_to_sheet(sheetData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
-    XLSX.writeFile(wb, fileName);
-    showToast('File generated successfully!', 'success');
-  }
-
-  // --- Monitoring Tab ---
-  function renderMonitoring() {
-    // your existing monitoring code
-  }
-  // your existing monitoring functions...
-  // (Keep all your existing code for monitoring here)
-  // ... (omitted for brevity, since focus is on tab switching)
-  
-  // --- Tab switching ---
-  function switchTab(activeTab) {
-    const isSchedule = activeTab === 'schedule';
-    scheduleContent.classList.toggle('hidden', !isSchedule);
-    monitoringContent.classList.toggle('hidden', isSchedule);
-    tabScheduleBtn.classList.toggle('bg-indigo-600', isSchedule);
-    tabScheduleBtn.classList.toggle('text-white', isSchedule);
-    tabMonitoringBtn.classList.toggle('bg-indigo-600', !isSchedule);
-    tabMonitoringBtn.classList.toggle('text-white', !isSchedule);
-    if (!isSchedule) renderMonitoring();
-  }
-
-  // Attach event listeners
-  document.getElementById('tab-schedule').addEventListener('click', () => switchTab('schedule'));
-  document.getElementById('tab-monitoring').addEventListener('click', () => switchTab('monitoring'));
-
-  // --- Initial setup ---
-  // Set schedule content visible, monitoring hidden
-  document.getElementById('tab-schedule-content').classList.remove('hidden');
-  document.getElementById('tab-monitoring-content').classList.add('hidden');
-
-  // Initialize other parts of your code
+  clearWorkBtn.addEventListener('click', () => {
+    workScheduleData = []; workInput.value = ''; renderWorkTable(); updateButtonStates(); showBanner('Work schedule cleared.');
+  });
+ clearRestBtn.addEventListener('click', () => {
+  restDayData = [];
+  restInput.value = '';
+  renderRestTable();
   updateButtonStates();
-  // add other initialization functions as needed
+  showBanner('Rest day schedule cleared.');
+});
+
+  /***** Monitoring logic *****/
+  const defaultMonitoring = [
+    { name: 'AASP ABREEZA', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+    { name: 'AASP NES - ATLAS', checked: false, uploaded: false, uploadedBy: '', remarks: '' }
+  ];
+
+  function getMonitoring() {
+    const data = localStorage.getItem('monitoringData');
+    if (data) {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        return [...defaultMonitoring];
+      }
+    }
+    return [...defaultMonitoring];
+  }
+  function saveMonitoring(d) {
+    localStorage.setItem('monitoringData', JSON.stringify(d));
+  }
+
+  function renderMonitoring() {
+    const data = getMonitoring();
+    monitoringBody.innerHTML = data.map((b, i) => `
+      <tr>
+        <td class="text-left p-2">${escapeHtml(b.name)}</td>
+        <td><input type="checkbox" data-index="${i}" data-field="checked" ${b.checked ? 'checked' : ''}></td>
+        <td><input type="checkbox" data-index="${i}" data-field="uploaded" ${b.uploaded ? 'checked' : ''}></td>
+        <td><input type="text" data-index="${i}" data-field="uploadedBy" value="${escapeHtml(b.uploadedBy)}" class="px-1 py-0.5"></td>
+        <td><input type="text" data-index="${i}" data-field="remarks" value="${escapeHtml(b.remarks)}" class="px-1 py-0.5"></td>
+        <td>${b.uploaded ? '✅ Done' : b.checked ? '🟡 Checked' : '❌ Pending'}</td>
+      </tr>
+    `).join('');
+
+    // attach listeners
+    monitoringBody.querySelectorAll('input').forEach(inp => {
+      inp.addEventListener('change', (e) => {
+        const idx = Number(e.target.dataset.index);
+        const field = e.target.dataset.field;
+        const d = getMonitoring();
+        if (e.target.type === 'checkbox') d[idx][field] = e.target.checked;
+        else d[idx][field] = e.target.value;
+        saveMonitoring(d);
+        updateMonitoringStats(); // only update stats
+      });
+    });
+    // Also handle text input change
+    monitoringBody.querySelectorAll('input[type=text]').forEach(inp => {
+      inp.addEventListener('input', (e) => {
+        const idx = Number(e.target.dataset.index);
+        const field = e.target.dataset.field;
+        const d = getMonitoring();
+        d[idx][field] = e.target.value;
+        saveMonitoring(d);
+        // no need to update stats here
+      });
+    });
+
+    updateMonitoringStats();
+  }
+
+  function updateMonitoringStats() {
+    const d = getMonitoring();
+    const total = d.length;
+    const checked = d.filter(x => x.checked).length;
+    const uploaded = d.filter(x => x.uploaded).length;
+    totalBranchesEl && (totalBranchesEl.textContent = total);
+    checkedBranchesEl && (checkedBranchesEl.textContent = checked);
+    uploadedBranchesEl && (uploadedBranchesEl.textContent = uploaded);
+    const pct = total ? Math.round((uploaded / total) * 100) : 0;
+    progressPercentEl && (progressPercentEl.textContent = pct + '%');
+    progressBar.style.width = pct + '%';
+  }
+
+  clearMonitoringBtn.addEventListener('click', () => {
+    if (confirm('Clear monitoring data?')) {
+      localStorage.removeItem('monitoringData');
+      renderMonitoring();
+    }
+  });
+  exportMonitoringBtn.addEventListener('click', () => {
+    const data = getMonitoring();
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Monitoring');
+    const monthText = monthSelect.options[monthSelect.selectedIndex].text;
+    XLSX.writeFile(wb, `Monitoring_${monthText}_${yearSelect.value}.xlsx`);
+  });
+
+  // tabs
+  tabSchedule.addEventListener('click', () => {
+    scheduleContent.classList.remove('hidden');
+    monitoringContent.classList.add('hidden');
+    tabSchedule.classList.add('bg-indigo-600', 'text-white');
+    tabMonitoring.classList.remove('bg-indigo-600', 'text-white');
+  });
+  tabMonitoring.addEventListener('click', () => {
+    scheduleContent.classList.add('hidden');
+    monitoringContent.classList.remove('hidden');
+    tabMonitoring.classList.add('bg-indigo-600', 'text-white');
+    tabSchedule.classList.remove('bg-indigo-600', 'text-white');
+    renderMonitoring(); // render once per click
+  });
+
+  // initial UI state
+  renderWorkTable();
+  renderRestTable();
+  updateButtonStates();
+  renderMonitoring();
 });
 </script>
-
-<div id="particle-container"></div>
+<!-- ================================
+ 🌌 Tech Breeze Animation Layer
+ Powered by GSAP + Vanilla JS Particles
+================================ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+<!-- Particle container -->
+<div id="particle-container"></div>
+
 <script>
 // ========== 🌟 Floating Particles ==========
 const container = document.getElementById("particle-container");
-if (container) {
-  const numParticles = 40;
-  const colors = ["#0ea5e9", "#14b8a6", "#67e8f9", "#99f6e4"];
-  for (let i = 0; i < numParticles; i++) {
-    const dot = document.createElement("div");
-    gsap.set(dot, { position: 'absolute', width: gsap.utils.random(2, 5), height: gsap.utils.random(2, 5), borderRadius: '50%', background: gsap.utils.random(colors), x: gsap.utils.random(window.innerWidth), y: gsap.utils.random(window.innerHeight), opacity: gsap.utils.random(0.3, 0.9) });
-    container.appendChild(dot);
-    gsap.to(dot, { duration: gsap.utils.random(12, 24), x: `+=${gsap.utils.random(-100, 100)}`, y: `+=${gsap.utils.random(-80, 80)}`, repeat: -1, yoyo: true, ease: "sine.inOut" });
-  }
+const numParticles = 40;
+const colors = ["#0ea5e9", "#14b8a6", "#67e8f9", "#99f6e4"];
+
+for (let i = 0; i < numParticles; i++) {
+  const dot = document.createElement("div");
+  dot.classList.add("particle");
+  gsap.set(dot, {
+    position: "absolute",
+    width: gsap.utils.random(2, 5),
+    height: gsap.utils.random(2, 5),
+    borderRadius: "50%",
+    background: gsap.utils.random(colors),
+    x: gsap.utils.random(window.innerWidth),
+    y: gsap.utils.random(window.innerHeight),
+    opacity: gsap.utils.random(0.3, 0.9)
+  });
+  container.appendChild(dot);
+
+  // floating motion loop
+  gsap.to(dot, {
+    duration: gsap.utils.random(12, 24),
+    x: `+=${gsap.utils.random(-100, 100)}`,
+    y: `+=${gsap.utils.random(-80, 80)}`,
+    repeat: -1,
+    yoyo: true,
+    ease: "sine.inOut"
+  });
 }
 
-// ========== 🎭 Entrance Animations ==========
-gsap.from("header, nav", { opacity: 0, y: -30, duration: 0.8, ease: 'power3.out', stagger: 0.2 });
-gsap.from(".dashboard-card", { opacity: 0, y: 30, duration: 0.8, ease: 'power3.out', stagger: 0.2, delay: 0.4 });
+// ========== 🎭 Header + Card Entrance ==========
+gsap.utils.toArray("header, .dashboard-card").forEach((el, i) => {
+  gsap.fromTo(el, 
+    { opacity: 0, y: 30 },
+    { opacity: 1, y: 0, delay: 0.2 + i * 0.1, duration: 0.8, ease: "power3.out" }
+  );
+});
 
 // ========== 🎮 Parallax Header Drift ==========
 const header = document.querySelector("header");
 if (header) {
   document.addEventListener("mousemove", (e) => {
-    const x = (e.clientX / window.innerWidth - 0.5) * 20;
-    const y = (e.clientY / window.innerHeight - 0.5) * 20;
-    // **FIXED**: Corrected property name from `backgroundPositio` to `backgroundPosition`
-    gsap.to(header, { duration: 1.5, backgroundPosition: `${-x}px ${-y}px`, ease: "power1.out" });
+    const x = (e.clientX / window.innerWidth - 0.5) * 30;
+    const y = (e.clientY / window.innerHeight - 0.5) * 30;
+    gsap.to(header, { duration: 1.5, backgroundPosition: `${50 + x}% ${50 + y}%`, ease: "power2.out" });
   });
 }
+
+// ========== 🧊 Particle Layer CSS ==========
+const style = document.createElement("style");
+style.innerHTML = `
+  #particle-container .particle {
+    position: absolute;
+    will-change: transform, opacity;
+    z-index: 0;
+    mix-blend-mode: screen;
+  }
+`;
+document.head.appendChild(style);
 </script>
 
 </body>
