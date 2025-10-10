@@ -490,7 +490,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${escapeHtml(d.position)}</td>
       </tr>
     `).join('');
-    // Optional: scroll into view if needed
   }
 
   function escapeHtml(str) {
@@ -855,39 +854,6 @@ document.addEventListener('DOMContentLoaded', () => {
   updateButtonStates();
   renderMonitoring();
 
-  /***** Additional Functions *****/
-
-  // Normalize date formats
-  function normalizeDate(dateStr) {
-    if (!dateStr) return '';
-    // Match formats like 10/01/25 or 10-01-25 or 10.01.25
-    const match = dateStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
-    if (match) {
-      let [_, mm, dd, yy] = match;
-      mm = mm.padStart(2, '0');
-      dd = dd.padStart(2, '0');
-      if (yy.length === 4) yy = yy.slice(2);
-      return `${mm}/${dd}/${yy}`;
-    }
-    // Excel date serial
-    if (!isNaN(dateStr) && Number(dateStr) > 10000) {
-      const excelEpoch = new Date(1899, 11, 30);
-      const parsed = new Date(excelEpoch.getTime() + (Number(dateStr) * 86400000));
-      const mm = String(parsed.getMonth() + 1).padStart(2, '0');
-      const dd = String(parsed.getDate()).padStart(2, '0');
-      const yy = String(parsed.getFullYear()).slice(2);
-      return `${mm}/${dd}/${yy}`;
-    }
-    // fallback
-    const parsed = new Date(dateStr);
-    if (!isNaN(parsed)) {
-      const mm = String(parsed.getMonth() + 1).padStart(2, '0');
-      const dd = String(parsed.getDate()).padStart(2, '0');
-      const yy = String(parsed.getFullYear()).slice(2);
-      return `${mm}/${dd}/${yy}`;
-    }
-    return dateStr;
-  }
 });
 </script>
 
