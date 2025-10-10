@@ -932,6 +932,75 @@ document.getElementById('clearRestData').addEventListener('click', clearAllData)
 document.getElementById('workScheduleInput').addEventListener('paste', e => handlePaste(e, 'work'));
 document.getElementById('restScheduleInput').addEventListener('paste', e => handlePaste(e, 'rest'));
 
+// 🟦 Auto-fill Work Schedule table when user pastes data
+document.getElementById("workScheduleData").addEventListener("paste", (event) => {
+  // Delay to allow pasted text to actually appear in textarea
+  setTimeout(() => {
+    const rawData = event.target.value.trim();
+    const workTableBody = document.querySelector("#workTable tbody");
+    workTableBody.innerHTML = ""; // clear previous
+
+    if (!rawData) return;
+
+    const lines = rawData.split("\n");
+    lines.forEach(line => {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 6) {
+        const [empNo, ...rest] = parts;
+        const name = rest.slice(0, rest.length - 4).join(" ");
+        const workDate = rest[rest.length - 4];
+        const shift = rest[rest.length - 3];
+        const day = rest[rest.length - 2];
+        const position = rest[rest.length - 1];
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${name}</td>
+          <td>${empNo}</td>
+          <td>${workDate}</td>
+          <td>${shift}</td>
+          <td>${day}</td>
+          <td>${position}</td>
+        `;
+        workTableBody.appendChild(row);
+      }
+    });
+  }, 50);
+});
+
+// 🟩 Auto-fill Rest Day table when user pastes data
+document.getElementById("restDayData").addEventListener("paste", (event) => {
+  setTimeout(() => {
+    const rawData = event.target.value.trim();
+    const restTableBody = document.querySelector("#restTable tbody");
+    restTableBody.innerHTML = ""; // clear previous
+
+    if (!rawData) return;
+
+    const lines = rawData.split("\n");
+    lines.forEach(line => {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length >= 6) {
+        const [empNo, ...rest] = parts;
+        const name = rest.slice(0, rest.length - 4).join(" ");
+        const restDate = rest[rest.length - 4];
+        const day = rest[rest.length - 3];
+        const position = rest[rest.length - 1];
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td></td> <!-- conflict -->
+          <td>${name}</td>
+          <td>${empNo}</td>
+          <td>${restDate}</td>
+          <td>${day}</td>
+          <td>${position}</td>
+        `;
+        restTableBody.appendChild(row);
+      }
+    });
+  }, 50);
+});
 
 </script>
 </body>
