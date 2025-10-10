@@ -327,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td>${escapeHtml(d.position)}</td>
       </tr>
     `).join('');
+    document.getElementById('workTable').scrollIntoView({ behavior: 'smooth' });
   }
 
   function renderRestTable() {
@@ -351,6 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (total === 0) { summaryEl.textContent = ''; }
     else if (conflicts === 0) { summaryEl.textContent = `✅ No conflicts detected for ${total} entries.`; summaryEl.classList.add('text-green-600'); }
     else { summaryEl.textContent = `${conflicts} out of ${total} entries have conflicts detected.`; summaryEl.classList.remove('text-green-600'); }
+    document.getElementById('restTable').scrollIntoView({ behavior: 'smooth' });
+
   }
 
   function escapeHtml(str){ return (str==null) ? '' : String(str)
