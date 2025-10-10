@@ -131,7 +131,7 @@
   .flex.items-center input[type="text"] {
     min-width: 180px;
   }
-  button#generate-work-btn, button#generate-rest-btn {
+  button#clearWorkBtn, button#clearRestBtn {
     min-width: 130px;
   }
   #monitoringBody td input, #monitoringBody td select {
@@ -335,6 +335,8 @@
     </button>
   </div>
 </div>
+
+<!-- ✅ Script to Add: keep monitoring logic separate -->
 
   <script>
     // Data stores
@@ -631,7 +633,7 @@ function generateHrisFile(type) {
   let filename = '';
 
   if (type === 'work') {
-    branchName = document.getElementById('work-branch-name').value.trim();
+    branchName = document.getElementById('workBranchName').value.trim();
     if (!branchName) {
       showBanner("⚠️ Please enter the Work Branch Name before generating the file.");
       return;
@@ -651,7 +653,7 @@ function generateHrisFile(type) {
   }
 
   else if (type === 'rest') {
-    branchName = document.getElementById('rest-branch-name').value.trim();
+    branchName = document.getElementById('restBranchName').value.trim();
     if (!branchName) {
       showBanner("⚠️ Please enter the Rest Branch Name before generating the file.");
       return;
@@ -701,17 +703,19 @@ function showSuccessMessage() {
 function clearAllData() {
   workScheduleData = [];
   restDayData = [];
-  document.getElementById('work-schedule-paste').innerText = '';
-  document.getElementById('rest-day-paste').innerText = '';
-  document.getElementById('work-branch-name').value = '';
-  document.getElementById('rest-branch-name').value = '';
-  document.getElementById('summary').innerText = '';
-  document.getElementById('summary').classList.remove('text-green-600');
+  document.getElementById('workScheduleInput').value = '';
+  document.getElementById('restScheduleInput').value = '';
+  document.getElementById('workBranchName').value = '';
+  document.getElementById('restBranchName').value = '';
+  const summary = document.getElementById('summary');
+  if (summary) {
+    summary.innerText = '';
+    summary.classList.remove('text-green-600');
+  }
   renderWorkTable();
   renderRestDayTable();
   updateButtonStates();
 
-  // 🧹 Optional: show confirmation banner
   const banner = document.getElementById('warning-banner');
   banner.textContent = "🧹 All data cleared successfully.";
   banner.classList.remove('hidden');
@@ -887,8 +891,7 @@ document.getElementById('exportMonitoringBtn').addEventListener('click', () => {
 
   // ✅ Create workbook and save file
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Monitoring');
-  XLSX.writeFile(wb, `Branch_Monitoring_${monthName}_${yearValue}.xlsx`);
+XLSX.writeFile(wb, `Monitoring_${monthName}_${yearValue}.xlsx`);
 });
 // 🧹 Clear buttons
 document.getElementById('clearWorkData').addEventListener('click', () => {
@@ -911,8 +914,21 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
   document.getElementById('workTableBody').innerHTML = '';
   document.getElementById('restTableBody').innerHTML = '';
 });
+// ✅ Auto-parse Excel-like pasted data
+document.getElementById('workScheduleInput').addEventListener('paste', () => {
+  setTimeout(parseWorkSchedule, 100);
+});
+document.getElementById('restScheduleInput').addEventListener('paste', () => {
+  setTimeout(parseRestSchedule, 100);
+});
 
-// --- Attach paste listeners for auto column detection ---
+// ✅ Button Handlers
+document.getElementById('generateWorkFile').addEventListener('click', () => generateHrisFile('work'));
+document.getElementById('generateRestFile').addEventListener('click', () => generateHrisFile('rest'));
+document.getElementById('clearWorkData').addEventListener('click', clearAllData);
+document.getElementById('clearRestData').addEventListener('click', clearAllData);
+
+// ✅ Auto-parse pasted data into tables
 document.getElementById('workScheduleInput').addEventListener('paste', e => handlePaste(e, 'work'));
 document.getElementById('restScheduleInput').addEventListener('paste', e => handlePaste(e, 'rest'));
 
