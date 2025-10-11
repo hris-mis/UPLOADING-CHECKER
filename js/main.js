@@ -38,24 +38,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const progressPercentEl = document.getElementById('progressPercent');
   const progressBar = document.getElementById('progressBar');
 
-  /***** Tabs *****/
-  tabSchedule.addEventListener('click', () => {
-    tabSchedule.classList.add('bg-indigo-600', 'text-white');
-    tabMonitoring.classList.remove('bg-indigo-600', 'text-white');
-    tabMonitoring.classList.add('bg-gray-200', 'text-gray-700');
-    scheduleContent.classList.remove('hidden');
-    monitoringContent.classList.add('hidden');
-  });
+  // 🧭 Save scroll position when switching tabs
+let lastScroll = 0;
 
-  tabMonitoring.addEventListener('click', () => {
-    tabMonitoring.classList.add('bg-indigo-600', 'text-white');
-    tabSchedule.classList.remove('bg-indigo-600', 'text-white');
-    tabSchedule.classList.add('bg-gray-200', 'text-gray-700');
-    scheduleContent.classList.add('hidden');
-    monitoringContent.classList.remove('hidden');
-    renderMonitoring();
-    updateMonitoringStats();
-  });
+
+/***** Tabs *****/
+tabSchedule.addEventListener('click', () => {
+  lastScroll = window.scrollY; // save before switching
+  tabSchedule.classList.add('bg-indigo-600', 'text-white');
+  tabMonitoring.classList.remove('bg-indigo-600', 'text-white');
+  tabMonitoring.classList.add('bg-gray-200', 'text-gray-700');
+  scheduleContent.classList.remove('hidden');
+  monitoringContent.classList.add('hidden');
+});
+
+tabMonitoring.addEventListener('click', () => {
+  tabMonitoring.classList.add('bg-indigo-600', 'text-white');
+  tabSchedule.classList.remove('bg-indigo-600', 'text-white');
+  tabSchedule.classList.add('bg-gray-200', 'text-gray-700');
+  scheduleContent.classList.add('hidden');
+  monitoringContent.classList.remove('hidden');
+  renderMonitoring();
+  updateMonitoringStats();
+  setTimeout(() => window.scrollTo(0, lastScroll), 100); // restore position
+});
+
 
   /***** Helpers *****/
   function showBanner(msg) {
@@ -100,24 +107,46 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem('monitoringData', JSON.stringify(d));
   }
 
-  function updateMonitoringStats() {
-    const data = getMonitoring();
-    const total = data.length;
-    const checked = data.filter(b => b.checked).length;
-    const uploaded = data.filter(b => b.uploaded).length;
+function updateMonitoringStats() {
+  const data = getMonitoring();
+  const total = data.length;
+  const checked = data.filter(b => b.checked).length;
+  const uploaded = data.filter(b => b.uploaded).length;
 
-    totalBranchesEl.textContent = total;
-    checkedBranchesEl.textContent = checked;
-    uploadedBranchesEl.textContent = uploaded;
+  totalBranchesEl.textContent = total;
+  checkedBranchesEl.textContent = checked;
+  uploadedBranchesEl.textContent = uploaded;
 
-    const percent = total === 0 ? 0 : Math.round((uploaded / total) * 100);
-    progressPercentEl.textContent = percent + '%';
-    progressBar.style.width = percent + '%';
+  const percent = total === 0 ? 0 : Math.round((uploaded / total) * 100);
+  animateProgress(percent);
+}
 
-    if (percent < 40) progressBar.style.background = 'linear-gradient(to right, #f43f5e, #fb7185)';
-    else if (percent < 80) progressBar.style.background = 'linear-gradient(to right, #fbbf24, #facc15)';
-    else progressBar.style.background = 'linear-gradient(to right, #10b981, #34d399)';
+// 🌀 Animate percent counting up
+let currentPercent = 0;
+function animateProgress(target) {
+  const duration = 600;
+  const start = performance.now();
+  const from = currentPercent;
+  const diff = target - from;
+
+  function frame(time) {
+    const progress = Math.min((time - start) / duration, 1);
+    const value = Math.round(from + diff * progress);
+    progressPercentEl.textContent = value + '%';
+    progressBar.style.width = value + '%';
+    if (value < 40)
+      progressBar.style.background = 'linear-gradient(to right, #f43f5e, #fb7185)';
+    else if (value < 80)
+      progressBar.style.background = 'linear-gradient(to right, #fbbf24, #facc15)';
+    else
+      progressBar.style.background = 'linear-gradient(to right, #10b981, #34d399)';
+
+    if (progress < 1) requestAnimationFrame(frame);
+    else currentPercent = target;
   }
+  requestAnimationFrame(frame);
+}
+
 
   function renderMonitoring() {
     const data = getMonitoring();
@@ -200,6 +229,18 @@ document.addEventListener('DOMContentLoaded', () => {
     XLSX.writeFile(wb, `Monitoring_${monthSelect.value}_${yearSelect.value}.xlsx`);
     showSuccess();
   });
+  // 🧭 Floating "Back to Top" Button Logic
+const backToTopBtn = document.getElementById('backToTopBtn');
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 400) backToTopBtn.classList.add('show');
+  else backToTopBtn.classList.remove('show');
+});
+
+
+backToTopBtn.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
 
   /***** Initialize *****/
   renderMonitoring();
