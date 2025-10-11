@@ -1,110 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Schedule Conflict Checker — Ready</title>
-<!-- Tailwind CDN (per your choice) -->
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Schedule Conflict Checker — Fixed</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet" />
-<style>
-body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;}
-.container{max-width:1200px;margin:0 auto;padding:1rem;}
-.table-fixed th, .table-fixed td{padding:0.5rem;border-bottom:1px solid rgba(0,0,0,0.06);}
-.btn{padding:0.45rem 0.75rem;border-radius:0.5rem;}
-.hidden{display:none;}
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:60;}
-.modal{background:white;padding:1rem;border-radius:0.5rem;max-width:900px;width:95%;max-height:70vh;overflow:auto;}
-.smallbtn{padding:0.25rem 0.5rem;border-radius:0.375rem;font-size:0.9rem;}
-</style>
+<!-- Library for Excel file generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-slate-50 min-h-screen">
-<div class="container">
-  <header class="text-center my-6">
-    <div class="inline-flex rounded-full bg-gradient-to-r from-sky-500 to-teal-400 p-1 shadow">
-      <button id="tab-schedule" class="px-6 py-2 rounded-full bg-white text-slate-800 font-semibold">🗓️ Schedule Checker</button>
-      <button id="tab-monitoring" class="px-6 py-2 rounded-full text-white font-semibold bg-slate-700 ml-2">📊 Monitoring</button>
+<body class="p-4 sm:p-6 lg:p-8">
+
+<div id="warning-banner" class="hidden fixed top-4 left-1/2 transform -translate-x-1/2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg shadow-md transition-opacity opacity-0"></div>
+<div id="success-message" class="hidden fixed top-16 left-1/2 transform -translate-x-1/2 bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow-md transition-opacity opacity-0">✅ File generated successfully!</div>
+<div class="max-w-[1400px] mx-auto">
+  <header class="mb-10 text-center">
+    <div class="flex justify-center space-x-4 mb-8">
+      <button id="tab-schedule" class="px-6 py-2 rounded-full font-semibold bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition">🗓️ Schedule Checker</button>
+      <button id="tab-monitoring" class="px-6 py-2 rounded-full font-semibold bg-gray-200 text-gray-700 hover:bg-indigo-100 transition">📊 Monitoring</button>
     </div>
-    <h1 class="text-2xl font-extrabold mt-4">Schedule Conflict Checker</h1>
   </header>
 
-  <!-- Schedule tab content -->
-  <section id="tab-schedule-content">
-    <div class="grid md:grid-cols-2 gap-6">
-      <div class="bg-white p-4 rounded shadow-sm">
-        <div class="flex justify-between items-center mb-2">
-          <h3 class="font-semibold">1. Paste Work Schedule Data</h3>
-          <div class="flex items-center gap-2">
-            <input id="workBranchName" placeholder="Branch Name" class="border px-2 py-1 rounded" />
-            <button id="generateWorkFile" class="btn bg-sky-600 text-white">Generate</button>
+  <div id="tab-schedule-content">
+    <h1 class="text-3xl font-extrabold text-center mt-4">Schedule Conflict Checker</h1>
+    <p class="mt-2 text-center text-gray-600 mb-8">Paste, validate, and generate HRIS upload files for Work and Rest Day schedules.</p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 px-8 py-6">
+      <!-- Work -->
+      <div>
+        <div class="flex items-center justify-between mb-4 gap-4">
+          <h3 class="font-semibold text-lg">1. Paste Work Schedule Data</h3>
+          <div class="flex items-center gap-3">
+            <input id="workBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-2" />
+            <button id="generateWorkFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button>
+            <button id="clearWorkData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
           </div>
         </div>
-        <textarea id="workScheduleInput" class="w-full border rounded p-2 h-44" placeholder="Paste work schedule here"></textarea>
-        <div class="mt-3 overflow-auto bg-white rounded border">
-          <table class="w-full table-fixed text-sm text-left">
-            <thead class="bg-slate-50"><tr><th>Name</th><th>Emp No.</th><th>Work Date</th><th>Shift</th><th>Day</th><th>Position</th><th></th></tr></thead>
+        <textarea id="workScheduleInput" class="w-full h-64 border rounded p-3 mb-4" placeholder="Paste work schedule (Excel copy) here"></textarea>
+        <div class="overflow-auto bg-white rounded border">
+          <table class="w-full text-sm text-center">
+            <thead class="bg-gray-50 text-gray-600 text-xs">
+              <tr><th>Name</th><th>Emp No.</th><th>Work Date</th><th>Shift</th><th>Day</th><th>Position</th></tr>
+            </thead>
             <tbody id="workTableBody"></tbody>
           </table>
         </div>
       </div>
 
-      <div class="bg-white p-4 rounded shadow-sm">
-        <div class="flex justify-between items-center mb-2">
-          <h3 class="font-semibold">2. Paste Rest Day Schedule Data</h3>
-          <div class="flex items-center gap-2">
-            <input id="restBranchName" placeholder="Branch Name" class="border px-2 py-1 rounded" />
-            <button id="generateRestFile" class="btn bg-sky-600 text-white">Generate</button>
+      <!-- Rest -->
+      <div>
+        <div class="flex items-center justify-between mb-4 gap-4">
+          <h3 class="font-semibold text-lg">2. Paste Rest Day Schedule Data</h3>
+          <div class="flex items-center gap-3">
+            <input id="restBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-2" />
+            <button id="generateRestFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button>
+            <button id="clearRestData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
           </div>
         </div>
-        <textarea id="restScheduleInput" class="w-full border rounded p-2 h-44" placeholder="Paste rest day schedule here"></textarea>
-        <div class="mt-3 overflow-auto bg-white rounded border">
-          <table class="w-full table-fixed text-sm text-left">
-            <thead class="bg-slate-50"><tr><th>Conflict</th><th>Name</th><th>Emp No.</th><th>Rest Date</th><th>Day</th><th>Position</th><th></th></tr></thead>
+        <textarea id="restScheduleInput" class="w-full h-64 border rounded p-3 mb-4" placeholder="Paste rest day schedule (Excel copy) here"></textarea>
+        <div class="overflow-auto bg-white rounded border">
+          <table class="w-full text-sm text-center">
+            <thead class="bg-gray-50 text-gray-600 text-xs">
+              <tr><th>Conflict</th><th>Name</th><th>Emp No.</th><th>Rest Date</th><th>Day</th><th>Position</th></tr>
+            </thead>
             <tbody id="restTableBody"></tbody>
           </table>
         </div>
-        <div id="summary" class="mt-3 p-2 text-center text-sm"></div>
+        <div id="summary" class="summary-box text-center hidden"></div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- Monitoring tab content -->
-  <section id="tab-monitoring-content" class="hidden bg-white p-4 rounded shadow-sm">
-    <h2 class="text-xl font-semibold mb-3">📊 Branch Monitoring Dashboard</h2>
-    <div class="flex items-center gap-3 mb-3">
-      <input id="monitorSearch" placeholder="Search branch..." class="border px-2 py-1 rounded flex-1" />
-      <button id="addBranchBtn" class="btn bg-green-600 text-white">Add Branch</button>
-      <button id="exportMonitoringBtn" class="btn bg-emerald-600 text-white">Export</button>
-    </div>
-    <div class="overflow-auto bg-white rounded border">
-      <table class="w-full text-sm text-left">
-        <thead class="bg-slate-50"><tr><th>Branch</th><th>Check</th><th>Upload</th><th>Uploaded By</th><th>Remarks</th><th>Actions</th></tr></thead>
-        <tbody id="monitoringBody"></tbody>
-      </table>
-    </div>
-    <p class="mt-3 text-sm">Total: <span id="totalBranches">0</span> | Checked: <span id="checkedBranches">0</span> | Uploaded: <span id="uploadedBranches">0</span> | <span id="progressPercent">0%</span></p>
-  </section>
+<!-- MONITORING -->
+<div id="tab-monitoring-content" class="hidden dashboard-card mt-6 shadow-lg">
+  <h2 class="text-2xl text-center mb-4">📊 Branch Monitoring Dashboard</h2>
 
-  <div id="warning-banner" class="hidden fixed top-4 left-1/2 -translate-x-1/2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded shadow"></div>
-  <div id="success-message" class="hidden fixed top-16 left-1/2 -translate-x-1/2 bg-green-100 text-green-800 px-4 py-2 rounded shadow">✅ File generated!</div>
-</div>
+  <div class="flex justify-center gap-3 mb-4">
+    <select id="monthSelect" class="border rounded px-3 py-2">
+      <option value="01">January</option>
+      <option value="02">February</option>
+      <option value="10" selected>October</option>
+    </select>
+    <select id="yearSelect" class="border rounded px-3 py-2">
+      <option value="2025" selected>2025</option>
+      <option value="2026">2026</option>
+    </select>
+    <button id="clearMonitoringBtn" class="bg-red-500 text-white px-4 py-2 rounded">Clear</button>
+    <button id="exportMonitoringBtn" class="bg-green-600 text-white px-4 py-2 rounded">Export</button>
+  </div>
 
-<!-- Rejected modal -->
-<div id="rejectedModal" class="hidden modal-backdrop">
-  <div class="modal">
-    <div class="flex justify-between items-center mb-2">
-      <h3 class="text-lg font-semibold">Rejected Rows</h3>
-      <button class="modal-close smallbtn bg-red-500 text-white">Close</button>
-    </div>
-    <div class="modal-body" id="rejectedBody"></div>
+  <div class="overflow-auto bg-white rounded border">
+    <table class="w-full text-sm text-center">
+      <thead class="bg-gray-100">
+        <tr>
+          <th>Branch</th>
+          <th>Check</th>
+          <th>Upload</th>
+          <th>Uploaded By</th>
+          <th>Remarks</th>
+          <th>Progress</th>
+        </tr>
+      </thead>
+      <tbody id="monitoringBody"></tbody>
+    </table>
+  </div>
+
+  <p class="mt-4 text-center">
+    Total: <span id="totalBranches">0</span> |
+    Checked: <span id="checkedBranches">0</span> |
+    Uploaded: <span id="uploadedBranches">0</span> |
+    <span id="progressPercent">0%</span>
+  </p>
+
+  <div class="w-1/2 mx-auto bg-gray-200 rounded-full h-3 mt-2">
+    <div id="progressBar" class="h-3 bg-green-500 rounded-full w-0"></div>
   </div>
 </div>
 
-<!-- Libraries -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script src="js/main.js"></script>
+<!-- ================================
+ 🌌 Tech Breeze Animation Layer
+ Powered by GSAP + Vanilla JS Particles
+================================ -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
-<!-- App JS -->
-<script src="assets/js/app.js"></script>
+<!-- Particle container -->
+<div id="particle-container"></div>
+
+<script>
+// ========== 🌟 Floating Particles ==========
+const container = document.getElementById("particle-container");
+const numParticles = 40;
+const colors = ["#0ea5e9", "#14b8a6", "#67e8f9", "#99f6e4"];
+
+for (let i = 0; i < numParticles; i++) {
+  const dot = document.createElement("div");
+  dot.classList.add("particle");
+  gsap.set(dot, {
+    position: "absolute",
+    width: gsap.utils.random(2, 5),
+    height: gsap.utils.random(2, 5),
+    borderRadius: "50%",
+    background: gsap.utils.random(colors),
+    x: gsap.utils.random(window.innerWidth),
+    y: gsap.utils.random(window.innerHeight),
+    opacity: gsap.utils.random(0.3, 0.9)
+  });
+  container.appendChild(dot);
+
+  // floating motion loop
+  gsap.to(dot, {
+    duration: gsap.utils.random(12, 24),
+    x: `+=${gsap.utils.random(-100, 100)}`,
+    y: `+=${gsap.utils.random(-80, 80)}`,
+    repeat: -1,
+    yoyo: true,
+    ease: "sine.inOut"
+  });
+}
+
+// ========== 🎭 Header + Card Entrance ==========
+gsap.utils.toArray("header, .dashboard-card").forEach((el, i) => {
+  gsap.fromTo(el, 
+    { opacity: 0, y: 30 },
+    { opacity: 1, y: 0, delay: 0.2 + i * 0.1, duration: 0.8, ease: "power3.out" }
+  );
+});
+
+// ========== 🎮 Parallax Header Drift ==========
+const header = document.querySelector("header");
+if (header) {
+  document.addEventListener("mousemove", (e) => {
+    const x = (e.clientX / window.innerWidth - 0.5) * 30;
+    const y = (e.clientY / window.innerHeight - 0.5) * 30;
+    gsap.to(header, { duration: 1.5, backgroundPosition: `${50 + x}% ${50 + y}%`, ease: "power2.out" });
+  });
+}
+
+// ========== 🧊 Particle Layer CSS ==========
+const style = document.createElement("style");
+style.innerHTML = `
+  #particle-container .particle {
+    position: absolute;
+    will-change: transform, opacity;
+    z-index: 0;
+    mix-blend-mode: screen;
+  }
+`;
+document.head.appendChild(style);
+</script>
+
+
+<!-- Rejected rows modal -->
+<div id="rejectedModal" class="hidden" style="display:none; position:fixed; inset:0; z-index:10000; align-items:center; justify-content:center;">
+  <div class="modal-overlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.35);"></div>
+  <div style="position:relative; max-width:800px; width:90%; margin:40px auto; background:white; border-radius:8px; padding:16px; box-shadow:0 8px 30px rgba(0,0,0,0.2); z-index:10001;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h3 style="margin:0;">Rejected Rows</h3>
+      <button class="modal-close" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;">Close</button>
+    </div>
+    <div class="modal-body" style="max-height:60vh; overflow:auto;"></div>
+  </div>
+</div>
 </body>
 </html>
