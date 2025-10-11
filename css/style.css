@@ -93,6 +93,13 @@ header::before {
   to { transform: translateX(50px); opacity: 1; }
 }
 
+/* ✅ Fix: Ensure tab buttons stay clickable above all layers */
+#tab-schedule, #tab-monitoring {
+  position: relative;
+  z-index: 50;
+  cursor: pointer;
+}
+
 /* 🌤️ Typography */
 h1, h2 {
   font-weight: 800;
