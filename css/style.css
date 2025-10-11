@@ -259,3 +259,39 @@ th:first-child, td:first-child {
   90% { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(10px); }
 }
+/* ==============================
+   🔧 Monitoring Dashboard Enhancements
+============================== */
+
+.summary-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+#progressBar {
+  transition: width 0.8s ease, background-color 0.8s ease;
+}
+
+#addBranchBtn {
+  z-index: 100;
+  cursor: pointer;
+  animation: pulseAdd 2.5s infinite ease-in-out;
+}
+@keyframes pulseAdd {
+  0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(99,102,241,0); }
+}
+
+.action-icon {
+  cursor: pointer;
+  font-size: 1rem;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.action-icon:hover {
+  transform: scale(1.2);
+}
+.action-edit:hover { color: #0ea5e9; }
+.action-delete:hover { color: #ef4444; }
