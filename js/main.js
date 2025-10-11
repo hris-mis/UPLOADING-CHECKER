@@ -458,9 +458,36 @@ document.addEventListener('DOMContentLoaded', () => {
   clearMonitoringBtn.addEventListener('click', ()=>{ if (confirm('Clear monitoring data?')) { localStorage.removeItem('monitoringData'); renderMonitoring(); } });
   exportMonitoringBtn.addEventListener('click', ()=>{ const data = getMonitoring(); const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Monitoring'); const monthText = monthSelect.options[monthSelect.selectedIndex].text; XLSX.writeFile(wb, `Monitoring_${monthText}_${yearSelect.value}.xlsx`); });
 
-  tabSchedule.addEventListener('click', ()=>{ scheduleContent.classList.remove('hidden'); monitoringContent.classList.add('hidden'); tabSchedule.classList.add('bg-indigo-600','text-white'); tabMonitoring.classList.remove('bg-indigo-600','text-white'); });
-  tabMonitoring.addEventListener('click', ()=>{ scheduleContent.classList.add('hidden'); monitoringContent.classList.remove('hidden'); tabMonitoring.classList.add('bg-indigo-600','text-white'); tabSchedule.classList.remove('bg-indigo-600','text-white'); renderMonitoring(); });
+});
+// 🔄 Tab Switching Logic
+// =======================
+document.addEventListener("DOMContentLoaded", () => {
+  const tabSchedule = document.getElementById("tab-schedule");
+  const tabMonitoring = document.getElementById("tab-monitoring");
+  const contentSchedule = document.getElementById("tab-schedule-content");
+  const contentMonitoring = document.getElementById("tab-monitoring-content");
 
-  renderWorkTable(); renderRestTable(); updateButtonStates(); renderMonitoring();
-  window._undoDelete = undoDelete; window._undoPaste = undoPaste; window._showRejectedModal = showRejectedModal;
+  if (tabSchedule && tabMonitoring && contentSchedule && contentMonitoring) {
+    tabSchedule.addEventListener("click", () => {
+      contentSchedule.classList.remove("hidden");
+      contentMonitoring.classList.add("hidden");
+
+      tabSchedule.classList.add("bg-indigo-600", "text-white");
+      tabSchedule.classList.remove("bg-gray-200", "text-gray-700");
+
+      tabMonitoring.classList.remove("bg-indigo-600", "text-white");
+      tabMonitoring.classList.add("bg-gray-200", "text-gray-700");
+    });
+
+    tabMonitoring.addEventListener("click", () => {
+      contentMonitoring.classList.remove("hidden");
+      contentSchedule.classList.add("hidden");
+
+      tabMonitoring.classList.add("bg-indigo-600", "text-white");
+      tabMonitoring.classList.remove("bg-gray-200", "text-gray-700");
+
+      tabSchedule.classList.remove("bg-indigo-600", "text-white");
+      tabSchedule.classList.add("bg-gray-200", "text-gray-700");
+    });
+  }
 });
