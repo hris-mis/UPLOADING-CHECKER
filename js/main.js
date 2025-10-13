@@ -61,6 +61,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
   }
 
+  function hideBanner() {
+    if (!warningBanner) return;
+    warningBanner.classList.add('hidden');
+    warningBanner.classList.remove('opacity-100');
+    warningBanner.textContent = '';
+  }
+
   function showSuccess() {
     if (!successMsg) return;
     successMsg.classList.remove('hidden');
@@ -158,6 +165,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${mm}/${dd}/${yy}`;
     }
     return dateStr;
+  }
+
+  function dayNameFromDate(dateStr) {
+    if (!dateStr) return '';
+    const p = new Date(dateStr);
+    if (isNaN(p)) return '';
+    return p.toLocaleDateString(undefined, { weekday: 'long' });
   }
 
   function isNumericStr(s) {
@@ -266,10 +280,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderRestTable();
   }
 
+  // Re-check conflicts helper (ensures RD & WS sync, call after any paste/change)
+  function recheckConflicts() {
+    // run validateSchedules to rebuild restDayData.conflicts
+    validateSchedules();
+    updateButtonStates();
+  }
+
   function updateButtonStates() {
     if (generateWorkFileBtn) generateWorkFileBtn.disabled = workScheduleData.length === 0;
-    const hasConf = restDayData.some(r => r.conflicts && r.conflicts.length > 0);
-    if (generateRestFileBtn) generateRestFileBtn.disabled = restDayData.length === 0 || hasConf;
+    // allow generate for rest even if conflicts exist; only disable when empty
+    if (generateRestFileBtn) generateRestFileBtn.disabled = restDayData.length === 0;
   }
 
   /***** Paste handler (shared) *****/
@@ -278,22 +299,63 @@ document.addEventListener('DOMContentLoaded', () => {
     const clipboardData = e.clipboardData || window.clipboardData;
     const pastedData = clipboardData.getData('text/plain');
     if (!pastedData) return;
+
+    // parse to rows
     const parsed = parseTabular(pastedData);
     const { headerIndex, dataRows, colMap } = detectHeaderAndMap(parsed);
+
+    // If parsed rows empty but parsed has lines (no header), fallback to parsed directly
+    const rows = dataRows.length ? dataRows : parsed;
+
     const cleaned = []; const rejected = [];
 
-    dataRows.forEach((row, idx) => {
+    rows.forEach((row, idx) => {
+      // flexible column support: if row length is 1 or 2, assume [empNo], [empNo, date]
+      let emp = '', date = '', shift = '', name = '', day = '', position = '';
+      // If detectHeaderAndMap produced mapping and row has that index, use it
+      if (colMap && (row[colMap.empNo] !== undefined || row.length >= 2)) {
+        name = (row[colMap.name]||'').toString().trim();
+        emp = (row[colMap.empNo]||'').toString().trim();
+        date = normalizeDate(row[colMap.date]||'');
+        shift = (row[colMap.shift]||'').toString().trim();
+        day = (row[colMap.day]||'').toString().trim();
+        position = (row[colMap.position]||'').toString().trim();
+      } else {
+        // fallback by column count
+        if (row.length === 1) {
+          emp = row[0] || '';
+        } else if (row.length === 2) {
+          emp = row[0] || '';
+          date = normalizeDate(row[1] || '');
+          day = dayNameFromDate(row[1] || '');
+        } else if (row.length >= 3) {
+          emp = row[0] || '';
+          date = normalizeDate(row[1] || '');
+          shift = row[2] || '';
+        } else {
+          // nothing usable
+        }
+      }
+
+      // normalize day if date present but day missing
+      if ((!day || day === '') && date) {
+        const dn = dayNameFromDate(date);
+        if (dn) day = dn;
+      }
+
       const obj = {
-        name: (row[colMap.name]||'').toString().trim(),
-        empNo: (row[colMap.empNo]||'').toString().trim(),
-        date: normalizeDate(row[colMap.date]||''),
-        shift: (row[colMap.shift]||'').toString().trim(),
-        day: (row[colMap.day]||'').toString().trim(),
-        position: (row[colMap.position]||'').toString().trim()
+        name: name,
+        empNo: (emp||'').toString().trim(),
+        date: date || '',
+        shift: (shift||'').toString().trim(),
+        day: day || '',
+        position: position || ''
       };
+
       const reasons = [];
+      // require empNo (numeric); allow missing date but we will still include row for manual fix
       if (!obj.empNo || !isNumericStr(obj.empNo)) reasons.push('Missing or non-numeric Employee No');
-      if (!obj.date || obj.date === '') reasons.push('Invalid or missing Date');
+      // Do not reject rows just because date is missing — include them and let validation handle later
       if (reasons.length) rejected.push({ row: row.join(' | '), reasons });
       else cleaned.push(obj);
     });
@@ -307,12 +369,17 @@ document.addEventListener('DOMContentLoaded', () => {
       renderWorkTable();
       if (workInput) workInput.value = '';
       showBanner(`✅ ${cleaned.length} work schedule rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
+      // recheck rest conflicts because work changed
+      recheckConflicts();
     } else {
       restDayData = cleaned;
+      // validate rest (will populate conflicts)
       validateSchedules();
       renderRestTable();
       if (restInput) restInput.value = '';
       showBanner(`✅ ${cleaned.length} rest day rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
+      // also recheck to keep consistent
+      recheckConflicts();
     }
     if (rejected.length) showRejectedModal(rejected);
     updateButtonStates();
@@ -332,11 +399,14 @@ document.addEventListener('DOMContentLoaded', () => {
       deleteStack.work.push({item: removed, idx});
       renderWorkTable();
       showBanner('Row deleted. You can undo delete.');
+      // recheck since work changed
+      recheckConflicts();
     } else {
       const removed = restDayData.splice(idx,1)[0];
       deleteStack.rest.push({item: removed, idx});
       renderRestTable();
       showBanner('Row deleted. You can undo delete.');
+      recheckConflicts();
     }
     updateButtonStates();
   });
@@ -348,6 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (type === 'work') { workScheduleData.splice(last.idx,0,last.item); renderWorkTable(); }
     else { restDayData.splice(last.idx,0,last.item); renderRestTable(); }
     showBanner('Undo successful.');
+    recheckConflicts();
     updateButtonStates();
   }
   function undoPaste(type) {
@@ -359,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderWorkTable();
     renderRestTable();
     showBanner('Undo paste restored previous data.');
+    recheckConflicts();
     updateButtonStates();
   }
 
@@ -390,7 +462,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (type === 'work') {
       if (!workBranch) return showBanner('⚠️ Enter Work Branch Name.');
       if (workScheduleData.length === 0) return showBanner('⚠️ No Work Schedule data to generate.');
-      const data = [['Employee Number','Work Date','Shift Code'], ...workScheduleData.map(r => [r.empNo, r.date, r.shift])];
+      // Clean shift: remove spaces and uppercase
+      const cleanedData = workScheduleData.map(r => ({
+        empNo: r.empNo,
+        date: r.date,
+        shift: (r.shift || '').replace(/\s+/g, '').toUpperCase()
+      }));
+      const data = [['Employee Number','Work Date','Shift Code'], ...cleanedData.map(r => [r.empNo, r.date, r.shift])];
       const ws = XLSX.utils.aoa_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
@@ -399,7 +477,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       if (!restBranch) return showBanner('⚠️ Enter Rest Branch Name.');
       if (restDayData.length === 0) return showBanner('⚠️ No Rest Day data to generate.');
-      if (restDayData.some(r => r.conflicts && r.conflicts.length > 0)) return showBanner('⚠️ Resolve conflicts before generating Rest Day file.');
+      // If conflicts exist, show warning but do not block generation
+      if (restDayData.some(r => r.conflicts && r.conflicts.length > 0)) {
+        showBanner('⚠️ Note: There are conflicts, but file generation will proceed.');
+      }
       const data = restDayData.map(r => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
@@ -484,10 +565,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // render monitoring table with action icons
   function renderMonitoring() {
     const data = getMonitoring();
-    const searchVal = (document.getElementById('monitorSearch') || {}).value || '';
+    const searchVal = (document.getElementById('monitorSearch') || {}).value?.trim().toLowerCase() || '';
     const showUnchecked = document.getElementById('filterUnchecked')?.checked;
     const filtered = data.filter((b) => {
-      const matches = b.name.toLowerCase().includes(searchVal.toLowerCase());
+      const matches = b.name.toLowerCase().includes(searchVal);
       const passes = showUnchecked ? !b.checked : true;
       return matches && passes;
     });
@@ -513,8 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const index = Number(e.target.dataset.index);
         const field = e.target.dataset.field;
         const d = getMonitoring();
-        // map filtered index back to original index: we rely on filtered being subset, but to keep it simple
-        // we'll update the first matching name occurrence if search/filter is active.
+        // map filtered index back to original index
         const filteredNames = filtered.map(x => x.name);
         const targetName = filteredNames[index];
         const origIndex = d.findIndex(x => x.name === targetName);
@@ -522,6 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
         d[origIndex][field] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
         saveMonitoring(d);
         updateMonitoringStats();
+        renderMonitoring(); // refresh UI so filters apply immediately
       });
     });
 
@@ -588,6 +669,51 @@ document.addEventListener('DOMContentLoaded', () => {
       showSuccess();
     });
   }
+
+  // Ensure monitoring search & filter re-render on change
+  const monitorSearchInput = document.getElementById('monitorSearch');
+  const monitorFilterUnchecked = document.getElementById('filterUnchecked');
+  if (monitorSearchInput) monitorSearchInput.addEventListener('input', () => renderMonitoring());
+  if (monitorFilterUnchecked) monitorFilterUnchecked.addEventListener('change', () => renderMonitoring());
+
+  /***** Clear All Button (insert into Schedule Checker header) *****/
+  (function insertClearAll() {
+    const scheduleHeader = document.querySelector('#tab-schedule-content h1');
+    if (!scheduleHeader) return;
+    const btn = document.createElement('button');
+    btn.id = 'clearAllBtn';
+    btn.className = 'bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 shadow-sm transition';
+    btn.textContent = '🧹 Clear All';
+    btn.style.margin = '0.5rem auto 1rem';
+    // Insert after header
+    scheduleHeader.insertAdjacentElement('afterend', btn);
+
+    btn.addEventListener('click', () => {
+      if (!confirm('Are you sure you want to clear ALL schedule data (Work + Rest)?')) return;
+      // clear data/state
+      workScheduleData = [];
+      restDayData = [];
+      rejectedRows = [];
+      // clear inputs
+      if (workInput) workInput.value = '';
+      if (restInput) restInput.value = '';
+      const wbEl = document.getElementById('workBranchName');
+      const rbEl = document.getElementById('restBranchName');
+      if (wbEl) wbEl.value = '';
+      if (rbEl) rbEl.value = '';
+      // clear tables
+      renderWorkTable();
+      renderRestTable();
+      // hide banners and summary
+      hideBanner();
+      if (summaryEl) { summaryEl.textContent = ''; summaryEl.classList.add('hidden'); }
+      // update states
+      updateButtonStates();
+      showBanner('✅ All schedule data cleared.');
+      // recheck just to be safe
+      recheckConflicts();
+    });
+  })();
 
   /***** Save / restore scroll position when switching tabs *******/
   let lastScroll = 0;
