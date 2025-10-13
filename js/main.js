@@ -322,140 +322,94 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /***** 🪄 SMART PASTE + detectColumnMapping usage *****/
-  function handlePaste(e, type) {
-    e.preventDefault();
-    const clipboardData = e.clipboardData || window.clipboardData;
-    const pastedData = clipboardData.getData('text/plain');
-    if (!pastedData) return;
+function handlePaste(e, type) {
+  e.preventDefault();
+  const clipboardData = e.clipboardData || window.clipboardData;
+  const pastedData = clipboardData.getData('text/plain');
+  if (!pastedData) return;
 
-    // auto-detect branch name and set input if empty
-    const branchName = detectBranchName(pastedData);
-    if (branchName) {
-      const branchInput = type === 'work' ? document.getElementById('workBranchName') : document.getElementById('restBranchName');
-      if (branchInput && !branchInput.value) branchInput.value = branchName;
-    }
-
-    // parse to rows
-    const parsed = parseTabular(pastedData);
-    const { headerIndex, dataRows, colMap } = detectHeaderAndMap(parsed);
-
-    // If detectHeaderAndMap found data rows, use them; otherwise use parsed (fallback)
-    const rows = dataRows.length ? dataRows : parsed;
-
-    const cleaned = []; const rejected = [];
-
-    // We'll also try to "smart detect" empNo/date/name if headers are not present or columns are shuffled
-    rows.forEach((row, idx) => {
-      // initialize fields
-      let name = '', emp = '', date = '', shift = '', day = '', position = '';
-
-      // If colMap exists and row has enough columns, pick by mapping
-      if (colMap && (row[colMap.empNo] !== undefined || row.length >= 2)) {
-        name = (row[colMap.name]||'').toString().trim();
-        emp  = (row[colMap.empNo]||'').toString().trim();
-        date = normalizeDate(row[colMap.date]||'');
-        shift = (row[colMap.shift]||'').toString().trim();
-        day  = (row[colMap.day]||'').toString().trim();
-        position = (row[colMap.position]||'').toString().trim();
-      } else {
-        // fallback heuristics when headers unknown:
-        //  - find numeric-looking column => empNo
-        //  - find date-like column => date
-        //  - remaining long alpha => name
-        //  - prefer common patterns if present
-        const candidates = row.map(c => (c||'').toString().trim());
-
-        // detect emp candidate: purely numeric or mostly numeric
-        let empIdx = -1; let dateIdx = -1; let nameIdx = -1;
-        for (let i=0;i<candidates.length;i++) {
-          const v = candidates[i];
-          if (isNumericStr(v) && empIdx === -1) empIdx = i;
-        }
-        // date detection
-        for (let i=0;i<candidates.length;i++) {
-          const v = candidates[i];
-          if (!v) continue;
-          // numeric large => excel serial, or has slash/dash/dot or parseable as date
-          if ((!isNaN(v) && Number(v) > 10000) || /[\/\.\-]/.test(v) || !isNaN(new Date(v).getTime())) {
-            dateIdx = i; break;
-          }
-        }
-        // name detection (fallback: first long alpha string)
-        for (let i=0;i<candidates.length;i++) {
-          const v = candidates[i];
-          if (!v) continue;
-          if (/^[A-Za-z\s\,\.\'\-]+$/.test(v) && v.split(' ').length >= 2) { nameIdx = i; break; }
-        }
-        // assign
-        if (empIdx !== -1) emp = candidates[empIdx];
-        if (dateIdx !== -1) { date = normalizeDate(candidates[dateIdx]); day = dayNameFromDate(candidates[dateIdx]); }
-        if (nameIdx !== -1) name = candidates[nameIdx];
-
-        // remaining heuristics
-        if (!name) {
-          // prefer first non-empty that is not emp/date
-          for (let i=0;i<candidates.length;i++) {
-            if (i===empIdx || i===dateIdx) continue;
-            if (candidates[i]) { name = candidates[i]; break; }
-          }
-        }
-        if (!emp && candidates.length>0) {
-          // if emp still missing, maybe it's first column but non-numeric — try strip non-digits
-          const guess = (candidates[0]||'').replace(/\D/g,'');
-          if (guess && isNumericStr(guess)) emp = guess;
-        }
-      }
-
-      // normalize day if date present but day missing
-      if ((!day || day === '') && date) {
-        const dn = dayNameFromDate(date);
-        if (dn) day = dn;
-      }
-
-      const obj = {
-        name: name,
-        empNo: (emp||'').toString().trim(),
-        date: date || '',
-        shift: (shift||'').toString().trim(),
-        day: day || '',
-        position: position || ''
-      };
-
-      const reasons = [];
-      // require empNo (numeric); allow missing date but include row for manual fix
-      if (!obj.empNo || !isNumericStr(obj.empNo)) reasons.push('Missing or non-numeric Employee No');
-      // Do NOT reject rows if date is missing; just surface later via validation
-      if (reasons.length) rejected.push({ row: row.join(' | '), reasons });
-      else cleaned.push(obj);
-    });
-
-    // snapshot for undo
-    if (!undoStack[type]) undoStack[type] = [];
-    undoStack[type].push({ work: JSON.parse(JSON.stringify(workScheduleData)), rest: JSON.parse(JSON.stringify(restDayData)) });
-    // clear redo stack on new action
-    redoStack[type] = [];
-
-    // commit
-    if (type === 'work') {
-      workScheduleData = cleaned;
-      renderWorkTable();
-      if (workInput) workInput.value = '';
-      showBanner(`✅ ${cleaned.length} work schedule rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
-      // recheck rest conflicts because work changed
-      recheckConflicts();
-    } else {
-      restDayData = cleaned;
-      validateSchedules();
-      renderRestTable();
-      if (restInput) restInput.value = '';
-      showBanner(`✅ ${cleaned.length} rest day rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
-      recheckConflicts();
-    }
-
-    if (rejected.length) showRejectedModal(rejected);
-    updateButtonStates();
-    saveState();
+  // auto-detect branch name and set input if empty
+  const branchName = detectBranchName(pastedData);
+  if (branchName) {
+    const branchInput = type === 'work' ? document.getElementById('workBranchName') : document.getElementById('restBranchName');
+    if (branchInput && !branchInput.value) branchInput.value = branchName;
   }
+
+  // parse to rows
+  const parsed = parseTabular(pastedData);
+  const { headerIndex, dataRows, colMap } = detectHeaderAndMap(parsed);
+  const rows = dataRows.length ? dataRows : parsed;
+
+  const cleaned = [], rejected = [];
+
+  rows.forEach((row) => {
+    let name = '', emp = '', date = '', shift = '', day = '', position = '';
+
+    // use colMap if valid
+    if (colMap && row[colMap.empNo] !== undefined) {
+      name = (row[colMap.name] || '').trim();
+      emp = (row[colMap.empNo] || '').trim();
+      date = normalizeDate(row[colMap.date] || '');
+      shift = (row[colMap.shift] || '').trim();
+      day = (row[colMap.day] || '').trim();
+      position = (row[colMap.position] || '').trim();
+    } else {
+      // heuristic fallback
+      const cells = row.map(c => (c || '').trim());
+      const empIdx = cells.findIndex(c => /^\d+$/.test(c));
+      const dateIdx = cells.findIndex(c => (!isNaN(c) && Number(c) > 10000) || /[\/\.\-]/.test(c));
+      const nameIdx = cells.findIndex(c => /^[A-Za-z\s,.'-]+$/.test(c) && c.split(' ').length >= 2);
+
+      if (empIdx >= 0) emp = cells[empIdx];
+      if (dateIdx >= 0) date = normalizeDate(cells[dateIdx]);
+      if (nameIdx >= 0) name = cells[nameIdx];
+      if (!day && date) day = dayNameFromDate(date);
+    }
+
+    // auto-generate day if date present but no day
+    if (!day && date) day = dayNameFromDate(date);
+
+    const obj = {
+      name,
+      empNo: emp,
+      date,
+      shift,
+      day,
+      position
+    };
+
+    const reasons = [];
+    if (!obj.empNo || !/^\d+$/.test(obj.empNo)) reasons.push('Missing or invalid Employee No');
+
+    if (reasons.length) rejected.push({ row: row.join(' | '), reasons });
+    else cleaned.push(obj);
+  });
+
+  // snapshot for undo
+  if (!undoStack[type]) undoStack[type] = [];
+  undoStack[type].push({ work: JSON.parse(JSON.stringify(workScheduleData)), rest: JSON.parse(JSON.stringify(restDayData)) });
+  redoStack[type] = [];
+
+  if (type === 'work') {
+    workScheduleData = cleaned;
+    renderWorkTable();
+    if (workInput) workInput.value = '';
+    showBanner(`✅ ${cleaned.length} work schedule rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
+    recheckConflicts();
+  } else {
+    restDayData = cleaned;
+    validateSchedules();
+    renderRestTable();
+    if (restInput) restInput.value = '';
+    showBanner(`✅ ${cleaned.length} rest day rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
+    recheckConflicts();
+  }
+
+  if (rejected.length) showRejectedModal(rejected);
+  updateButtonStates();
+  saveState();
+}
+
 
   if (workInput) workInput.addEventListener('paste', (e) => handlePaste(e, 'work'));
   if (restInput) restInput.addEventListener('paste', (e) => handlePaste(e, 'rest'));
