@@ -159,34 +159,29 @@ function detectColumnMapping(rows) {
 
   /***** 🧠 Fuzzy Header Mapping (Detect columns) *****/
   // Inner function for flexible header detection
-  function detectColumnMappingInner(headerRow) {
-    // Normalize header text: remove spaces, underscores, dashes, slashes, dots, backslashes, to lowercase
-    const normalize = (str) => str.replace(/[\s_\-\/\\\.]/g, '').toLowerCase();
+function detectColumnMappingInner(headerRow) {
+  const normalize = (str) => str.replace(/[\s_\-\/\\\.]/g, '').toLowerCase();
 
-    const header = headerRow.map(h => normalize(h));
+  const header = headerRow.map(h => normalize(h));
 
-    const mapping = {
-      // Detect name column
-      name: header.findIndex(h => /name|fullname|employeename/.test(h)),
-      // Detect employee number column
-      empNo: header.findIndex(h => /emp|employeenumber|idnum|id/.test(h)),
-      // Detect date column
-      date: header.findIndex(h => /date|workdate|sched|schedule/.test(h)),
-      // Detect shift/time column
-      shift: header.findIndex(h => /shift|time|duty/.test(h)),
-      // Detect day column
-      day: header.findIndex(h => /day|daytype|typeday/.test(h)),
-    };
+  const mapping = {
+    // Improve regex to include 'employee number' and 'emp number'
+    name: header.findIndex(h => /name|fullname|employeename/.test(h)),
+    empNo: header.findIndex(h => /emp|employee\s*number|employeenumber|idnum|id/.test(h)),
+    date: header.findIndex(h => /date|workdate|sched|schedule/.test(h)),
+    shift: header.findIndex(h => /shift|time|duty/.test(h)),
+    day: header.findIndex(h => /day|daytype|typeday/.test(h)),
+  };
 
-    // Fallbacks: assign default indices if not detected
-    if (mapping.name === -1) mapping.name = 0;
-    if (mapping.empNo === -1) mapping.empNo = 1;
-    if (mapping.date === -1) mapping.date = 2;
-    if (mapping.shift === -1) mapping.shift = 3;
-    if (mapping.day === -1) mapping.day = 4;
+  // Fallbacks as before
+  if (mapping.name === -1) mapping.name = 0;
+  if (mapping.empNo === -1) mapping.empNo = 1;
+  if (mapping.date === -1) mapping.date = 2;
+  if (mapping.shift === -1) mapping.shift = 3;
+  if (mapping.day === -1) mapping.day = 4;
 
-    return mapping;
-  }
+  return mapping;
+}
 
   // Generate column mapping using the header row
   const colMap = detectColumnMappingInner(headers);
