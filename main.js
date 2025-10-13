@@ -103,61 +103,60 @@ document.addEventListener('DOMContentLoaded', () => {
     return lines.map(line => line.split(splitter).map(c => c.trim()));
   }
 
-  /***** 🧠 SMART HEADER / COLUMN DETECTION (reusable) *****/
-  // Returns { headerIndex, colMap } where colMap maps our keys -> column index
+// =============================================
+// 🧠 Smart Header + Real Employee Detection
+// Filters out decorative titles and summary lines
+// Keeps only rows that look like actual employee data
+// =============================================
 function detectColumnMapping(rows) {
-  const headerMap = {
-    name: /name|employee\s*name|full\s*name|staff\s*name/i,
-    empNo: /emp.*no|employee.*no|employee|emp\s*id|id\b|emp\s*#|emp#/i,
-    date: /date|work.*date|rest.*date|day\s*date|schedule.*date/i,
-    shift: /shift|shift\s*code|work\s*shift/i,
-    day: /day|day\s*of\s*week|dow/i,
-    position: /position|pos\b|job\s*title|role/i
-  };
-
-  // 🧹 Ignore decorative titles
+  // 🧹 Remove blank or decorative rows
   rows = rows.filter(r => {
     if (!r || !r.length) return false;
     const joined = r.join(' ').toUpperCase().trim();
-    return !/^(WORK\s*SCHEDULE|REST\s*DAY|SCHEDULE|SUMMARY)$/i.test(joined);
+    // Ignore banners or summary lines
+    return !/^(WORK\s*SCHEDULE|REST\s*DAY|SCHEDULE|SUMMARY|TOTAL|PREPARED|PAGE|EMPLOYEE\s+SCHEDULE)$/i.test(joined);
   });
 
-  if (!rows || rows.length === 0) return { headerIndex: -1, colMap: {} };
-
-  let bestIdx = -1, bestScore = -1;
-  const maxHeaderRow = Math.min(6, rows.length);
-
-  for (let i = 0; i < maxHeaderRow; i++) {
-    const r = rows[i].map(c => (c||'').toString().toLowerCase());
-    let score = 0;
-    for (const cell of r) {
-      for (const key in headerMap) {
-        if (headerMap[key].test(cell)) score++;
-      }
+  // 🧭 Find potential header row
+  let headerIndex = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i].map(cell => (cell || '').toLowerCase().trim());
+    if (row.some(c => c.includes('emp')) && row.some(c => c.includes('date'))) {
+      headerIndex = i;
+      break;
     }
-    if (score > bestScore) { bestScore = score; bestIdx = i; }
   }
 
-  if (bestIdx === -1) bestIdx = 0;
-  const headerRow = rows[bestIdx].map(c => (c||'').toString().toLowerCase());
-  const colMap = {};
-  headerRow.forEach((h, idx) => {
-    for (const key in headerMap) {
-      if (headerMap[key].test(h)) { colMap[key] = idx; break; }
-    }
+  if (headerIndex === -1) headerIndex = 0;
+  const headers = rows[headerIndex].map(h => h.toLowerCase().trim());
+  const dataRows = rows.slice(headerIndex + 1);
+
+  // 🧩 Smart column mapping
+  const mapping = {
+    name: headers.findIndex(h => /name|employee\s*name/.test(h)),
+    empNo: headers.findIndex(h => /emp/.test(h)),
+    date: headers.findIndex(h => /date/.test(h)),
+    shift: headers.findIndex(h => /shift/.test(h)),
+    day: headers.findIndex(h => /^day$/.test(h)),
+    position: headers.findIndex(h => /position|role/.test(h)),
+  };
+
+  // 🛠️ Sensible fallbacks — just in case headers are missing
+  if (mapping.name === -1) mapping.name = 0;
+  if (mapping.empNo === -1) mapping.empNo = 1;
+  if (mapping.date === -1) mapping.date = 2;
+  if (mapping.shift === -1) mapping.shift = 3;
+  if (mapping.day === -1) mapping.day = 4;
+
+  // ✅ Filter only rows that have a valid employee number and date
+  const validRows = dataRows.filter(r => {
+    const emp = r[mapping.empNo];
+    const date = r[mapping.date];
+    return emp && /\d{3,}/.test(emp) && date;
   });
 
-  // sensible fallbacks
-  if (colMap.empNo === undefined) colMap.empNo = 1;
-  if (colMap.name === undefined) colMap.name = 0;
-  if (colMap.date === undefined) colMap.date = 2;
-  if (colMap.shift === undefined) colMap.shift = 3;
-  if (colMap.day === undefined) colMap.day = 4;
-  if (colMap.position === undefined) colMap.position = 5;
-
-  return { headerIndex: bestIdx, colMap };
+  return { mapping, dataRows: validRows };
 }
-
 
   // small wrapper kept for backward compatibility
   function detectHeaderAndMap(rows) {
