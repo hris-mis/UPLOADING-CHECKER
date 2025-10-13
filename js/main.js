@@ -1,9 +1,11 @@
-/* main.js - merged & fixed
-   - Smart paste (work/rest)
-   - Validation & HRIS file generation
-   - Monitoring dashboard (animated progress)
-   - Save/restore scroll position between tabs
-   - Floating Add Branch + Back-to-Top
+/* main.js - enhanced & commented
+   - Smart paste (work/rest) with detectColumnMapping()
+   - Validation & HRIS file generation (conflicts warn but don't block)
+   - Monitoring dashboard (search/filter working, export with month & progress)
+   - Save/restore (localStorage)
+   - Undo / Redo
+   - Clear All (Schedule-only)
+   - Comments/section headers for maintainability
 */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -12,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let restDayData = [];
   let rejectedRows = [];
   const undoStack = { work: [], rest: [] };
+  const redoStack = { work: [], rest: [] };
   const deleteStack = { work: [], rest: [] };
   const LEADERSHIP_POSITIONS = ['Branch Head','Site Supervisor','OIC'];
 
@@ -49,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const addBranchBtn = document.getElementById('addBranchBtn');
   const backToTopBtn = document.getElementById('backToTopBtn');
 
-  /***** Helpers *****/
+  /***** Helpers: Notifications & escaping *****/
   function showBanner(msg) {
     if (!warningBanner) return;
     warningBanner.textContent = msg;
@@ -83,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  /***** Utility parsers *****/
   // parse tabular text smartly (tabs, commas, or spaced columns)
   function parseTabular(text) {
     if (!text) return [];
@@ -99,27 +103,33 @@ document.addEventListener('DOMContentLoaded', () => {
     return lines.map(line => line.split(splitter).map(c => c.trim()));
   }
 
-  // detect header row and map column indices to our fields
-  function detectHeaderAndMap(rows) {
-    if (!rows || rows.length === 0) return { headerIndex: -1, dataRows: [], colMap: {} };
+  /***** 🧠 SMART HEADER / COLUMN DETECTION (reusable) *****/
+  // Returns { headerIndex, colMap } where colMap maps our keys -> column index
+  function detectColumnMapping(rows) {
     const headerMap = {
-      name: /name|employee\s*name|full\s*name|staff\s*name/,
-      empNo: /emp.*no|employee.*no|employee|emp\s*id|id|emp\s*#|emp#|employee\s*number/,
-      date: /date|work.*date|rest.*date|day\s*date|schedule.*date/,
-      shift: /shift|shift\s*code|work\s*shift/,
-      day: /day|day\s*of\s*week|dow/,
-      position: /position|pos|job\s*title|role/
+      name: /name|employee\s*name|full\s*name|staff\s*name/i,
+      empNo: /emp.*no|employee.*no|employee|emp\s*id|id\b|emp\s*#|emp#/i,
+      date: /date|work.*date|rest.*date|day\s*date|schedule.*date/i,
+      shift: /shift|shift\s*code|work\s*shift/i,
+      day: /day|day\s*of\s*week|dow/i,
+      position: /position|pos\b|job\s*title|role/i
     };
+
+    if (!rows || rows.length === 0) return { headerIndex: -1, colMap: {} };
     let bestIdx = -1, bestScore = -1;
     const maxHeaderRow = Math.min(6, rows.length);
-    for (let i=0;i<maxHeaderRow;i++) {
-      const row = rows[i].map(c => (c||'').toString().toLowerCase());
+
+    for (let i = 0; i < maxHeaderRow; i++) {
+      const r = rows[i].map(c => (c||'').toString().toLowerCase());
       let score = 0;
-      for (const cell of row) {
-        for (const key in headerMap) if (headerMap[key].test(cell)) score++;
+      for (const cell of r) {
+        for (const key in headerMap) {
+          if (headerMap[key].test(cell)) score++;
+        }
       }
       if (score > bestScore) { bestScore = score; bestIdx = i; }
     }
+
     if (bestIdx === -1) bestIdx = 0;
     const headerRow = rows[bestIdx].map(c => (c||'').toString().toLowerCase());
     const colMap = {};
@@ -128,20 +138,37 @@ document.addEventListener('DOMContentLoaded', () => {
         if (headerMap[key].test(h)) { colMap[key] = idx; break; }
       }
     });
-    // sensible defaults if detection failed
+
+    // sensible fallbacks
     if (colMap.empNo === undefined) colMap.empNo = 1;
     if (colMap.name === undefined) colMap.name = 0;
     if (colMap.date === undefined) colMap.date = 2;
     if (colMap.shift === undefined) colMap.shift = 3;
     if (colMap.day === undefined) colMap.day = 4;
     if (colMap.position === undefined) colMap.position = 5;
-    const dataRows = rows.slice(bestIdx + 1).filter(r => r.some(c => c && c.toString().trim() !== ''));
-    return { headerIndex: bestIdx, dataRows, colMap };
+
+    return { headerIndex: bestIdx, colMap };
   }
 
+  // small wrapper kept for backward compatibility
+  function detectHeaderAndMap(rows) {
+    if (!rows || rows.length === 0) return { headerIndex: -1, dataRows: [], colMap: {} };
+    const { headerIndex, colMap } = detectColumnMapping(rows);
+    const dataRows = rows.slice(headerIndex + 1).filter(r => r.some(c => c && c.toString().trim() !== ''));
+    return { headerIndex, dataRows, colMap };
+  }
+
+  // auto-detect branch name inside pasted text (optional)
+  function detectBranchName(text) {
+    if (!text) return '';
+    const m = text.match(/branch\s*[:\-]\s*(.+)/i);
+    return m ? m[1].trim() : '';
+  }
+
+  // Normalize date (excel serials, common formats) -> MM/DD/YY
   function normalizeDate(dateStr) {
     if (!dateStr) return '';
-    dateStr = (''+dateStr).trim();
+    dateStr = (''+dateStr).toString().trim();
     // Excel serial numbers
     if (!isNaN(dateStr) && Number(dateStr) > 10000) {
       const excelEpoch = new Date(1899,11,30);
@@ -282,58 +309,100 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Re-check conflicts helper (ensures RD & WS sync, call after any paste/change)
   function recheckConflicts() {
-    // run validateSchedules to rebuild restDayData.conflicts
     validateSchedules();
     updateButtonStates();
+    saveState();
   }
 
+  /***** Buttons state rules *****/
   function updateButtonStates() {
     if (generateWorkFileBtn) generateWorkFileBtn.disabled = workScheduleData.length === 0;
     // allow generate for rest even if conflicts exist; only disable when empty
     if (generateRestFileBtn) generateRestFileBtn.disabled = restDayData.length === 0;
   }
 
-  /***** Paste handler (shared) *****/
+  /***** 🪄 SMART PASTE + detectColumnMapping usage *****/
   function handlePaste(e, type) {
     e.preventDefault();
     const clipboardData = e.clipboardData || window.clipboardData;
     const pastedData = clipboardData.getData('text/plain');
     if (!pastedData) return;
 
+    // auto-detect branch name and set input if empty
+    const branchName = detectBranchName(pastedData);
+    if (branchName) {
+      const branchInput = type === 'work' ? document.getElementById('workBranchName') : document.getElementById('restBranchName');
+      if (branchInput && !branchInput.value) branchInput.value = branchName;
+    }
+
     // parse to rows
     const parsed = parseTabular(pastedData);
     const { headerIndex, dataRows, colMap } = detectHeaderAndMap(parsed);
 
-    // If parsed rows empty but parsed has lines (no header), fallback to parsed directly
+    // If detectHeaderAndMap found data rows, use them; otherwise use parsed (fallback)
     const rows = dataRows.length ? dataRows : parsed;
 
     const cleaned = []; const rejected = [];
 
+    // We'll also try to "smart detect" empNo/date/name if headers are not present or columns are shuffled
     rows.forEach((row, idx) => {
-      // flexible column support: if row length is 1 or 2, assume [empNo], [empNo, date]
-      let emp = '', date = '', shift = '', name = '', day = '', position = '';
-      // If detectHeaderAndMap produced mapping and row has that index, use it
+      // initialize fields
+      let name = '', emp = '', date = '', shift = '', day = '', position = '';
+
+      // If colMap exists and row has enough columns, pick by mapping
       if (colMap && (row[colMap.empNo] !== undefined || row.length >= 2)) {
         name = (row[colMap.name]||'').toString().trim();
-        emp = (row[colMap.empNo]||'').toString().trim();
+        emp  = (row[colMap.empNo]||'').toString().trim();
         date = normalizeDate(row[colMap.date]||'');
         shift = (row[colMap.shift]||'').toString().trim();
-        day = (row[colMap.day]||'').toString().trim();
+        day  = (row[colMap.day]||'').toString().trim();
         position = (row[colMap.position]||'').toString().trim();
       } else {
-        // fallback by column count
-        if (row.length === 1) {
-          emp = row[0] || '';
-        } else if (row.length === 2) {
-          emp = row[0] || '';
-          date = normalizeDate(row[1] || '');
-          day = dayNameFromDate(row[1] || '');
-        } else if (row.length >= 3) {
-          emp = row[0] || '';
-          date = normalizeDate(row[1] || '');
-          shift = row[2] || '';
-        } else {
-          // nothing usable
+        // fallback heuristics when headers unknown:
+        //  - find numeric-looking column => empNo
+        //  - find date-like column => date
+        //  - remaining long alpha => name
+        //  - prefer common patterns if present
+        const candidates = row.map(c => (c||'').toString().trim());
+
+        // detect emp candidate: purely numeric or mostly numeric
+        let empIdx = -1; let dateIdx = -1; let nameIdx = -1;
+        for (let i=0;i<candidates.length;i++) {
+          const v = candidates[i];
+          if (isNumericStr(v) && empIdx === -1) empIdx = i;
+        }
+        // date detection
+        for (let i=0;i<candidates.length;i++) {
+          const v = candidates[i];
+          if (!v) continue;
+          // numeric large => excel serial, or has slash/dash/dot or parseable as date
+          if ((!isNaN(v) && Number(v) > 10000) || /[\/\.\-]/.test(v) || !isNaN(new Date(v).getTime())) {
+            dateIdx = i; break;
+          }
+        }
+        // name detection (fallback: first long alpha string)
+        for (let i=0;i<candidates.length;i++) {
+          const v = candidates[i];
+          if (!v) continue;
+          if (/^[A-Za-z\s\,\.\'\-]+$/.test(v) && v.split(' ').length >= 2) { nameIdx = i; break; }
+        }
+        // assign
+        if (empIdx !== -1) emp = candidates[empIdx];
+        if (dateIdx !== -1) { date = normalizeDate(candidates[dateIdx]); day = dayNameFromDate(candidates[dateIdx]); }
+        if (nameIdx !== -1) name = candidates[nameIdx];
+
+        // remaining heuristics
+        if (!name) {
+          // prefer first non-empty that is not emp/date
+          for (let i=0;i<candidates.length;i++) {
+            if (i===empIdx || i===dateIdx) continue;
+            if (candidates[i]) { name = candidates[i]; break; }
+          }
+        }
+        if (!emp && candidates.length>0) {
+          // if emp still missing, maybe it's first column but non-numeric — try strip non-digits
+          const guess = (candidates[0]||'').replace(/\D/g,'');
+          if (guess && isNumericStr(guess)) emp = guess;
         }
       }
 
@@ -353,9 +422,9 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       const reasons = [];
-      // require empNo (numeric); allow missing date but we will still include row for manual fix
+      // require empNo (numeric); allow missing date but include row for manual fix
       if (!obj.empNo || !isNumericStr(obj.empNo)) reasons.push('Missing or non-numeric Employee No');
-      // Do not reject rows just because date is missing — include them and let validation handle later
+      // Do NOT reject rows if date is missing; just surface later via validation
       if (reasons.length) rejected.push({ row: row.join(' | '), reasons });
       else cleaned.push(obj);
     });
@@ -363,7 +432,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // snapshot for undo
     if (!undoStack[type]) undoStack[type] = [];
     undoStack[type].push({ work: JSON.parse(JSON.stringify(workScheduleData)), rest: JSON.parse(JSON.stringify(restDayData)) });
+    // clear redo stack on new action
+    redoStack[type] = [];
 
+    // commit
     if (type === 'work') {
       workScheduleData = cleaned;
       renderWorkTable();
@@ -373,22 +445,22 @@ document.addEventListener('DOMContentLoaded', () => {
       recheckConflicts();
     } else {
       restDayData = cleaned;
-      // validate rest (will populate conflicts)
       validateSchedules();
       renderRestTable();
       if (restInput) restInput.value = '';
       showBanner(`✅ ${cleaned.length} rest day rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
-      // also recheck to keep consistent
       recheckConflicts();
     }
+
     if (rejected.length) showRejectedModal(rejected);
     updateButtonStates();
+    saveState();
   }
 
   if (workInput) workInput.addEventListener('paste', (e) => handlePaste(e, 'work'));
   if (restInput) restInput.addEventListener('paste', (e) => handlePaste(e, 'rest'));
 
-  /***** Row delete + undo delete *****/
+  /***** Row delete + undo/redo delete *****/
   document.addEventListener('click', (ev) => {
     const el = ev.target.closest && ev.target.closest('.delete-row-btn');
     if (!el) return;
@@ -399,7 +471,6 @@ document.addEventListener('DOMContentLoaded', () => {
       deleteStack.work.push({item: removed, idx});
       renderWorkTable();
       showBanner('Row deleted. You can undo delete.');
-      // recheck since work changed
       recheckConflicts();
     } else {
       const removed = restDayData.splice(idx,1)[0];
@@ -409,6 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
       recheckConflicts();
     }
     updateButtonStates();
+    saveState();
   });
 
   function undoDelete(type) {
@@ -420,11 +492,15 @@ document.addEventListener('DOMContentLoaded', () => {
     showBanner('Undo successful.');
     recheckConflicts();
     updateButtonStates();
+    saveState();
   }
+
   function undoPaste(type) {
     const stack = undoStack[type];
     if (!stack || !stack.length) return showBanner('Nothing to undo.');
     const snap = stack.pop();
+    // push current to redo
+    redoStack[type].push({ work: JSON.parse(JSON.stringify(workScheduleData)), rest: JSON.parse(JSON.stringify(restDayData)) });
     workScheduleData = snap.work;
     restDayData = snap.rest;
     renderWorkTable();
@@ -432,9 +508,26 @@ document.addEventListener('DOMContentLoaded', () => {
     showBanner('Undo paste restored previous data.');
     recheckConflicts();
     updateButtonStates();
+    saveState();
   }
 
-  /***** Rejected modal *****/
+  function redoPaste(type) {
+    const stack = redoStack[type];
+    if (!stack || !stack.length) return showBanner('Nothing to redo.');
+    const snap = stack.pop();
+    // push current to undo
+    undoStack[type].push({ work: JSON.parse(JSON.stringify(workScheduleData)), rest: JSON.parse(JSON.stringify(restDayData)) });
+    workScheduleData = snap.work;
+    restDayData = snap.rest;
+    renderWorkTable();
+    renderRestTable();
+    showBanner('Redo successful.');
+    recheckConflicts();
+    updateButtonStates();
+    saveState();
+  }
+
+  /***** Rejected modal (unchanged) *****/
   function showRejectedModal(rejected) {
     const modal = document.getElementById('rejectedModal');
     if (!modal) return;
@@ -452,7 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  /***** HRIS File generation *****/
+  /***** HRIS File generation (weekend/conflicts allowed) *****/
   function generateHrisFile(type) {
     const workBranchEl = document.getElementById('workBranchName');
     const restBranchEl = document.getElementById('restBranchName');
@@ -493,22 +586,31 @@ document.addEventListener('DOMContentLoaded', () => {
   if (generateWorkFileBtn) generateWorkFileBtn.addEventListener('click', () => generateHrisFile('work'));
   if (generateRestFileBtn) generateRestFileBtn.addEventListener('click', () => generateHrisFile('rest'));
 
+  /***** Clear per-section buttons (unchanged behavior) *****/
   if (clearWorkBtn) clearWorkBtn.addEventListener('click', () => {
     workScheduleData = []; if (workInput) workInput.value = ''; renderWorkTable(); updateButtonStates(); showBanner('Work schedule cleared.');
+    saveState();
   });
   if (clearRestBtn) clearRestBtn.addEventListener('click', () => {
     restDayData = []; if (restInput) restInput.value = ''; renderRestTable(); updateButtonStates(); showBanner('Rest day schedule cleared.');
+    saveState();
   });
 
-  // Ctrl/Cmd+Z to undo last paste (works across both types)
+  /***** Keyboard shortcuts: Undo (Ctrl/Cmd+Z) & Redo (Ctrl/Cmd+Y) *****/
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      // try both stacks
       if (undoStack.work && undoStack.work.length) undoPaste('work');
       else if (undoStack.rest && undoStack.rest.length) undoPaste('rest');
     }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+      // redo
+      if (redoStack.work && redoStack.work.length) redoPaste('work');
+      else if (redoStack.rest && redoStack.rest.length) redoPaste('rest');
+    }
   });
 
-  /***** Monitoring Data Handling *****/
+  /***** Monitoring Data Handling (unchanged core, enhanced export header) *****/
   const defaultMonitoring = [
     { name: 'AASP ABREEZA', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
     { name: 'AASP NES - ATLAS', checked: false, uploaded: false, uploadedBy: '', remarks: '' }
@@ -562,7 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
     animateProgress(percent);
   }
 
-  // render monitoring table with action icons
+  // render monitoring table with action icons (search/filter supported)
   function renderMonitoring() {
     const data = getMonitoring();
     const searchVal = (document.getElementById('monitorSearch') || {}).value?.trim().toLowerCase() || '';
@@ -648,7 +750,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /***** Clear & Export Buttons *****/
+  /***** Clear & Export Buttons (monitoring) *****/
   if (clearMonitoringBtn) {
     clearMonitoringBtn.addEventListener('click', () => {
       if (!confirm('Clear all monitoring data?')) return;
@@ -660,11 +762,24 @@ document.addEventListener('DOMContentLoaded', () => {
   if (exportMonitoringBtn) {
     exportMonitoringBtn.addEventListener('click', () => {
       const data = getMonitoring();
-      const ws = XLSX.utils.json_to_sheet(data);
+      const total = data.length;
+      const uploaded = data.filter(b => b.uploaded).length;
+      const percent = total === 0 ? 0 : Math.round((uploaded / total) * 100);
+      const m = (monthSelect && monthSelect.value) ? monthSelect.value : (new Date().toLocaleString(undefined, { month: 'long' }));
+      const y = (yearSelect && yearSelect.value) ? yearSelect.value : (new Date().getFullYear());
+      // Header rows to be placed above the table
+      const header = [
+        ['Monitoring Progress Report'],
+        [`Month: ${m}`, `Year: ${y}`],
+        [`Total Branches: ${total}`, `Uploaded: ${uploaded}`, `Progress: ${percent}%`],
+        []
+      ];
+      const body = data.map(b => ({ Branch: b.name, Checked: b.checked ? 'Yes' : 'No', Uploaded: b.uploaded ? 'Yes' : 'No', 'Uploaded By': b.uploadedBy, Remarks: b.remarks }));
+
       const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(body, { origin: header.length });
+      XLSX.utils.sheet_add_aoa(ws, header, { origin: 'A1' });
       XLSX.utils.book_append_sheet(wb, ws, 'Branch Monitoring');
-      const m = monthSelect ? monthSelect.value : '01';
-      const y = yearSelect ? yearSelect.value : new Date().getFullYear();
       XLSX.writeFile(wb, `Monitoring_${m}_${y}.xlsx`);
       showSuccess();
     });
@@ -712,6 +827,7 @@ document.addEventListener('DOMContentLoaded', () => {
       showBanner('✅ All schedule data cleared.');
       // recheck just to be safe
       recheckConflicts();
+      saveState();
     });
   })();
 
@@ -755,7 +871,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  /***** Autosave / Load State (Work & Rest) *****/
+  function saveState() {
+    try {
+      localStorage.setItem('workScheduleData', JSON.stringify(workScheduleData));
+      localStorage.setItem('restDayData', JSON.stringify(restDayData));
+    } catch (e) {
+      // ignore storage exceptions
+    }
+  }
+  function loadState() {
+    try {
+      const w = JSON.parse(localStorage.getItem('workScheduleData') || '[]');
+      const r = JSON.parse(localStorage.getItem('restDayData') || '[]');
+      workScheduleData = Array.isArray(w) ? w : [];
+      restDayData = Array.isArray(r) ? r : [];
+      renderWorkTable();
+      renderRestTable();
+      recheckConflicts();
+      updateButtonStates();
+    } catch (e) {
+      // ignore parse errors
+    }
+  }
+
   /***** Initialize *****/
+  loadState();
   renderWorkTable();
   renderRestTable();
   renderMonitoring();
@@ -763,6 +904,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // expose some utilities for debugging (optional)
   window.__scc = {
     getMonitoring, saveMonitoring, renderMonitoring, updateMonitoringStats,
-    workScheduleData, restDayData, validateSchedules, undoPaste, undoDelete
+    workScheduleData, restDayData, validateSchedules, undoPaste, undoDelete, saveState, loadState
   };
 });
