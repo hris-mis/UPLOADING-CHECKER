@@ -158,29 +158,20 @@ function detectColumnMappingInner(headerRow) {
   // Generate column mapping using the header row
   const colMap = detectColumnMappingInner(headers);
 
-  // Filter valid data rows (must contain valid employee number and date)
-  const validRows = dataRows.filter(r => {
-    const emp = r[colMap.empNo];
-    const date = r[colMap.date];
-    return emp && /\d{3,}/.test(emp) && date;
-  });
+const validRows = dataRows.filter(r => {
+  // Fallback: handle single-row paste with no header mapping
+  if (!colMap.empNo && r.length > 0) {
+    const possibleEmp = r.find(c => /^\d{3,}$/.test(c));
+    if (possibleEmp) colMap.empNo = r.indexOf(possibleEmp);
+  }
 
-  return {
-    headerIndex,
-    colMap,
-    dataRows: validRows
-  };
-}
+  const emp = colMap.empNo !== undefined ? r[colMap.empNo] : null;
+  const date = colMap.date !== undefined ? r[colMap.date] : null;
+  const isValidEmp = emp && /^\d{3,}$/.test(emp);
+  const isValidDate = date && /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})|^\d{5}$/.test(date);
 
-  // ✅ Filter only rows that have a valid employee number and date
-  const validRows = dataRows.filter(r => {
-    const emp = r[mapping.empNo];
-    const date = r[mapping.date];
-    return emp && /\d{3,}/.test(emp) && date;
-  });
-
-  return { mapping, dataRows: validRows };
-}
+  return isValidEmp && isValidDate;
+});
 
   // small wrapper kept for backward compatibility
 function detectHeaderAndMap(rows) {
@@ -439,6 +430,17 @@ if (parsed.length === 1 || dataRows.length === 0) {
       if (nameIdx >= 0) name = cells[nameIdx];
       if (!day && date) day = dayNameFromDate(date);
     }
+    // 🧩 Extra fallback for 1-liners or uncertain mappings
+if ((!emp || emp.length < 3) && row.some(c => /^\d{3,}$/.test(c))) {
+  emp = row.find(c => /^\d{3,}$/.test(c)).trim();
+}
+if (!name && row.some(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2)) {
+  name = row.find(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2).trim();
+}
+if (!date && row.some(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c))) {
+  date = normalizeDate(row.find(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c)));
+}
+
 
     // auto-generate day if date present but no day
     if (!day && date) day = dayNameFromDate(date);
