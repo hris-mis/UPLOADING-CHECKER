@@ -103,37 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return lines.map(line => line.split(splitter).map(c => c.trim()));
   }
 
-// =============================================
 // 🧠 Smart Header + Real Employee Detection
-// Filters out decorative titles and summary lines
-// Keeps only rows that look like actual employee data
-// =============================================
-function detectColumnMapping(rows) {
-  // 🧹 Remove blank or decorative rows
-  rows = rows.filter(r => {
-    if (!r || !r.length) return false;
-    const joined = r.join(' ').toUpperCase().trim();
-    // Ignore banners or summary lines
-    return !/^(WORK\s*SCHEDULE|REST\s*DAY|SCHEDULE|SUMMARY|TOTAL|PREPARED|PAGE|EMPLOYEE\s+SCHEDULE)$/i.test(joined);
-  });
 
-  // 🧭 Find potential header row
-  let headerIndex = -1;
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i].map(cell => (cell || '').toLowerCase().trim());
-    if (row.some(c => c.includes('emp')) && row.some(c => c.includes('date'))) {
-      headerIndex = i;
-      break;
-    }
-  }
-
-  if (headerIndex === -1) headerIndex = 0;
-  const headers = rows[headerIndex].map(h => h.toLowerCase().trim());
-  const dataRows = rows.slice(headerIndex + 1);
-
-/***** 🧠 Smart header mapping (fuzzy & forgiving) *****/
-function detectColumnMapping(rows) {
-  // Remove blank or decorative rows (banners, headers, footers)
   rows = rows.filter(r => {
     if (!r || !r.length) return false;
     const joined = r.join(' ').toUpperCase().trim();
