@@ -211,22 +211,47 @@ function detectColumnMappingInner(headerRow) {
 }
 
   // small wrapper kept for backward compatibility
- function detectHeaderAndMap(rows) {
-  if (!rows || rows.length === 0) 
+function detectHeaderAndMap(rows) {
+  if (!rows || rows.length === 0)
     return { headerIndex: -1, dataRows: [], colMap: {} };
 
   // 🧠 NEW: Handle single-row pastes smartly (no header)
   if (rows.length === 1) {
-    const single = rows[0];
-    // Fake header mapping for fallback
-    const colMap = { name: 0, empNo: 1, date: 2, shift: 3, day: 4, position: 5 };
-    return { headerIndex: -1, dataRows: [single], colMap };
+    const cells = rows[0].map(c => c?.trim() ?? "").filter(c => c !== "");
+    const colMap = {};
+
+    // Regex helpers
+    const isEmpNo = v => /^\d{3,6}$/.test(v);
+    const isDate = v => {
+      const d = v.replaceAll("-", "/");
+      return /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(d) || /^\d{5}$/.test(v);
+    };
+    const isShift = v => /am|pm|to|-|–|:/i.test(v) && /\d/.test(v);
+    const isDay = v => /(mon|tue|wed|thu|fri|sat|sun)/i.test(v);
+
+    // 🧩 Guess what each cell is
+    cells.forEach((val, i) => {
+      if (isEmpNo(val)) colMap.empNo = i;
+      else if (isDate(val)) colMap.date = i;
+      else if (isShift(val)) colMap.shift = i;
+      else if (isDay(val)) colMap.day = i;
+    });
+
+    // Fill missing fields with reasonable guesses
+    if (colMap.empNo === undefined && cells.length > 1) colMap.empNo = 1;
+    if (colMap.date === undefined && cells.length > 2) colMap.date = 2;
+    if (colMap.shift === undefined && cells.length > 3) colMap.shift = 3;
+
+    // Assume first cell = name if not numeric
+    if (colMap.name === undefined) colMap.name = 0;
+
+    return { headerIndex: -1, dataRows: [cells], colMap };
   }
 
-  // 🔍 For multi-line data, use normal detection
+  // 🔍 Normal multi-line detection
   const { headerIndex, colMap, dataRows } = detectColumnMapping(rows);
 
-  // If detection fails and no valid data rows, fallback to using everything
+  // ✅ Fallback if no header or bad detection
   const safeRows = dataRows.length > 0 ? dataRows : rows;
   return { headerIndex, dataRows: safeRows, colMap };
 }
