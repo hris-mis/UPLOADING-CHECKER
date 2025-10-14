@@ -211,12 +211,25 @@ function detectColumnMappingInner(headerRow) {
 }
 
   // small wrapper kept for backward compatibility
-  function detectHeaderAndMap(rows) {
-    if (!rows || rows.length === 0) return { headerIndex: -1, dataRows: [], colMap: {} };
-    const { headerIndex, colMap } = detectColumnMapping(rows);
-    const dataRows = rows.slice(headerIndex + 1).filter(r => r.some(c => c && c.toString().trim() !== ''));
-    return { headerIndex, dataRows, colMap };
+ function detectHeaderAndMap(rows) {
+  if (!rows || rows.length === 0) 
+    return { headerIndex: -1, dataRows: [], colMap: {} };
+
+  // 🧠 NEW: Handle single-row pastes smartly (no header)
+  if (rows.length === 1) {
+    const single = rows[0];
+    // Fake header mapping for fallback
+    const colMap = { name: 0, empNo: 1, date: 2, shift: 3, day: 4, position: 5 };
+    return { headerIndex: -1, dataRows: [single], colMap };
   }
+
+  // 🔍 For multi-line data, use normal detection
+  const { headerIndex, colMap, dataRows } = detectColumnMapping(rows);
+
+  // If detection fails and no valid data rows, fallback to using everything
+  const safeRows = dataRows.length > 0 ? dataRows : rows;
+  return { headerIndex, dataRows: safeRows, colMap };
+}
 
   // auto-detect branch name inside pasted text (optional)
   function detectBranchName(text) {
@@ -398,6 +411,10 @@ function handlePaste(e, type) {
   // parse to rows
   const parsed = parseTabular(pastedData);
   const { headerIndex, dataRows, colMap } = detectHeaderAndMap(parsed);
+  // 🧠 NEW: Handle 1-row or headerless data gracefully
+if (parsed.length === 1 || dataRows.length === 0) {
+  console.log('Single-row or headerless paste detected, applying smart fallback.');
+}
   const rows = dataRows.length ? dataRows : parsed;
 
   const cleaned = [], rejected = [];
