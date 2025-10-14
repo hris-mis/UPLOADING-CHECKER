@@ -396,103 +396,117 @@ function handlePaste(e, type) {
     if (branchInput && !branchInput.value) branchInput.value = branchName;
   }
 
-  // parse to rows
-  const parsed = parseTabular(pastedData);
-  const { headerIndex, dataRows, colMap } = detectHeaderAndMap(parsed);
-  // 🧠 NEW: Handle 1-row or headerless data gracefully
+// parse to rows
+const parsed = parseTabular(pastedData);
+const { headerIndex, dataRows, colMap } = detectHeaderAndMap(parsed);
+
+// 🧠 NEW: Handle 1-row or headerless data gracefully
 if (parsed.length === 1 || dataRows.length === 0) {
   console.log('Single-row or headerless paste detected, applying smart fallback.');
 }
-  const rows = dataRows.length ? dataRows : parsed;
+const rows = dataRows.length ? dataRows : parsed;
 
-  const cleaned = [], rejected = [];
+const cleaned = [], rejected = [];
 
-  rows.forEach((row) => {
-    let name = '', emp = '', date = '', shift = '', day = '', position = '';
+rows.forEach((row) => {
+  let name = '', emp = '', date = '', shift = '', day = '', position = '';
 
-    // use colMap if valid
-    if (colMap && row[colMap.empNo] !== undefined) {
-      name = (row[colMap.name] || '').trim();
-      emp = (row[colMap.empNo] || '').trim();
-      date = normalizeDate(row[colMap.date] || '');
-      shift = (row[colMap.shift] || '').trim();
-      day = (row[colMap.day] || '').trim();
-      position = (row[colMap.position] || '').trim();
-    } else {
-      // heuristic fallback
-      const cells = row.map(c => (c || '').trim());
-      const empIdx = cells.findIndex(c => /^\d+$/.test(c));
-      const dateIdx = cells.findIndex(c => (!isNaN(c) && Number(c) > 10000) || /[\/\.\-]/.test(c));
-      const nameIdx = cells.findIndex(c => /^[A-Za-z\s,.'-]+$/.test(c) && c.split(' ').length >= 2);
-
-      if (empIdx >= 0) emp = cells[empIdx];
-      if (dateIdx >= 0) date = normalizeDate(cells[dateIdx]);
-      if (nameIdx >= 0) name = cells[nameIdx];
-      if (!day && date) day = dayNameFromDate(date);
-    }
-    // 🧩 Extra fallback for 1-liners or uncertain mappings
-if ((!emp || emp.length < 3) && row.some(c => /^\d{3,}$/.test(c))) {
-  emp = row.find(c => /^\d{3,}$/.test(c)).trim();
-}
-if (!name && row.some(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2)) {
-  name = row.find(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2).trim();
-}
-if (!date && row.some(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c))) {
-  date = normalizeDate(row.find(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c)));
-}
-
-
-    // auto-generate day if date present but no day
-    if (!day && date) day = dayNameFromDate(date);
-
-    const obj = {
-      name,
-      empNo: emp,
-      date,
-      shift,
-      day,
-      position
-    };
-
-    const reasons = [];
-    // 🧹 Smart Employee Number cleanup before validation
-if (obj.empNo) {
-  obj.empNo = obj.empNo.replace(/[^0-9]/g, '').trim(); // remove all non-numeric chars
-}
-
-// ✅ Accept cleaned empNo if it still has digits
-if (!obj.empNo || obj.empNo.length < 3) {
-  reasons.push('Missing or invalid Employee No');
-}
-
-    if (reasons.length) rejected.push({ row: row.join(' | '), reasons });
-    else cleaned.push(obj);
-  });
-
-  // snapshot for undo
-  if (!undoStack[type]) undoStack[type] = [];
-  undoStack[type].push({ work: JSON.parse(JSON.stringify(workScheduleData)), rest: JSON.parse(JSON.stringify(restDayData)) });
-  redoStack[type] = [];
-
-  if (type === 'work') {
-    workScheduleData = cleaned;
-    renderWorkTable();
-    if (workInput) workInput.value = '';
-    showBanner(`✅ ${cleaned.length} work schedule rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
-    recheckConflicts();
+  // use colMap if valid
+  if (colMap && row[colMap.empNo] !== undefined) {
+    name = (row[colMap.name] || '').trim();
+    emp = (row[colMap.empNo] || '').trim();
+    date = normalizeDate(row[colMap.date] || '');
+    shift = (row[colMap.shift] || '').trim();
+    day = (row[colMap.day] || '').trim();
+    position = (row[colMap.position] || '').trim();
   } else {
-    restDayData = cleaned;
-    validateSchedules();
-    renderRestTable();
-    if (restInput) restInput.value = '';
-    showBanner(`✅ ${cleaned.length} rest day rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
-    recheckConflicts();
+    // heuristic fallback
+    const cells = row.map(c => (c || '').trim());
+    const empIdx = cells.findIndex(c => /^\d+$/.test(c));
+    const dateIdx = cells.findIndex(c => 
+      (!isNaN(c) && Number(c) > 10000) || /[\/\.\-]/.test(c)
+    );
+    const nameIdx = cells.findIndex(c => /^[A-Za-z\s,.'-]+$/.test(c) && c.split(' ').length >= 2);
+
+    if (empIdx >= 0) emp = cells[empIdx];
+    if (dateIdx >= 0) date = normalizeDate(cells[dateIdx]);
+    if (nameIdx >= 0) name = cells[nameIdx];
+    if (!day && date) day = dayNameFromDate(date);
   }
 
-  if (rejected.length) showRejectedModal(rejected);
-  updateButtonStates();
-  saveState();
+  // 🧩 Extra fallback for 1-liners or uncertain mappings
+  if ((!emp || emp.length < 3) && row.some(c => /^\d{3,}$/.test(c))) {
+    emp = row.find(c => /^\d{3,}$/.test(c)).trim();
+  }
+  if (!name && row.some(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2)) {
+    name = row.find(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2).trim();
+  }
+  if (!date && row.some(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c))) {
+    date = normalizeDate(row.find(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c)));
+  }
+
+  // auto-generate day if date present but no day
+  if (!day && date) day = dayNameFromDate(date);
+
+  const obj = {
+    name,
+    empNo: emp || '',
+    date,
+    shift,
+    day,
+    position
+  };
+
+  const reasons = [];
+
+  // 🧹 Smart Employee Number cleanup before validation
+  if (obj.empNo) obj.empNo = obj.empNo.replace(/[^0-9]/g, '').trim();
+
+  // 🩹 Final fallback if headerless paste: try to re-detect from raw row
+  const possibleEmp = row.find(c => /^\d{3,}$/.test(c));
+  if ((!obj.empNo || obj.empNo.length < 3) && possibleEmp) {
+    obj.empNo = possibleEmp.trim();
+    console.log('Fallback: re-detected empNo for headerless row ->', obj.empNo);
+  }
+
+  // ✅ Accept cleaned empNo if it still has digits
+  if (!obj.empNo || obj.empNo.length < 3) {
+    reasons.push('Missing or invalid Employee No');
+  }
+
+  if (reasons.length) {
+    rejected.push({ row: row.join(' | '), reasons });
+  } else {
+    cleaned.push(obj);
+  }
+});
+
+// ✅ Snapshot for undo (capture once before replacing data)
+if (!undoStack[type]) undoStack[type] = [];
+undoStack[type].push({
+  work: JSON.parse(JSON.stringify(workScheduleData)),
+  rest: JSON.parse(JSON.stringify(restDayData))
+});
+redoStack[type] = [];
+
+if (type === 'work') {
+  workScheduleData = cleaned;
+  renderWorkTable();
+  if (workInput) workInput.value = '';
+  showBanner(`✅ ${cleaned.length} work schedule rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
+  recheckConflicts();
+} else {
+  restDayData = cleaned;
+  validateSchedules();
+  renderRestTable();
+  if (restInput) restInput.value = '';
+  showBanner(`✅ ${cleaned.length} rest day rows pasted. ${rejected.length ? rejected.length + ' rejected.' : ''}`);
+  recheckConflicts();
 }
+
+if (rejected.length) showRejectedModal(rejected);
+updateButtonStates();
+saveState();
 
 
   if (workInput) workInput.addEventListener('paste', (e) => handlePaste(e, 'work'));
