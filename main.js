@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 🧠 Smart Header + Real Employee Detection
 
+function detectColumnMapping(rows) {
   rows = rows.filter(r => {
     if (!r || !r.length) return false;
     const joined = r.join(' ').toUpperCase().trim();
