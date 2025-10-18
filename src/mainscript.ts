@@ -60,87 +60,113 @@ function initApp() {
 const scheduleContent = $('#tab-schedule-content') as HTMLElement | null;
 const monitoringContent = $('#tab-monitoring-content') as HTMLElement | null;
 
-// ✅ Tab Switching Logic
-// ======================
-document.addEventListener('DOMContentLoaded', () => {
-  const tabSchedule = document.getElementById('tab-schedule') as HTMLButtonElement | null;
-  const tabMonitoring = document.getElementById('tab-monitoring') as HTMLButtonElement | null;
-  const scheduleContent = document.getElementById('tab-schedule-content') as HTMLElement | null;
-  const monitoringContent = document.getElementById('tab-monitoring-content') as HTMLElement | null;
+document.addEventListener("DOMContentLoaded", () => {
+  const tabSchedule = document.getElementById("tab-schedule") as HTMLButtonElement | null;
+  const tabMonitoring = document.getElementById("tab-monitoring") as HTMLButtonElement | null;
+  const scheduleContent = document.getElementById("tab-schedule-content") as HTMLElement | null;
+  const monitoringContent = document.getElementById("tab-monitoring-content") as HTMLElement | null;
 
-  if (!tabSchedule || !tabMonitoring || !scheduleContent || !monitoringContent) return;
+  if (!tabSchedule || !tabMonitoring || !scheduleContent || !monitoringContent) {
+    console.warn("⚠️ Tab elements not found in DOM — check your HTML IDs");
+    return;
+  }
 
-  const activateTab = (tab: 'schedule' | 'monitoring') => {
-    if (tab === 'schedule') {
-      tabSchedule.classList.add('bg-indigo-600', 'text-white');
-      tabSchedule.classList.remove('bg-gray-200', 'text-gray-700');
+  const activateTab = (tab: "schedule" | "monitoring") => {
+    if (tab === "schedule") {
+      tabSchedule.classList.add("bg-indigo-600", "text-white");
+      tabSchedule.classList.remove("bg-gray-200", "text-gray-700");
 
-      tabMonitoring.classList.remove('bg-indigo-600', 'text-white');
-      tabMonitoring.classList.add('bg-gray-200', 'text-gray-700');
+      tabMonitoring.classList.remove("bg-indigo-600", "text-white");
+      tabMonitoring.classList.add("bg-gray-200", "text-gray-700");
 
-      scheduleContent.classList.remove('hidden');
-      monitoringContent.classList.add('hidden');
+      scheduleContent.classList.remove("hidden");
+      monitoringContent.classList.add("hidden");
     } else {
-      tabMonitoring.classList.add('bg-indigo-600', 'text-white');
-      tabMonitoring.classList.remove('bg-gray-200', 'text-gray-700');
+      tabMonitoring.classList.add("bg-indigo-600", "text-white");
+      tabMonitoring.classList.remove("bg-gray-200", "text-gray-700");
 
-      tabSchedule.classList.remove('bg-indigo-600', 'text-white');
-      tabSchedule.classList.add('bg-gray-200', 'text-gray-700');
+      tabSchedule.classList.remove("bg-indigo-600", "text-white");
+      tabSchedule.classList.add("bg-gray-200", "text-gray-700");
 
-      monitoringContent.classList.remove('hidden');
-      scheduleContent.classList.add('hidden');
+      monitoringContent.classList.remove("hidden");
+      scheduleContent.classList.add("hidden");
     }
   };
 
-  // Attach event listeners
-  tabSchedule.addEventListener('click', () => activateTab('schedule'));
-  tabMonitoring.addEventListener('click', () => activateTab('monitoring'));
-});
+  tabSchedule.addEventListener("click", () => activateTab("schedule"));
+  tabMonitoring.addEventListener("click", () => activateTab("monitoring"));
 
-  // Monitoring refs
-  const monitoringBody = $('#monitoringBody') as HTMLElement | null;
-  const clearMonitoringBtn = $('#clearMonitoringBtn') as HTMLElement | null;
-  const exportMonitoringBtn = $('#exportMonitoringBtn') as HTMLButtonElement | null;
-  const monthSelect = $('#monthSelect') as HTMLSelectElement | null;
-  const yearSelect = $('#yearSelect') as HTMLSelectElement | null;
-  const totalBranchesEl = $('#totalBranches') as HTMLElement | null;
-  const checkedBranchesEl = $('#checkedBranches') as HTMLElement | null;
-  const uploadedBranchesEl = $('#uploadedBranches') as HTMLElement | null;
-  const progressPercentEl = $('#progressPercent') as HTMLElement | null;
-  const progressBar = $('#progressBar') as HTMLElement | null;
-  const addBranchBtn = $('#addBranchBtn') as HTMLElement | null;
-  const backToTopBtn = $('#backToTopBtn') as HTMLElement | null;
+  // ===== MONITORING UI REFS =====
+  const monitoringBody = document.getElementById("monitoringBody") as HTMLElement | null;
+  const clearMonitoringBtn = document.getElementById("clearMonitoringBtn") as HTMLElement | null;
+  const exportMonitoringBtn = document.getElementById("exportMonitoringBtn") as HTMLButtonElement | null;
+  const monthSelect = document.getElementById("monthSelect") as HTMLSelectElement | null;
+  const yearSelect = document.getElementById("yearSelect") as HTMLSelectElement | null;
+  const totalBranchesEl = document.getElementById("totalBranches") as HTMLElement | null;
+  const checkedBranchesEl = document.getElementById("checkedBranches") as HTMLElement | null;
+  const uploadedBranchesEl = document.getElementById("uploadedBranches") as HTMLElement | null;
+  const progressPercentEl = document.getElementById("progressPercent") as HTMLElement | null;
+  const progressBar = document.getElementById("progressBar") as HTMLElement | null;
+  const addBranchBtn = document.getElementById("addBranchBtn") as HTMLElement | null;
+  const backToTopBtn = document.getElementById("backToTopBtn") as HTMLElement | null;
 
-  /***** Helper UI functions *****/
+  // ===== UI HELPERS =====
   function showBanner(msg: string) {
+    const warningBanner = document.getElementById("warningBanner");
     if (!warningBanner) return;
     warningBanner.textContent = msg;
-    warningBanner.classList.remove('hidden');
-    warningBanner.classList.add('opacity-100');
+    warningBanner.classList.remove("hidden");
+    warningBanner.classList.add("opacity-100");
     setTimeout(() => {
-      warningBanner.classList.remove('opacity-100');
-      setTimeout(() => warningBanner.classList.add('hidden'), 400);
+      warningBanner.classList.remove("opacity-100");
+      setTimeout(() => warningBanner.classList.add("hidden"), 400);
     }, 3000);
   }
-  function hideBanner() {
-    if (!warningBanner) return;
-    warningBanner.classList.add('hidden');
-    warningBanner.classList.remove('opacity-100');
-    warningBanner.textContent = '';
-  }
+
   function showSuccess() {
+    const successMsg = document.getElementById("successMsg");
     if (!successMsg) return;
-    successMsg.classList.remove('hidden');
-    successMsg.style.animation = 'fadeInOut 2.5s ease-in-out';
+    successMsg.classList.remove("hidden");
+    successMsg.style.animation = "fadeInOut 2.5s ease-in-out";
     setTimeout(() => {
-      successMsg.classList.add('hidden');
-      successMsg.style.animation = '';
+      successMsg.classList.add("hidden");
+      successMsg.style.animation = "";
     }, 2500);
   }
-  function escapeHtml(str: any) {
-    return (str == null) ? '' : String(str)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+
+  // ===== REALTIME FIRESTORE LISTENER =====
+  subscribeToData("branches", (branches) => {
+    if (!branches || branches.length === 0) {
+      if (progressBar) progressBar.style.width = "0%";
+      if (progressPercentEl) progressPercentEl.textContent = "0%";
+      return;
+    }
+
+    const checked = branches.filter((b) => b.checked).length;
+    const uploaded = branches.filter((b) => b.uploaded).length;
+    const percent = Math.round((checked / branches.length) * 100);
+
+    if (totalBranchesEl) totalBranchesEl.textContent = branches.length.toString();
+    if (checkedBranchesEl) checkedBranchesEl.textContent = checked.toString();
+    if (uploadedBranchesEl) uploadedBranchesEl.textContent = uploaded.toString();
+    if (progressBar) progressBar.style.width = `${percent}%`;
+    if (progressPercentEl) progressPercentEl.textContent = `${percent}%`;
+
+    if (monitoringBody) {
+      monitoringBody.innerHTML = "";
+      branches.forEach((b, i) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td class="px-3 py-1 text-sm">${i + 1}</td>
+          <td class="px-3 py-1 text-sm">${b.name || "-"}</td>
+          <td class="px-3 py-1 text-sm">${b.checked ? "✅" : "❌"}</td>
+          <td class="px-3 py-1 text-sm">${b.uploaded ? "📤" : ""}</td>
+        `;
+        monitoringBody.appendChild(row);
+      });
+    }
+  });
+});
 
   /***** Parsers & detection *****/
   function parseTabular(text: string, html?: string): string[][] {
