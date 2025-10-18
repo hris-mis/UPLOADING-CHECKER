@@ -8,7 +8,8 @@
     "moduleResolution": "node",
     "noEmitOnError": true,
     "skipLibCheck": true,
-    "lib": ["dom", "es2017"]
+    "lib": ["dom", "es2017"],
+    "outFile": "dist/mainscript.js"
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/mainscript.ts"]
 }
