@@ -179,32 +179,96 @@ function dayNameFromDate(dateStr?: string) {
 
   function detectHeaderAndMap(rows: string[][]) {
     if (!rows || rows.length === 0) return { headerIndex: -1, dataRows: [] as string[][], colMap: {} as any };
+
+    // helper detectors
+    const isEmpNo = (v: string) => /^\d{3,6}$/.test(v);
+    const isDateLike = (v: string) => /^\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4}$/.test(v) || /^\d{5}$/.test(v) || /^\d{4}-\d{2}-\d{2}$/.test(v);
+    const isShift = (v: string) => /am|pm|to|-|–|:/.test(v) && /\d/.test(v);
+    const isDay = (v: string) => /^(mon|tue|wed|thu|fri|sat|sun)/i.test(v);
+    const looksLikeName = (v: string) => /^[A-Za-z\s,.'-]{3,}$/.test(v) && v.split(' ').length >= 2;
+
+    // if only one row: try to map by cell content
     if (rows.length === 1) {
       const cells = rows[0].map((c: string | undefined) => (c?.trim() ?? "")).filter((c: string) => c !== "");
       const colMap: any = {};
-      const isEmpNo = (v: string) => /^\d{3,6}$/.test(v);
-      const isDate = (v: string) => /^\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4}$/.test(v) || /^\d{5}$/.test(v);
-      const isShift = (v: string) => /am|pm|to|-|–|:/i.test(v) && /\d/.test(v);
-      const isDay = (v: string) => /(mon|tue|wed|thu|fri|sat|sun)/i.test(v);
       cells.forEach((v: string, i: number) => {
         if (isEmpNo(v)) colMap.empNo = i;
-        else if (isDate(v)) colMap.date = i;
+        else if (isDateLike(v)) colMap.date = i;
         else if (isShift(v)) colMap.shift = i;
         else if (isDay(v)) colMap.day = i;
+        else if (looksLikeName(v)) colMap.name = i;
       });
-      if (colMap.empNo === undefined && cells.length > 1) colMap.empNo = 1;
-      if (colMap.date === undefined && cells.length > 2) colMap.date = 2;
-      if (colMap.shift === undefined && cells.length > 3) colMap.shift = 3;
+      // sensible defaults
       if (colMap.name === undefined) colMap.name = 0;
+      if (colMap.empNo === undefined) colMap.empNo = 1;
+      if (colMap.date === undefined) colMap.date = 2;
+      if (colMap.shift === undefined) colMap.shift = 3;
+      if (colMap.day === undefined) colMap.day = 4;
       return { headerIndex: -1, dataRows: [cells], colMap };
     }
 
+    // First, try to find an explicit header row (contains header keywords)
     let headerIndex = -1;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i].map((c: string) => (c || '').toLowerCase());
       if (row.some((c: string) => c.includes('emp')) && row.some((c: string) => c.includes('date'))) { headerIndex = i; break; }
+      if (row.some((c: string) => /name|fullname|employee|branch|position|shift|day/.test(c))) { headerIndex = i; break; }
     }
-    if (headerIndex === -1) headerIndex = 0;
+
+    // If no explicit header, try heuristic column-type detection across a sample of rows
+    if (headerIndex === -1) {
+      const sampleRows = rows.slice(0, Math.min(8, rows.length));
+      const colCount = Math.max(...sampleRows.map(r => r.length));
+      const scores: Array<{ num: number; date: number; shift: number; day: number; name: number }> = [];
+      for (let c = 0; c < colCount; c++) {
+        scores[c] = { num: 0, date: 0, shift: 0, day: 0, name: 0 };
+        for (const r of sampleRows) {
+          const cell = (r[c] || '').trim();
+          if (!cell) continue;
+          if (isEmpNo(cell)) scores[c].num++;
+          if (isDateLike(cell)) scores[c].date++;
+          if (isShift(cell)) scores[c].shift++;
+          if (isDay(cell)) scores[c].day++;
+          if (looksLikeName(cell)) scores[c].name++;
+        }
+      }
+      // choose best candidates
+      const pickBest = (key: keyof typeof scores[0]) => {
+        let best = -1, bestScore = -1;
+        for (let i = 0; i < scores.length; i++) {
+          const s = (scores[i] as any)[key] || 0;
+          if (s > bestScore) { bestScore = s; best = i; }
+        }
+        return best;
+      };
+      const mapping: any = {};
+      const empIdx = pickBest('num');
+      const dateIdx = pickBest('date');
+      const nameIdx = pickBest('name');
+      const shiftIdx = pickBest('shift');
+      const dayIdx = pickBest('day');
+
+      if (nameIdx !== -1) mapping.name = nameIdx;
+      if (empIdx !== -1) mapping.empNo = empIdx;
+      if (dateIdx !== -1) mapping.date = dateIdx;
+      if (shiftIdx !== -1) mapping.shift = shiftIdx;
+      if (dayIdx !== -1) mapping.day = dayIdx;
+
+      // if mapping looks reasonable (found at least emp or date), treat as no header + auto-map
+      if (mapping.empNo !== undefined || mapping.date !== undefined) {
+        // sensible fallbacks
+        if (mapping.name === undefined) mapping.name = 0;
+        if (mapping.empNo === undefined) mapping.empNo = 1;
+        if (mapping.date === undefined) mapping.date = 2;
+        if (mapping.shift === undefined) mapping.shift = 3;
+        if (mapping.day === undefined) mapping.day = 4;
+        return { headerIndex: -1, dataRows: rows, colMap: mapping };
+      }
+      // else fall through and treat first row as header
+      headerIndex = 0;
+    }
+
+    // existing header parsing (when headerIndex is set)
     const detectInner = (headerRow: string[]) => {
       const normalize = (s: string) => s.replace(/[\s_\-\/\\\.]/g, '').toLowerCase();
       const h = headerRow.map(normalize);
@@ -373,6 +437,13 @@ function dayNameFromDate(dateStr?: string) {
         shift = (row[colMap.shift] || '').trim();
         day = (row[colMap.day] || '').trim();
         position = (row[colMap.position] || '').trim();
+
+        // If the detected 'day' cell actually contains a date, convert to weekday
+        if (day && (/^[\d\/\.\-]{6,}$/.test(day) || /^\d{4}-\d{2}-\d{2}$/.test(day))) {
+          const normalized = normalizeDate(day);
+          const weekday = dayNameFromDate(normalized);
+          if (weekday) day = weekday;
+        }
       } else {
         const cells = row.map((c: string) => (c || '').trim());
         const empIdx = cells.findIndex((c: string) => /^\d+$/.test(c));
