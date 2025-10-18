@@ -124,18 +124,53 @@ type RowObj = {
   }
 
   /***** Parsers & detection *****/
-  function parseTabular(text: string): string[][] {
+  function parseTabular(text: string, html?: string): string[][] {
+    // Prefer HTML table from clipboard (Excel on macOS often provides HTML)
+    try {
+      if (html && /<table/i.test(html)) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const table = doc.querySelector('table');
+        if (table) {
+          return Array.from(table.rows).map((r) =>
+            Array.from(r.cells).map((c) => (c.textContent || '').trim())
+          );
+        }
+      }
+    } catch (e) {
+      // fall back to text parsing
+    }
+
     if (!text) return [];
-    const rawLines = text.replace(/\r/g, '').split('\n');
-    const lines = rawLines.map((l: string) => l.trim()).filter((l: string) => l && !/^(sheet|page|total|subtotal|page\s*\d+)/i.test(l));
+    // normalize line endings and various unicode spaces that Excel/Safari paste may include
+    const cleanedText = text
+      .replace(/\r/g, '')
+      .replace(/[\u00A0\u2007\u202F]/g, ' ') // NBSP, figure space, narrow NBSP
+      .replace(/\u000C/g, '') // form-feed if present
+      .trim();
+
+    const rawLines = cleanedText.split('\n');
+    // remove purely decorative lines but keep rows that look like data
+    const lines = rawLines
+      .map((l) => l.trim())
+      .filter((l) => l && !/^(sheet|page|total|subtotal|page\s*\d+)/i.test(l));
     if (lines.length === 0) return [];
+
     const sample = lines.slice(0, 5).join('\n');
+
+    // detect separator: prefer tab, then comma, then 2+ spaces (or repeated NBSPs),
+    // otherwise fallback to splitting by tab or multiple spaces while avoiding single-space splits
     let splitter: RegExp = /\t/;
     if (!/\t/.test(sample)) {
       if (/,/.test(sample)) splitter = /,/;
-      else splitter = /\s{2,}/;
+      else if (/[ \u00A0]{2,}/.test(sample)) splitter = /[ \u00A0]{2,}/;
+      else splitter = /\t|[ \u00A0]{2,}|,/; // broad fallback keeping multi-space preference
     }
-    return lines.map((line: string) => line.split(splitter).map((c: string) => c.trim()));
+
+    return lines.map((line) =>
+      line
+        .split(splitter)
+        .map((c) => (c || '').replace(/[\u00A0\u2007\u202F]/g, ' ').trim())
+    );
   }
 
   function normalizeDate(dateStr: string | undefined): string {
@@ -481,15 +516,16 @@ type RowObj = {
     e.preventDefault();
     const clipboardData = e.clipboardData || (window as any).clipboardData;
     const pastedData = clipboardData.getData('text/plain');
-    if (!pastedData) return;
+    const pastedHtml = clipboardData.getData && clipboardData.getData('text/html');
+    if (!pastedData && !pastedHtml) return;
 
-    const branchName = detectBranchName(pastedData);
+    const branchName = detectBranchName(pastedData || pastedHtml);
     if (branchName) {
       const branchInput = type === 'work' ? $('#workBranchName') as HTMLInputElement | null : $('#restBranchName') as HTMLInputElement | null;
       if (branchInput && !branchInput.value) branchInput.value = branchName;
     }
 
-    const parsed = parseTabular(pastedData);
+    const parsed = parseTabular(pastedData || '', pastedHtml);
     const { headerIndex, dataRows, colMap } = detectHeaderAndMap(parsed);
     const rows = dataRows.length ? dataRows : parsed;
 
