@@ -73,10 +73,27 @@ type RowObj = {
   const clearWorkBtn = $('#clearWorkData') as HTMLButtonElement | null;
   const clearRestBtn = $('#clearRestData') as HTMLButtonElement | null;
 
-  const tabSchedule = $('#tab-schedule') as HTMLElement | null;
-  const tabMonitoring = $('#tab-monitoring') as HTMLElement | null;
-  const scheduleContent = $('#tab-schedule-content') as HTMLElement | null;
-  const monitoringContent = $('#tab-monitoring-content') as HTMLElement | null;
+const tabSchedule = $('#tab-schedule') as HTMLElement | null;
+const tabMonitoring = $('#tab-monitoring') as HTMLElement | null;
+const scheduleContent = $('#tab-schedule-content') as HTMLElement | null;
+const monitoringContent = $('#tab-monitoring-content') as HTMLElement | null;
+
+// ✅ Tab switching logic — makes "Monitoring" clickable
+if (tabSchedule && tabMonitoring && scheduleContent && monitoringContent) {
+  tabSchedule.addEventListener('click', () => {
+    tabSchedule.classList.add('active');
+    tabMonitoring.classList.remove('active');
+    scheduleContent.classList.remove('hidden');
+    monitoringContent.classList.add('hidden');
+  });
+
+  tabMonitoring.addEventListener('click', () => {
+    tabMonitoring.classList.add('active');
+    tabSchedule.classList.remove('active');
+    monitoringContent.classList.remove('hidden');
+    scheduleContent.classList.add('hidden');
+  });
+}
 
   // Monitoring refs
   const monitoringBody = $('#monitoringBody') as HTMLElement | null;
