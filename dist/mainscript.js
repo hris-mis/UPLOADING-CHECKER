@@ -5,10 +5,8 @@
  */
 (() => {
     // Utility selectors with typed returns
-    // safer selector helpers for TS build
     const $ = (sel) => { var _a; return (_a = document.querySelector(sel)) !== null && _a !== void 0 ? _a : null; };
     const $$ = (sel) => document.querySelectorAll(sel);
-    // small helper to avoid depending on String.prototype.padStart in older lib targets
     const pad2 = (v) => {
         const s = String(v);
         return s.length >= 2 ? s : '0' + s;
@@ -98,7 +96,7 @@
         if (!text)
             return [];
         const rawLines = text.replace(/\r/g, '').split('\n');
-        const lines = rawLines.map(l => l.trim()).filter(l => l && !/^(sheet|page|total|subtotal|page\s*\d+)/i.test(l));
+        const lines = rawLines.map((l) => l.trim()).filter((l) => l && !/^(sheet|page|total|subtotal|page\s*\d+)/i.test(l));
         if (lines.length === 0)
             return [];
         const sample = lines.slice(0, 5).join('\n');
@@ -109,12 +107,16 @@
             else
                 splitter = /\s{2,}/;
         }
-        return lines.map(line => line.split(splitter).map(c => c.trim()));
+        return lines.map((line) => line.split(splitter).map((c) => c.trim()));
     }
     function normalizeDate(dateStr) {
         if (!dateStr)
             return '';
         let s = ('' + dateStr).trim();
+        // keep weekday-like values
+        const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+        if (weekdays.some(d => s.toLowerCase().startsWith(d)))
+            return s;
         if (!isNaN(s) && Number(s) > 10000) {
             const excelEpoch = new Date(1899, 11, 30);
             const parsed = new Date(excelEpoch.getTime() + (Number(s) * 86400000));
@@ -156,9 +158,8 @@
     function detectHeaderAndMap(rows) {
         if (!rows || rows.length === 0)
             return { headerIndex: -1, dataRows: [], colMap: {} };
-        // single-line heuristics
         if (rows.length === 1) {
-            const cells = rows[0].map(c => { var _a; return (_a = c === null || c === void 0 ? void 0 : c.trim()) !== null && _a !== void 0 ? _a : ""; }).filter(c => c !== "");
+            const cells = rows[0].map((c) => { var _a; return ((_a = c === null || c === void 0 ? void 0 : c.trim()) !== null && _a !== void 0 ? _a : ""); }).filter((c) => c !== "");
             const colMap = {};
             const isEmpNo = (v) => /^\d{3,6}$/.test(v);
             const isDate = (v) => /^\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4}$/.test(v) || /^\d{5}$/.test(v);
@@ -184,28 +185,26 @@
                 colMap.name = 0;
             return { headerIndex: -1, dataRows: [cells], colMap };
         }
-        // find header row heuristically
         let headerIndex = -1;
         for (let i = 0; i < rows.length; i++) {
-            const row = rows[i].map(c => (c || '').toLowerCase());
-            if (row.some(c => c.includes('emp')) && row.some(c => c.includes('date'))) {
+            const row = rows[i].map((c) => (c || '').toLowerCase());
+            if (row.some((c) => c.includes('emp')) && row.some((c) => c.includes('date'))) {
                 headerIndex = i;
                 break;
             }
         }
         if (headerIndex === -1)
             headerIndex = 0;
-        const headers = rows[headerIndex].map(h => (h || '').toLowerCase().replace(/[\s_\-\/\\\.]/g, ''));
         const detectInner = (headerRow) => {
             const normalize = (s) => s.replace(/[\s_\-\/\\\.]/g, '').toLowerCase();
             const h = headerRow.map(normalize);
             const mapping = {
-                name: h.findIndex(x => /name|fullname|employeename/.test(x)),
-                empNo: h.findIndex(x => /emp|employeenumber|idnum|id/.test(x)),
-                date: h.findIndex(x => /date|workdate|sched|schedule/.test(x)),
-                shift: h.findIndex(x => /shift|time|duty/.test(x)),
-                day: h.findIndex(x => /day|daytype|typeday/.test(x)),
-                position: h.findIndex(x => /position|title|role/.test(x))
+                name: h.findIndex((x) => /name|fullname|employeename/.test(x)),
+                empNo: h.findIndex((x) => /emp|employeenumber|idnum|id/.test(x)),
+                date: h.findIndex((x) => /date|workdate|sched|schedule/.test(x)),
+                shift: h.findIndex((x) => /shift|time|duty/.test(x)),
+                day: h.findIndex((x) => /day|daytype|typeday/.test(x)),
+                position: h.findIndex((x) => /position|title|role/.test(x))
             };
             if (mapping.name === -1)
                 mapping.name = 0;
@@ -245,7 +244,7 @@
         if (!restTableBody)
             return;
         restTableBody.innerHTML = restDayData.map((d, i) => {
-            const conflictHtml = (d.conflicts || []).map(c => `<div><strong>${escapeHtml(c.type)}:</strong> ${escapeHtml(c.reason)}</div>`).join('');
+            const conflictHtml = (d.conflicts || []).map((c) => `<div><strong>${escapeHtml(c.type)}:</strong> ${escapeHtml(c.reason)}</div>`).join('');
             const rowClass = (d.conflicts && d.conflicts.length > 0) ? 'conflict-row' : '';
             return `
         <tr class="${rowClass}" data-idx="${i}">
@@ -260,7 +259,7 @@
       `;
         }).join('');
         const total = restDayData.length;
-        const conflicts = restDayData.filter(r => r.conflicts && r.conflicts.length > 0).length;
+        const conflicts = restDayData.filter((r) => r.conflicts && r.conflicts.length > 0).length;
         if (!summaryEl)
             return;
         if (total === 0) {
@@ -283,13 +282,13 @@
     }
     /***** Validation logic *****/
     function validateSchedules() {
-        restDayData.forEach(r => r.conflicts = []);
-        const workMap = new Map(workScheduleData.map(w => [`${w.empNo}-${(w.date || '').trim()}`, w]));
-        const workEmpSet = new Set(workScheduleData.map(w => w.empNo));
+        restDayData.forEach((r) => (r.conflicts = []));
+        const workMap = new Map(workScheduleData.map((w) => [`${w.empNo}-${(w.date || '').trim()}`, w]));
+        const workEmpSet = new Set(workScheduleData.map((w) => w.empNo || ''));
         const restByDate = {};
         const weekendCount = {};
         const seen = new Set();
-        restDayData.forEach(rd => {
+        restDayData.forEach((rd) => {
             if (!rd)
                 return;
             const key = `${rd.empNo}-${(rd.date || '').trim()}`;
@@ -300,7 +299,7 @@
                 rd.conflicts.push({ type: 'Duplicate Entry', reason: 'Duplicate rest day entry for same employee & date.' });
             else
                 seen.add(key);
-            if (!workEmpSet.has(rd.empNo))
+            if (!workEmpSet.has(rd.empNo || ''))
                 rd.conflicts.push({ type: 'Missing Employee', reason: 'Employee not found in Work Schedule data.' });
             const d = new Date(rd.date || '');
             if (isNaN(d.getTime()))
@@ -317,15 +316,15 @@
         });
         // leadership conflicts
         for (const date in restByDate) {
-            const leaders = restByDate[date].filter(r => LEADERSHIP_POSITIONS.indexOf(r.position || '') !== -1);
+            const leaders = restByDate[date].filter((r) => LEADERSHIP_POSITIONS.indexOf(r.position || '') !== -1);
             if (leaders.length > 1)
-                leaders.forEach(l => l.conflicts.push({ type: 'Leadership Conflict', reason: 'Multiple leaders have same rest day.' }));
+                leaders.forEach((l) => l.conflicts.push({ type: 'Leadership Conflict', reason: 'Multiple leaders have same rest day.' }));
         }
         // weekend limit enforcement
         for (const wkey in weekendCount) {
             if (weekendCount[wkey] > 2) {
                 const [emp] = wkey.split('-');
-                restDayData.filter(r => r.empNo === emp && /saturday|sunday/i.test(r.day || '')).forEach(r => {
+                restDayData.filter((r) => r.empNo === emp && /saturday|sunday/i.test(r.day || '')).forEach((r) => {
                     r.conflicts.push({ type: 'Weekend Limit Exceeded', reason: `${weekendCount[wkey]} weekend rest days — maximum 2.` });
                 });
             }
@@ -361,7 +360,7 @@
         const rows = dataRows.length ? dataRows : parsed;
         const cleaned = [];
         const rejected = [];
-        rows.forEach(row => {
+        rows.forEach((row) => {
             let name = '', emp = '', date = '', shift = '', day = '', position = '';
             if (colMap && row[colMap.empNo] !== undefined) {
                 name = (row[colMap.name] || '').trim();
@@ -372,10 +371,10 @@
                 position = (row[colMap.position] || '').trim();
             }
             else {
-                const cells = row.map(c => (c || '').trim());
-                const empIdx = cells.findIndex(c => /^\d+$/.test(c));
-                const dateIdx = cells.findIndex(c => ((!isNaN(c) && Number(c) > 10000) || /[\/\.\-]/.test(c)));
-                const nameIdx = cells.findIndex(c => /^[A-Za-z\s,.'-]+$/.test(c) && c.split(' ').length >= 2);
+                const cells = row.map((c) => (c || '').trim());
+                const empIdx = cells.findIndex((c) => /^\d+$/.test(c));
+                const dateIdx = cells.findIndex((c) => ((!isNaN(c) && Number(c) > 10000) || /[\/\.\-]/.test(c)));
+                const nameIdx = cells.findIndex((c) => /^[A-Za-z\s,.'-]+$/.test(c) && c.split(' ').length >= 2);
                 if (empIdx >= 0)
                     emp = cells[empIdx];
                 if (dateIdx >= 0)
@@ -385,20 +384,26 @@
                 if (!day && date)
                     day = dayNameFromDate(date);
             }
-            if ((!emp || emp.length < 3) && row.some(c => /^\d{3,}$/.test(c))) {
-                emp = row.find(c => /^\d{3,}$/.test(c)).trim();
+            if ((!emp || emp.length < 3) && row.some((c) => /^\d{3,}$/.test(c))) {
+                const found = row.find((c) => /^\d{3,}$/.test(c));
+                if (found)
+                    emp = String(found).trim();
             }
-            if (!name && row.some(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2)) {
-                name = row.find(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2).trim();
+            if (!name && row.some((c) => /^[A-Za-z\s]+$/.test(String(c)) && String(c).split(' ').length >= 2)) {
+                const found = row.find((c) => /^[A-Za-z\s]+$/.test(String(c)) && String(c).split(' ').length >= 2);
+                if (found)
+                    name = String(found).trim();
             }
-            if (!date && row.some(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c))) {
-                date = normalizeDate(row.find(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c)));
+            if (!date && row.some((c) => /[\/\-\.]/.test(String(c)) || /^\d{5}$/.test(String(c)))) {
+                const found = row.find((c) => /[\/\-\.]/.test(String(c)) || /^\d{5}$/.test(String(c)));
+                if (found)
+                    date = normalizeDate(String(found));
             }
             if (!day && date)
                 day = dayNameFromDate(date);
-            const obj = { name, empNo: emp ? emp.replace(/[^0-9]/g, '') : '', date, shift, day, position };
+            const obj = { name, empNo: emp ? String(emp).replace(/[^0-9]/g, '') : '', date, shift, day, position };
             const reasons = [];
-            if (!obj.empNo || obj.empNo.length < 3)
+            if (!obj.empNo || obj.empNo.length < 2 || obj.empNo.length > 6)
                 reasons.push('Missing or invalid Employee No');
             if (reasons.length)
                 rejected.push({ row: row.join(' | '), reasons });
@@ -437,7 +442,7 @@
     /***** Row deletion / undo/redo *****/
     document.addEventListener('click', (ev) => {
         const target = ev.target;
-        const btn = target.closest && target.closest('.delete-row-btn');
+        const btn = (target.closest && target.closest('.delete-row-btn'));
         if (!btn)
             return;
         const type = btn.dataset.type;
@@ -515,11 +520,11 @@
         const body = modal.querySelector('.modal-body');
         if (!body)
             return;
-        const informative = rejected.filter(r => !/^(WORK\s*SCHEDULE|REST\s*DAY|TOTAL|SUMMARY|PAGE|PREPARED)/i.test(r.row));
+        const informative = rejected.filter((r) => !/^(WORK\s*SCHEDULE|REST\s*DAY|TOTAL|SUMMARY|PAGE|PREPARED)/i.test(r.row));
         const msg = informative.length === 0
             ? `<p>✅ All rows have been processed successfully.<br>No critical issues detected.</p>`
             : `<p>⚙️ ${informative.length} rows were auto-corrected or skipped (decorative/non-critical):</p>` +
-                informative.map(r => `<div style="padding:6px;border-bottom:1px solid #eee;"><strong>${escapeHtml(r.row)}</strong><div style="color:#2563eb;margin-top:4px;">Notes: ${r.reasons.join(', ')}</div></div>`).join('');
+                informative.map((r) => `<div style="padding:6px;border-bottom:1px solid #eee;"><strong>${escapeHtml(r.row)}</strong><div style="color:#2563eb;margin-top:4px;">Notes: ${r.reasons.join(', ')}</div></div>`).join('');
         body.innerHTML = msg;
         const title = modal.querySelector('.modal-title');
         if (title)
@@ -541,15 +546,15 @@
     function generateHrisFile(type) {
         const workBranchEl = $('#workBranchName');
         const restBranchEl = $('#restBranchName');
-        const workBranch = workBranchEl ? workBranchEl.value.trim() : '';
-        const restBranch = restBranchEl ? restBranchEl.value.trim() : '';
+        const workBranch = workBranchEl ? (workBranchEl.value || '') : '';
+        const restBranch = restBranchEl ? (restBranchEl.value || '') : '';
         if (type === 'work') {
             if (!workBranch)
                 return showBanner('⚠️ Enter Work Branch Name.');
             if (workScheduleData.length === 0)
                 return showBanner('⚠️ No Work Schedule data to generate.');
-            const cleanedData = workScheduleData.map(r => ({ empNo: r.empNo, date: r.date, shift: (r.shift || '').replace(/\s+/g, '').toUpperCase() }));
-            const data = [['Employee Number', 'Work Date', 'Shift Code'], ...cleanedData.map(r => [r.empNo, r.date, r.shift])];
+            const cleanedData = workScheduleData.map((r) => ({ empNo: r.empNo, date: r.date, shift: (r.shift || '').replace(/\s+/g, '').toUpperCase() }));
+            const data = [['Employee Number', 'Work Date', 'Shift Code'], ...cleanedData.map((r) => [r.empNo, r.date, r.shift])];
             const ws = XLSX.utils.aoa_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
@@ -561,10 +566,10 @@
                 return showBanner('⚠️ Enter Rest Branch Name.');
             if (restDayData.length === 0)
                 return showBanner('⚠️ No Rest Day data to generate.');
-            if (restDayData.some(r => r.conflicts && r.conflicts.length > 0)) {
+            if (restDayData.some((r) => r.conflicts && r.conflicts.length > 0)) {
                 showBanner('⚠️ Note: There are conflicts, but file generation will proceed.');
             }
-            const data = restDayData.map(r => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
+            const data = restDayData.map((r) => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
@@ -599,13 +604,13 @@
         });
     /***** Keyboard shortcuts *****/
     document.addEventListener('keydown', (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if ((e.ctrlKey || e.metaKey) && (String(e.key).toLowerCase() === 'z')) {
             if (undoStack.work && undoStack.work.length)
                 undoPaste('work');
             else if (undoStack.rest && undoStack.rest.length)
                 undoPaste('rest');
         }
-        if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        if ((e.ctrlKey || e.metaKey) && ((String(e.key).toLowerCase() === 'y') || (e.shiftKey && (String(e.key).toLowerCase() === 'z')))) {
             if (redoStack.work && redoStack.work.length)
                 redoPaste('work');
             else if (redoStack.rest && redoStack.rest.length)
@@ -639,9 +644,9 @@
             const progress = Math.min((time - start) / duration, 1);
             const value = Math.round(from + diff * progress);
             if (progressPercentEl)
-                progressPercentEl.textContent = value + '%';
+                progressPercentEl.textContent = `${value}%`;
             if (progressBar)
-                progressBar.style.width = value + '%';
+                progressBar.style.width = `${value}%`;
             if (progressBar) {
                 if (value < 40)
                     progressBar.style.background = 'linear-gradient(to right, #f43f5e, #fb7185)';
@@ -660,8 +665,8 @@
     function updateMonitoringStats() {
         const data = getMonitoring();
         const total = data.length;
-        const checked = data.filter(b => b.checked).length;
-        const uploaded = data.filter(b => b.uploaded).length;
+        const checked = data.filter((b) => !!b.checked).length;
+        const uploaded = data.filter((b) => !!b.uploaded).length;
         if (totalBranchesEl)
             totalBranchesEl.textContent = String(total);
         if (checkedBranchesEl)
@@ -675,7 +680,7 @@
         var _a, _b;
         const data = getMonitoring();
         const searchVal = ((_b = (_a = $('#monitorSearch')) === null || _a === void 0 ? void 0 : _a.value) === null || _b === void 0 ? void 0 : _b.trim().toLowerCase()) || '';
-        const filtered = data.filter(b => {
+        const filtered = data.filter((b) => {
             const matches = (b.name || '').toLowerCase().includes(searchVal);
             const passes = showUnchecked ? !b.checked : true;
             return matches && passes;
@@ -695,32 +700,35 @@
         </td>
       </tr>
     `).join('');
-        // attach handlers to newly created elements
-        monitoringBody.querySelectorAll('input').forEach(inp => {
-            inp.addEventListener('change', (ev) => {
+        monitoringBody.querySelectorAll('input').forEach((inp) => {
+            const inputEl = inp;
+            inputEl.addEventListener('change', (ev) => {
                 const target = ev.target;
                 const index = Number(target.dataset.index);
                 const field = target.dataset.field;
                 const d = getMonitoring();
-                const filteredNames = filtered.map(x => x.name);
+                const filteredNames = filtered.map((x) => x.name);
                 const targetName = filteredNames[index];
-                const origIndex = d.findIndex(x => x.name === targetName);
+                const origIndex = d.findIndex((x) => x.name === targetName);
                 if (origIndex === -1)
                     return;
-                d[origIndex][field] = target.type === 'checkbox' ? target.checked : target.value;
+                if (target.type === 'checkbox')
+                    d[origIndex][field] = target.checked;
+                else
+                    d[origIndex][field] = target.value;
                 saveMonitoring(d);
                 updateMonitoringStats();
                 renderMonitoring();
             });
         });
-        monitoringBody.querySelectorAll('.action-edit').forEach(btn => {
+        monitoringBody.querySelectorAll('.action-edit').forEach((btn) => {
             btn.addEventListener('click', (ev) => {
                 const t = ev.currentTarget;
                 const i = Number(t.dataset.i);
                 const d = getMonitoring();
-                const filteredNames = filtered.map(x => x.name);
+                const filteredNames = filtered.map((x) => x.name);
                 const targetName = filteredNames[i];
-                const origIndex = d.findIndex(x => x.name === targetName);
+                const origIndex = d.findIndex((x) => x.name === targetName);
                 if (origIndex === -1)
                     return;
                 const newName = prompt('Edit branch name:', d[origIndex].name);
@@ -732,14 +740,14 @@
                 }
             });
         });
-        monitoringBody.querySelectorAll('.action-delete').forEach(btn => {
+        monitoringBody.querySelectorAll('.action-delete').forEach((btn) => {
             btn.addEventListener('click', (ev) => {
                 const t = ev.currentTarget;
                 const i = Number(t.dataset.i);
                 const d = getMonitoring();
-                const filteredNames = filtered.map(x => x.name);
+                const filteredNames = filtered.map((x) => x.name);
                 const targetName = filteredNames[i];
-                const origIndex = d.findIndex(x => x.name === targetName);
+                const origIndex = d.findIndex((x) => x.name === targetName);
                 if (origIndex === -1)
                     return;
                 if (!confirm('Delete branch?'))
@@ -779,13 +787,12 @@
             const month = (monthSelect === null || monthSelect === void 0 ? void 0 : monthSelect.value) || '';
             const year = (yearSelect === null || yearSelect === void 0 ? void 0 : yearSelect.value) || '';
             const percent = currentPercent || 0;
-            // Add header rows at top
             const headerRows = [
                 [`Monitoring Progress: ${percent}%`],
                 [`Month: ${month} ${year}`],
                 ['Branch Name', 'Checked', 'Uploaded', 'Uploaded By', 'Remarks']
             ];
-            const rows = data.map(b => [
+            const rows = data.map((b) => [
                 b.name || '',
                 b.checked ? 'Yes' : 'No',
                 b.uploaded ? 'Yes' : 'No',
@@ -865,7 +872,6 @@
             tabSchedule.classList.add('bg-gray-200', 'text-gray-700');
             scheduleContent.classList.add('hidden');
             monitoringContent.classList.remove('hidden');
-            // ensure monitoring is always (re)rendered when tab is shown
             renderMonitoring();
             updateMonitoringStats();
             setTimeout(() => window.scrollTo(0, lastScroll), 120);

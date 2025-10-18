@@ -21,10 +21,8 @@ type RowObj = {
 
 (() => {
   // Utility selectors with typed returns
-  // safer selector helpers for TS build
   const $ = <T extends Element = Element>(sel: string): (T | null) => document.querySelector<T>(sel) ?? null;
   const $$ = <T extends Element = Element>(sel: string): NodeListOf<T> => document.querySelectorAll<T>(sel);
-  // small helper to avoid depending on String.prototype.padStart in older lib targets
   const pad2 = (v: string | number) => {
     const s = String(v);
     return s.length >= 2 ? s : '0' + s;
@@ -115,10 +113,10 @@ type RowObj = {
   }
 
   /***** Parsers & detection *****/
-  function parseTabular(text: string) {
+  function parseTabular(text: string): string[][] {
     if (!text) return [];
     const rawLines = text.replace(/\r/g, '').split('\n');
-    const lines = rawLines.map(l => l.trim()).filter(l => l && !/^(sheet|page|total|subtotal|page\s*\d+)/i.test(l));
+    const lines = rawLines.map((l: string) => l.trim()).filter((l: string) => l && !/^(sheet|page|total|subtotal|page\s*\d+)/i.test(l));
     if (lines.length === 0) return [];
     const sample = lines.slice(0, 5).join('\n');
     let splitter: RegExp = /\t/;
@@ -126,12 +124,17 @@ type RowObj = {
       if (/,/.test(sample)) splitter = /,/;
       else splitter = /\s{2,}/;
     }
-    return lines.map(line => line.split(splitter).map(c => c.trim()));
+    return lines.map((line: string) => line.split(splitter).map((c: string) => c.trim()));
   }
 
-  function normalizeDate(dateStr: string | undefined) {
+  function normalizeDate(dateStr: string | undefined): string {
     if (!dateStr) return '';
     let s = ('' + dateStr).trim();
+
+    // keep weekday-like values
+    const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    if (weekdays.some(d => s.toLowerCase().startsWith(d))) return s;
+
     if (!isNaN(s as any) && Number(s) > 10000) {
       const excelEpoch = new Date(1899, 11, 30);
       const parsed = new Date(excelEpoch.getTime() + (Number(s) * 86400000));
@@ -170,16 +173,15 @@ type RowObj = {
   }
 
   function detectHeaderAndMap(rows: string[][]) {
-    if (!rows || rows.length === 0) return { headerIndex: -1, dataRows: [], colMap: {} as any };
-    // single-line heuristics
+    if (!rows || rows.length === 0) return { headerIndex: -1, dataRows: [] as string[][], colMap: {} as any };
     if (rows.length === 1) {
-      const cells = rows[0].map(c => c?.trim() ?? "").filter(c => c !== "");
+      const cells = rows[0].map((c: string | undefined) => (c?.trim() ?? "")).filter((c: string) => c !== "");
       const colMap: any = {};
       const isEmpNo = (v: string) => /^\d{3,6}$/.test(v);
       const isDate = (v: string) => /^\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4}$/.test(v) || /^\d{5}$/.test(v);
       const isShift = (v: string) => /am|pm|to|-|–|:/i.test(v) && /\d/.test(v);
       const isDay = (v: string) => /(mon|tue|wed|thu|fri|sat|sun)/i.test(v);
-      cells.forEach((v, i) => {
+      cells.forEach((v: string, i: number) => {
         if (isEmpNo(v)) colMap.empNo = i;
         else if (isDate(v)) colMap.date = i;
         else if (isShift(v)) colMap.shift = i;
@@ -192,24 +194,22 @@ type RowObj = {
       return { headerIndex: -1, dataRows: [cells], colMap };
     }
 
-    // find header row heuristically
     let headerIndex = -1;
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i].map(c => (c || '').toLowerCase());
-      if (row.some(c => c.includes('emp')) && row.some(c => c.includes('date'))) { headerIndex = i; break; }
+      const row = rows[i].map((c: string) => (c || '').toLowerCase());
+      if (row.some((c: string) => c.includes('emp')) && row.some((c: string) => c.includes('date'))) { headerIndex = i; break; }
     }
     if (headerIndex === -1) headerIndex = 0;
-    const headers = rows[headerIndex].map(h => (h || '').toLowerCase().replace(/[\s_\-\/\\\.]/g, ''));
     const detectInner = (headerRow: string[]) => {
       const normalize = (s: string) => s.replace(/[\s_\-\/\\\.]/g, '').toLowerCase();
       const h = headerRow.map(normalize);
       const mapping: any = {
-        name: h.findIndex(x => /name|fullname|employeename/.test(x)),
-        empNo: h.findIndex(x => /emp|employeenumber|idnum|id/.test(x)),
-        date: h.findIndex(x => /date|workdate|sched|schedule/.test(x)),
-        shift: h.findIndex(x => /shift|time|duty/.test(x)),
-        day: h.findIndex(x => /day|daytype|typeday/.test(x)),
-        position: h.findIndex(x => /position|title|role/.test(x))
+        name: h.findIndex((x: string) => /name|fullname|employeename/.test(x)),
+        empNo: h.findIndex((x: string) => /emp|employeenumber|idnum|id/.test(x)),
+        date: h.findIndex((x: string) => /date|workdate|sched|schedule/.test(x)),
+        shift: h.findIndex((x: string) => /shift|time|duty/.test(x)),
+        day: h.findIndex((x: string) => /day|daytype|typeday/.test(x)),
+        position: h.findIndex((x: string) => /position|title|role/.test(x))
       };
       if (mapping.name === -1) mapping.name = 0;
       if (mapping.empNo === -1) mapping.empNo = 1;
@@ -227,7 +227,7 @@ type RowObj = {
   /***** Rendering tables *****/
   function renderWorkTable() {
     if (!workTableBody) return;
-    workTableBody.innerHTML = workScheduleData.map((d, i) => `
+    workTableBody.innerHTML = workScheduleData.map((d: RowObj, i: number) => `
       <tr data-idx="${i}">
         <td>${escapeHtml(d.name)}</td>
         <td>${escapeHtml(d.empNo)}</td>
@@ -242,8 +242,8 @@ type RowObj = {
 
   function renderRestTable() {
     if (!restTableBody) return;
-    restTableBody.innerHTML = restDayData.map((d, i) => {
-      const conflictHtml = (d.conflicts || []).map(c => `<div><strong>${escapeHtml(c.type)}:</strong> ${escapeHtml(c.reason)}</div>`).join('');
+    restTableBody.innerHTML = restDayData.map((d: RowObj, i: number) => {
+      const conflictHtml = (d.conflicts || []).map((c: { type: string; reason: string }) => `<div><strong>${escapeHtml(c.type)}:</strong> ${escapeHtml(c.reason)}</div>`).join('');
       const rowClass = (d.conflicts && d.conflicts.length > 0) ? 'conflict-row' : '';
       return `
         <tr class="${rowClass}" data-idx="${i}">
@@ -259,7 +259,7 @@ type RowObj = {
     }).join('');
 
     const total = restDayData.length;
-    const conflicts = restDayData.filter(r => r.conflicts && r.conflicts.length > 0).length;
+    const conflicts = restDayData.filter((r: RowObj) => r.conflicts && r.conflicts.length > 0).length;
     if (!summaryEl) return;
     if (total === 0) { summaryEl.textContent = ''; summaryEl.classList.add('hidden'); }
     else {
@@ -278,14 +278,14 @@ type RowObj = {
 
   /***** Validation logic *****/
   function validateSchedules() {
-    restDayData.forEach(r => r.conflicts = []);
-    const workMap = new Map(workScheduleData.map(w => [`${w.empNo}-${(w.date || '').trim()}`, w]));
-    const workEmpSet = new Set(workScheduleData.map(w => w.empNo));
+    restDayData.forEach((r: RowObj) => (r.conflicts = []));
+    const workMap = new Map<string, RowObj>(workScheduleData.map((w: RowObj) => [`${w.empNo}-${(w.date || '').trim()}`, w]));
+    const workEmpSet = new Set<string>(workScheduleData.map((w: RowObj) => w.empNo || ''));
     const restByDate: Record<string, RowObj[]> = {};
     const weekendCount: Record<string, number> = {};
     const seen = new Set<string>();
 
-    restDayData.forEach(rd => {
+    restDayData.forEach((rd: RowObj) => {
       if (!rd) return;
       const key = `${rd.empNo}-${(rd.date || '').trim()}`;
       if (!restByDate[rd.date || '']) restByDate[rd.date || ''] = [];
@@ -294,7 +294,7 @@ type RowObj = {
       if (seen.has(key)) rd.conflicts!.push({ type: 'Duplicate Entry', reason: 'Duplicate rest day entry for same employee & date.' });
       else seen.add(key);
 
-      if (!workEmpSet.has(rd.empNo)) rd.conflicts!.push({ type: 'Missing Employee', reason: 'Employee not found in Work Schedule data.' });
+      if (!workEmpSet.has(rd.empNo || '')) rd.conflicts!.push({ type: 'Missing Employee', reason: 'Employee not found in Work Schedule data.' });
 
       const d = new Date(rd.date || '');
       if (isNaN(d.getTime())) rd.conflicts!.push({ type: 'Invalid Date Format', reason: 'Date format unrecognized.' });
@@ -304,22 +304,22 @@ type RowObj = {
       if (/saturday|sunday/i.test(rd.day || '')) {
         if (!isNaN(d.getTime())) {
           const monthYear = `${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
-           const wkKey = `${rd.empNo}-${monthYear}`;
-           weekendCount[wkKey] = (weekendCount[wkKey] || 0) + 1;
-         }
-       }
-     });
+          const wkKey = `${rd.empNo}-${monthYear}`;
+          weekendCount[wkKey] = (weekendCount[wkKey] || 0) + 1;
+        }
+      }
+    });
 
     // leadership conflicts
     for (const date in restByDate) {
-      const leaders = restByDate[date].filter(r => LEADERSHIP_POSITIONS.indexOf(r.position || '') !== -1);
-      if (leaders.length > 1) leaders.forEach(l => l.conflicts!.push({ type: 'Leadership Conflict', reason: 'Multiple leaders have same rest day.' }));
+      const leaders = restByDate[date].filter((r: RowObj) => LEADERSHIP_POSITIONS.indexOf(r.position || '') !== -1);
+      if (leaders.length > 1) leaders.forEach((l: RowObj) => l.conflicts!.push({ type: 'Leadership Conflict', reason: 'Multiple leaders have same rest day.' }));
     }
     // weekend limit enforcement
     for (const wkey in weekendCount) {
       if (weekendCount[wkey] > 2) {
         const [emp] = wkey.split('-');
-        restDayData.filter(r => r.empNo === emp && /saturday|sunday/i.test(r.day || '')).forEach(r => {
+        restDayData.filter((r: RowObj) => r.empNo === emp && /saturday|sunday/i.test(r.day || '')).forEach((r: RowObj) => {
           r.conflicts!.push({ type: 'Weekend Limit Exceeded', reason: `${weekendCount[wkey]} weekend rest days — maximum 2.` });
         });
       }
@@ -359,7 +359,7 @@ type RowObj = {
     const cleaned: RowObj[] = [];
     const rejected: Array<{ row: string; reasons: string[] }> = [];
 
-    rows.forEach(row => {
+    rows.forEach((row: string[]) => {
       let name = '', emp = '', date = '', shift = '', day = '', position = '';
       if (colMap && row[colMap.empNo] !== undefined) {
         name = (row[colMap.name] || '').trim();
@@ -369,30 +369,33 @@ type RowObj = {
         day = (row[colMap.day] || '').trim();
         position = (row[colMap.position] || '').trim();
       } else {
-        const cells = row.map(c => (c || '').trim());
-        const empIdx = cells.findIndex(c => /^\d+$/.test(c));
-        const dateIdx = cells.findIndex(c => ((!isNaN(c as any) && Number(c) > 10000) || /[\/\.\-]/.test(c)));
-        const nameIdx = cells.findIndex(c => /^[A-Za-z\s,.'-]+$/.test(c) && c.split(' ').length >= 2);
+        const cells = row.map((c: string) => (c || '').trim());
+        const empIdx = cells.findIndex((c: string) => /^\d+$/.test(c));
+        const dateIdx = cells.findIndex((c: string) => ((!isNaN((c as any)) && Number(c) > 10000) || /[\/\.\-]/.test(c)));
+        const nameIdx = cells.findIndex((c: string) => /^[A-Za-z\s,.'-]+$/.test(c) && c.split(' ').length >= 2);
         if (empIdx >= 0) emp = cells[empIdx];
         if (dateIdx >= 0) date = normalizeDate(cells[dateIdx]);
         if (nameIdx >= 0) name = cells[nameIdx];
         if (!day && date) day = dayNameFromDate(date);
       }
 
-      if ((!emp || emp.length < 3) && row.some(c => /^\d{3,}$/.test(c))) {
-        emp = row.find(c => /^\d{3,}$/.test(c))!.trim();
+      if ((!emp || emp.length < 3) && row.some((c: string) => /^\d{3,}$/.test(c))) {
+        const found = row.find((c: string) => /^\d{3,}$/.test(c));
+        if (found) emp = String(found).trim();
       }
-      if (!name && row.some(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2)) {
-        name = row.find(c => /^[A-Za-z\s]+$/.test(c) && c.split(' ').length >= 2)!.trim();
+      if (!name && row.some((c: string) => /^[A-Za-z\s]+$/.test(String(c)) && String(c).split(' ').length >= 2)) {
+        const found = row.find((c: string) => /^[A-Za-z\s]+$/.test(String(c)) && String(c).split(' ').length >= 2);
+        if (found) name = String(found).trim();
       }
-      if (!date && row.some(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c))) {
-        date = normalizeDate(row.find(c => /[\/\-\.]/.test(c) || /^\d{5}$/.test(c))!);
+      if (!date && row.some((c: string) => /[\/\-\.]/.test(String(c)) || /^\d{5}$/.test(String(c)))) {
+        const found = row.find((c: string) => /[\/\-\.]/.test(String(c)) || /^\d{5}$/.test(String(c)));
+        if (found) date = normalizeDate(String(found));
       }
       if (!day && date) day = dayNameFromDate(date);
 
-      const obj: RowObj = { name, empNo: emp ? emp.replace(/[^0-9]/g, '') : '', date, shift, day, position };
+      const obj: RowObj = { name, empNo: emp ? String(emp).replace(/[^0-9]/g, '') : '', date, shift, day, position };
       const reasons: string[] = [];
-      if (!obj.empNo || obj.empNo.length < 3) reasons.push('Missing or invalid Employee No');
+      if (!obj.empNo || obj.empNo.length < 2 || obj.empNo.length > 6) reasons.push('Missing or invalid Employee No');
       if (reasons.length) rejected.push({ row: row.join(' | '), reasons });
       else cleaned.push(obj);
     });
@@ -425,9 +428,9 @@ type RowObj = {
   if (restInput) restInput.addEventListener('paste', (e) => handlePaste(e as ClipboardEvent, 'rest'));
 
   /***** Row deletion / undo/redo *****/
-  document.addEventListener('click', (ev) => {
+  document.addEventListener('click', (ev: MouseEvent) => {
     const target = ev.target as HTMLElement;
-    const btn = target.closest && (target.closest('.delete-row-btn') as HTMLElement | null);
+    const btn = (target.closest && (target.closest('.delete-row-btn') as HTMLElement | null));
     if (!btn) return;
     const type = btn.dataset.type;
     const idx = Number(btn.dataset.idx);
@@ -494,18 +497,18 @@ type RowObj = {
     if (!modal) return;
     const body = modal.querySelector('.modal-body') as HTMLElement | null;
     if (!body) return;
-    const informative = rejected.filter(r => !/^(WORK\s*SCHEDULE|REST\s*DAY|TOTAL|SUMMARY|PAGE|PREPARED)/i.test(r.row));
+    const informative = rejected.filter((r: { row: string; reasons: string[] }) => !/^(WORK\s*SCHEDULE|REST\s*DAY|TOTAL|SUMMARY|PAGE|PREPARED)/i.test(r.row));
     const msg = informative.length === 0
       ? `<p>✅ All rows have been processed successfully.<br>No critical issues detected.</p>`
       : `<p>⚙️ ${informative.length} rows were auto-corrected or skipped (decorative/non-critical):</p>` +
-        informative.map(r => `<div style="padding:6px;border-bottom:1px solid #eee;"><strong>${escapeHtml(r.row)}</strong><div style="color:#2563eb;margin-top:4px;">Notes: ${r.reasons.join(', ')}</div></div>`).join('');
+        informative.map((r: { row: string; reasons: string[] }) => `<div style="padding:6px;border-bottom:1px solid #eee;"><strong>${escapeHtml(r.row)}</strong><div style="color:#2563eb;margin-top:4px;">Notes: ${r.reasons.join(', ')}</div></div>`).join('');
     body.innerHTML = msg;
     const title = modal.querySelector('.modal-title');
     if (title) title.textContent = 'Smart Paste Summary';
     modal.classList.remove('hidden'); modal.style.display = 'block';
   }
 
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', (e: Event) => {
     const target = e.target as HTMLElement;
     if (target.matches('.modal-close') || target.matches('#rejectedModal .modal-overlay')) {
       const modal = $('#rejectedModal') as HTMLElement | null;
@@ -518,14 +521,14 @@ type RowObj = {
   function generateHrisFile(type: 'work' | 'rest') {
     const workBranchEl = $('#workBranchName') as HTMLInputElement | null;
     const restBranchEl = $('#restBranchName') as HTMLInputElement | null;
-    const workBranch = workBranchEl ? workBranchEl.value.trim() : '';
-    const restBranch = restBranchEl ? restBranchEl.value.trim() : '';
+    const workBranch = workBranchEl ? (workBranchEl.value || '') : '';
+    const restBranch = restBranchEl ? (restBranchEl.value || '') : '';
 
     if (type === 'work') {
       if (!workBranch) return showBanner('⚠️ Enter Work Branch Name.');
       if (workScheduleData.length === 0) return showBanner('⚠️ No Work Schedule data to generate.');
-      const cleanedData = workScheduleData.map(r => ({ empNo: r.empNo, date: r.date, shift: (r.shift || '').replace(/\s+/g, '').toUpperCase() }));
-      const data = [['Employee Number', 'Work Date', 'Shift Code'], ...cleanedData.map(r => [r.empNo, r.date, r.shift])];
+      const cleanedData = workScheduleData.map((r: RowObj) => ({ empNo: r.empNo, date: r.date, shift: (r.shift || '').replace(/\s+/g, '').toUpperCase() }));
+      const data = [['Employee Number', 'Work Date', 'Shift Code'], ...cleanedData.map((r: any) => [r.empNo, r.date, r.shift])];
       const ws = XLSX.utils.aoa_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
@@ -534,10 +537,10 @@ type RowObj = {
     } else {
       if (!restBranch) return showBanner('⚠️ Enter Rest Branch Name.');
       if (restDayData.length === 0) return showBanner('⚠️ No Rest Day data to generate.');
-      if (restDayData.some(r => r.conflicts && r.conflicts.length > 0)) {
+      if (restDayData.some((r: RowObj) => r.conflicts && r.conflicts.length > 0)) {
         showBanner('⚠️ Note: There are conflicts, but file generation will proceed.');
       }
-      const data = restDayData.map(r => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
+      const data = restDayData.map((r: RowObj) => ({ 'Employee No': r.empNo, 'Rest Day Date': r.date }));
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'HRIS Upload');
@@ -559,11 +562,11 @@ type RowObj = {
 
   /***** Keyboard shortcuts *****/
   document.addEventListener('keydown', (e: KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    if ((e.ctrlKey || e.metaKey) && (String(e.key).toLowerCase() === 'z')) {
       if (undoStack.work && undoStack.work.length) undoPaste('work');
       else if (undoStack.rest && undoStack.rest.length) undoPaste('rest');
     }
-    if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+    if ((e.ctrlKey || e.metaKey) && ((String(e.key).toLowerCase() === 'y') || (e.shiftKey && (String(e.key).toLowerCase() === 'z')))) {
       if (redoStack.work && redoStack.work.length) redoPaste('work');
       else if (redoStack.rest && redoStack.rest.length) redoPaste('rest');
     }
@@ -578,7 +581,7 @@ type RowObj = {
   function getMonitoring(): RowObj[] {
     const data = localStorage.getItem('monitoringData');
     if (data) {
-      try { return JSON.parse(data); } catch { return [...defaultMonitoring]; }
+      try { return JSON.parse(data) as RowObj[]; } catch { return [...defaultMonitoring]; }
     }
     return [...defaultMonitoring];
   }
@@ -592,8 +595,8 @@ type RowObj = {
     function frame(time: number) {
       const progress = Math.min((time - start) / duration, 1);
       const value = Math.round(from + diff * progress);
-      if (progressPercentEl) progressPercentEl.textContent = value + '%';
-      if (progressBar) progressBar.style.width = value + '%';
+      if (progressPercentEl) progressPercentEl.textContent = `${value}%`;
+      if (progressBar) progressBar.style.width = `${value}%`;
       if (progressBar) {
         if (value < 40) progressBar.style.background = 'linear-gradient(to right, #f43f5e, #fb7185)';
         else if (value < 80) progressBar.style.background = 'linear-gradient(to right, #fbbf24, #facc15)';
@@ -608,8 +611,8 @@ type RowObj = {
   function updateMonitoringStats() {
     const data = getMonitoring();
     const total = data.length;
-    const checked = data.filter(b => b.checked).length;
-    const uploaded = data.filter(b => b.uploaded).length;
+    const checked = data.filter((b: RowObj) => !!b.checked).length;
+    const uploaded = data.filter((b: RowObj) => !!b.uploaded).length;
     if (totalBranchesEl) totalBranchesEl.textContent = String(total);
     if (checkedBranchesEl) checkedBranchesEl.textContent = String(checked);
     if (uploadedBranchesEl) uploadedBranchesEl.textContent = String(uploaded);
@@ -620,13 +623,13 @@ type RowObj = {
   function renderMonitoring() {
     const data = getMonitoring();
     const searchVal = ($('#monitorSearch') as HTMLInputElement | null)?.value?.trim().toLowerCase() || '';
-    const filtered = data.filter(b => {
+    const filtered = data.filter((b: RowObj) => {
       const matches = (b.name || '').toLowerCase().includes(searchVal);
       const passes = showUnchecked ? !b.checked : true;
       return matches && passes;
     });
     if (!monitoringBody) return;
-    monitoringBody.innerHTML = filtered.map((b, i) => `
+    monitoringBody.innerHTML = filtered.map((b: RowObj, i: number) => `
       <tr class="hover:bg-gray-50 transition">
         <td class="text-left p-2">${escapeHtml(b.name)}</td>
         <td><input type="checkbox" data-index="${i}" data-field="checked" ${b.checked ? 'checked' : ''}></td>
@@ -640,44 +643,45 @@ type RowObj = {
       </tr>
     `).join('');
 
-    // attach handlers to newly created elements
-    monitoringBody.querySelectorAll('input').forEach(inp => {
-      inp.addEventListener('change', (ev) => {
+    monitoringBody.querySelectorAll('input').forEach((inp: Element) => {
+      const inputEl = inp as HTMLInputElement;
+      inputEl.addEventListener('change', (ev: Event) => {
         const target = ev.target as HTMLInputElement;
         const index = Number(target.dataset.index);
         const field = target.dataset.field as keyof RowObj;
         const d = getMonitoring();
-        const filteredNames = filtered.map(x => x.name);
+        const filteredNames = filtered.map((x: RowObj) => x.name);
         const targetName = filteredNames[index];
-        const origIndex = d.findIndex(x => x.name === targetName);
+        const origIndex = d.findIndex((x: RowObj) => x.name === targetName);
         if (origIndex === -1) return;
-        d[origIndex][field] = target.type === 'checkbox' ? (target.checked as unknown as any) : target.value;
+        if (target.type === 'checkbox') d[origIndex][field] = target.checked as unknown as any;
+        else d[origIndex][field] = target.value as any;
         saveMonitoring(d); updateMonitoringStats(); renderMonitoring();
       });
     });
 
-    monitoringBody.querySelectorAll('.action-edit').forEach(btn => {
-      btn.addEventListener('click', (ev) => {
+    monitoringBody.querySelectorAll('.action-edit').forEach((btn: Element) => {
+      btn.addEventListener('click', (ev: Event) => {
         const t = ev.currentTarget as HTMLElement;
         const i = Number(t.dataset.i);
         const d = getMonitoring();
-        const filteredNames = filtered.map(x => x.name);
+        const filteredNames = filtered.map((x: RowObj) => x.name);
         const targetName = filteredNames[i];
-        const origIndex = d.findIndex(x => x.name === targetName);
+        const origIndex = d.findIndex((x: RowObj) => x.name === targetName);
         if (origIndex === -1) return;
         const newName = prompt('Edit branch name:', d[origIndex].name);
         if (newName) { d[origIndex].name = newName; saveMonitoring(d); renderMonitoring(); showBanner('Branch updated.'); }
       });
     });
 
-    monitoringBody.querySelectorAll('.action-delete').forEach(btn => {
-      btn.addEventListener('click', (ev) => {
+    monitoringBody.querySelectorAll('.action-delete').forEach((btn: Element) => {
+      btn.addEventListener('click', (ev: Event) => {
         const t = ev.currentTarget as HTMLElement;
         const i = Number(t.dataset.i);
         const d = getMonitoring();
-        const filteredNames = filtered.map(x => x.name);
+        const filteredNames = filtered.map((x: RowObj) => x.name);
         const targetName = filteredNames[i];
-        const origIndex = d.findIndex(x => x.name === targetName);
+        const origIndex = d.findIndex((x: RowObj) => x.name === targetName);
         if (origIndex === -1) return;
         if (!confirm('Delete branch?')) return;
         d.splice(origIndex, 1); saveMonitoring(d); renderMonitoring(); showBanner('Branch deleted.');
@@ -709,22 +713,18 @@ type RowObj = {
    const month = monthSelect?.value || '';
    const year = yearSelect?.value || '';
    const percent = currentPercent || 0;
-   
-   // Add header rows at top
    const headerRows = [
      [`Monitoring Progress: ${percent}%`],
      [`Month: ${month} ${year}`],
      ['Branch Name', 'Checked', 'Uploaded', 'Uploaded By', 'Remarks']
    ];
- 
-   const rows = data.map(b => [
+   const rows = data.map((b: RowObj) => [
      b.name || '',
      b.checked ? 'Yes' : 'No',
      b.uploaded ? 'Yes' : 'No',
      b.uploadedBy || '',
      b.remarks || ''
    ]);
- 
    const ws = XLSX.utils.aoa_to_sheet([...headerRows, ...rows]);
    const wb = XLSX.utils.book_new();
    XLSX.utils.book_append_sheet(wb, ws, 'Monitoring');
@@ -776,7 +776,6 @@ type RowObj = {
       tabMonitoring.classList.add('bg-indigo-600', 'text-white'); tabMonitoring.classList.remove('bg-gray-200', 'text-gray-700');
       tabSchedule.classList.remove('bg-indigo-600', 'text-white'); tabSchedule.classList.add('bg-gray-200', 'text-gray-700');
       scheduleContent.classList.add('hidden'); monitoringContent.classList.remove('hidden');
-      // ensure monitoring is always (re)rendered when tab is shown
       renderMonitoring(); updateMonitoringStats();
       setTimeout(() => window.scrollTo(0, lastScroll), 120);
     });
@@ -801,8 +800,8 @@ type RowObj = {
     try {
       const w = JSON.parse(localStorage.getItem('workScheduleData') || '[]');
       const r = JSON.parse(localStorage.getItem('restDayData') || '[]');
-      workScheduleData = Array.isArray(w) ? w : [];
-      restDayData = Array.isArray(r) ? r : [];
+      workScheduleData = Array.isArray(w) ? (w as RowObj[]) : [];
+      restDayData = Array.isArray(r) ? (r as RowObj[]) : [];
       renderWorkTable(); renderRestTable(); recheckConflicts(); updateButtonStates();
     } catch { /* ignore parse errors */ }
   }
