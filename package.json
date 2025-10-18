@@ -1,0 +1,26 @@
+{
+  "name": "typescript-schedule-checker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run build && vite"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^5.0.0"
+  },
+  "description": "This is your fully set up TypeScript version.",
+  "main": "index.js",
+  "dependencies": {
+    "esbuild": "^0.21.5",
+    "nanoid": "^3.3.11",
+    "picocolors": "^1.1.1",
+    "postcss": "^8.5.6",
+    "rollup": "^4.52.4",
+    "source-map-js": "^1.2.1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
