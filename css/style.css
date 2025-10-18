@@ -349,3 +349,9 @@ th:first-child, td:first-child {
   opacity: 1;
   visibility: visible;
 }
+#particle-container {
+  position: fixed;
+  inset: 0;
+  z-index: -1; /* push behind everything */
+  pointer-events: none; /* don't block clicks */
+}
