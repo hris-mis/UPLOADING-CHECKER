@@ -87,7 +87,8 @@ header::before {
   background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.25), transparent 70%);
   opacity: 0.7;
   animation: headerGlow 6s ease-in-out infinite alternate;
-  z-index: 1; /* ✅ ensures tabs stay clickable */
+  z-index: 1; /* ensures tabs stay clickable */
+  pointer-events: none; /* <-- prevent overlay from capturing clicks */
 }
 @keyframes headerGlow {
   from { transform: translateX(0); opacity: 0.6; }
@@ -100,6 +101,7 @@ header::before {
   z-index: 51;
   cursor: pointer;
   transition: all 0.3s ease;
+  pointer-events: auto; /* explicit so tabs accept clicks */
 }
 
 /* 🌟 Tab Active State */
