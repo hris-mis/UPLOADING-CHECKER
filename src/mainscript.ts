@@ -30,7 +30,7 @@ type RowObj = {
   uploadedBy?: string;
 };
 
-(() => {
+function initApp() {
   // Utility selectors with typed returns
   const $ = <T extends Element = Element>(sel: string): T | null => document.querySelector<T>(sel);
   const $$ = <T extends Element = Element>(sel: string): NodeListOf<T> => document.querySelectorAll<T>(sel);
@@ -1046,4 +1046,11 @@ if (tabSchedule && tabMonitoring && scheduleContent && monitoringContent) {
     getMonitoring, saveMonitoring, renderMonitoring, updateMonitoringStats,
     workScheduleData, restDayData, validateSchedules, undoPaste, undoDelete, saveState, loadState
   };
-})();
+}
+
+// Ensure initialization runs after DOM is available (covers both early and late script loads)
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp, { once: true });
+} else {
+  initApp();
+}
