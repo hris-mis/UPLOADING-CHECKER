@@ -1,19 +1,3 @@
-// Firebase imports — correct for TS
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, onSnapshot, setDoc } from "firebase/firestore";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDEGYeA0ere_txZPbwxMH5-BRflZqh_ef0",
-  authDomain: "wikitehra.firebaseapp.com",
-  projectId: "wikitehra",
-  storageBucket: "wikitehra.firebasestorage.app",
-  messagingSenderId: "761691537990",
-  appId: "1:761691537990:web:70c47b4627350ade52c047"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
 declare const XLSX: any;
 
 type RowObj = {
@@ -73,27 +57,45 @@ function initApp() {
   const clearWorkBtn = $('#clearWorkData') as HTMLButtonElement | null;
   const clearRestBtn = $('#clearRestData') as HTMLButtonElement | null;
 
-const tabSchedule = $('#tab-schedule') as HTMLElement | null;
-const tabMonitoring = $('#tab-monitoring') as HTMLElement | null;
 const scheduleContent = $('#tab-schedule-content') as HTMLElement | null;
 const monitoringContent = $('#tab-monitoring-content') as HTMLElement | null;
 
-// ✅ Tab switching logic — makes "Monitoring" clickable
-if (tabSchedule && tabMonitoring && scheduleContent && monitoringContent) {
-  tabSchedule.addEventListener('click', () => {
-    tabSchedule.classList.add('active');
-    tabMonitoring.classList.remove('active');
-    scheduleContent.classList.remove('hidden');
-    monitoringContent.classList.add('hidden');
-  });
+// ✅ Tab Switching Logic
+// ======================
+document.addEventListener('DOMContentLoaded', () => {
+  const tabSchedule = document.getElementById('tab-schedule') as HTMLButtonElement | null;
+  const tabMonitoring = document.getElementById('tab-monitoring') as HTMLButtonElement | null;
+  const scheduleContent = document.getElementById('tab-schedule-content') as HTMLElement | null;
+  const monitoringContent = document.getElementById('tab-monitoring-content') as HTMLElement | null;
 
-  tabMonitoring.addEventListener('click', () => {
-    tabMonitoring.classList.add('active');
-    tabSchedule.classList.remove('active');
-    monitoringContent.classList.remove('hidden');
-    scheduleContent.classList.add('hidden');
-  });
-}
+  if (!tabSchedule || !tabMonitoring || !scheduleContent || !monitoringContent) return;
+
+  const activateTab = (tab: 'schedule' | 'monitoring') => {
+    if (tab === 'schedule') {
+      tabSchedule.classList.add('bg-indigo-600', 'text-white');
+      tabSchedule.classList.remove('bg-gray-200', 'text-gray-700');
+
+      tabMonitoring.classList.remove('bg-indigo-600', 'text-white');
+      tabMonitoring.classList.add('bg-gray-200', 'text-gray-700');
+
+      scheduleContent.classList.remove('hidden');
+      monitoringContent.classList.add('hidden');
+    } else {
+      tabMonitoring.classList.add('bg-indigo-600', 'text-white');
+      tabMonitoring.classList.remove('bg-gray-200', 'text-gray-700');
+
+      tabSchedule.classList.remove('bg-indigo-600', 'text-white');
+      tabSchedule.classList.add('bg-gray-200', 'text-gray-700');
+
+      monitoringContent.classList.remove('hidden');
+      scheduleContent.classList.add('hidden');
+    }
+  };
+
+  // Attach event listeners
+  tabSchedule.addEventListener('click', () => activateTab('schedule'));
+  tabMonitoring.addEventListener('click', () => activateTab('monitoring'));
+});
 
   // Monitoring refs
   const monitoringBody = $('#monitoringBody') as HTMLElement | null;
@@ -492,10 +494,12 @@ if (tabSchedule && tabMonitoring && scheduleContent && monitoringContent) {
     try {
       // Save locally first
       localStorage.setItem('monitoringData', JSON.stringify(d));
-      // Save to Firestore shared document (best-effort)
+      // Save to shared Firestore document (best-effort)
       try {
-        const sharedRef = doc(db, 'monitoring', 'sharedMonitoringData');
-        await setDoc(sharedRef, { data: d, updatedAt: new Date() }, { merge: true });
+-        const sharedRef = doc(db, 'monitoring', 'sharedMonitoringData');
+-        await setDoc(sharedRef, { data: d, updatedAt: new Date() }, { merge: true });
++        // use helper from firebase.ts
++        await setSharedDoc('monitoring', 'sharedMonitoringData', { data: d, updatedAt: new Date() }, true);
       } catch (e) {
         console.warn('Firestore save failed (monitoring):', e);
       }
@@ -506,23 +510,42 @@ if (tabSchedule && tabMonitoring && scheduleContent && monitoringContent) {
 
   function initMonitoringSync() {
     try {
-      const sharedRef = doc(db, 'monitoring', 'sharedMonitoringData');
-      onSnapshot(sharedRef, (snap) => {
-        try {
-          if (!snap.exists()) {
-            // no shared doc yet — keep local
-            return;
-          }
-          const payload = (snap.data() as any).data as RowObj[] | undefined;
-          if (Array.isArray(payload)) {
-            // overwrite local copy with shared data
-            localStorage.setItem('monitoringData', JSON.stringify(payload));
-            renderMonitoring();
-          }
-        } catch (e) {
-          console.warn('monitoring snapshot parse error', e);
-        }
-      });
+-      const sharedRef = doc(db, 'monitoring', 'sharedMonitoringData');
+-      onSnapshot(sharedRef, (snap) => {
+-        try {
+-          if (!snap.exists()) {
+-            // no shared doc yet — keep local
+-            return;
+-          }
+-          const payload = (snap.data() as any).data as RowObj[] | undefined;
+-          if (Array.isArray(payload)) {
+-            // overwrite local copy with shared data
+-            localStorage.setItem('monitoringData', JSON.stringify(payload));
+-            renderMonitoring();
+-          }
+-        } catch (e) {
+-          console.warn('monitoring snapshot parse error', e);
+-        }
+-      });
++      // subscribe to shared doc using helper from firebase.ts
++      subscribeToDoc('monitoring', 'sharedMonitoringData', (snap) => {
++        try {
++          if (!snap.exists || (typeof snap.exists === 'function' && !snap.exists())) {
++            // if doc doesn't exist, do nothing (keep local)
++            return;
++          }
++          const data = (snap.data && typeof snap.data === 'function') ? snap.data() : (snap as any).data;
++          const payload = (data as any)?.data as RowObj[] | undefined;
++          if (Array.isArray(payload)) {
++            localStorage.setItem('monitoringData', JSON.stringify(payload));
++            renderMonitoring();
++          }
++        } catch (e) {
++          console.warn('monitoring snapshot parse error', e);
++        }
++      }, (err) => {
++        console.warn('monitoring snapshot error', err);
++      });
     } catch (e) {
       console.warn('initMonitoringSync skipped (Firestore)', e);
     }
@@ -629,8 +652,9 @@ if (tabSchedule && tabMonitoring && scheduleContent && monitoringContent) {
 
   /***** Row deletion / undo/redo *****/
   document.addEventListener('click', (ev: MouseEvent) => {
-    const target = ev.target as HTMLElement;
-    const btn = (target.closest && (target.closest('.delete-row-btn') as HTMLElement | null));
+    const t = ev.target;
+    if (!(t instanceof Element)) return;
+    const btn = t.closest('.delete-row-btn') as HTMLElement | null;
     if (!btn) return;
     const type = btn.dataset.type;
     const idx = Number(btn.dataset.idx);
@@ -707,9 +731,10 @@ if (tabSchedule && tabMonitoring && scheduleContent && monitoringContent) {
     if (title) title.textContent = 'Smart Paste Summary';
     modal.classList.remove('hidden'); modal.style.display = 'block';
   }
-
+ 
   document.addEventListener('click', (e: Event) => {
-    const target = e.target as HTMLElement;
+    const target = e.target;
+    if (!(target instanceof Element)) return;
     if (target.matches('.modal-close') || target.matches('#rejectedModal .modal-overlay')) {
       const modal = $('#rejectedModal') as HTMLElement | null;
       if (!modal) return;
@@ -970,15 +995,17 @@ if (tabSchedule && tabMonitoring && scheduleContent && monitoringContent) {
   }
 
   // Try to wire directly if elements exist now
-  let wired = wireTabs(tabSchedule, tabMonitoring, scheduleContent, monitoringContent);
+  const tabScheduleEl = document.querySelector<HTMLElement>('#tab-schedule');
+  const tabMonitoringEl = document.querySelector<HTMLElement>('#tab-monitoring');
+  let wired = wireTabs(tabScheduleEl, tabMonitoringEl, scheduleContent, monitoringContent);
 
   // If not wired (elements not present yet in some browsers), add delegated fallback and retry on DOM ready
   if (!wired) {
     document.addEventListener('click', (ev: MouseEvent) => {
-      const t = ev.target as HTMLElement | null;
-      if (!t) return;
-      const scheduleBtn = t.closest && (t.closest('#tab-schedule') as HTMLElement | null);
-      const monitoringBtn = t.closest && (t.closest('#tab-monitoring') as HTMLElement | null);
+      const t = ev.target;
+      if (!(t instanceof Element)) return;
+      const scheduleBtn = t.closest('#tab-schedule') as HTMLElement | null;
+      const monitoringBtn = t.closest('#tab-monitoring') as HTMLElement | null;
       if (scheduleBtn) {
         // ensure elements are queried fresh (may now exist)
         const s = document.querySelector<HTMLElement>('#tab-schedule');
