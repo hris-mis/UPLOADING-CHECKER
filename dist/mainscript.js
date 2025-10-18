@@ -1,8 +1,16 @@
-"use strict";
-/**
- * mainscript_final.ts - cleaned, deduplicated, and TS-friendly version
- * Preserves all original features.
- */
+// Firebase imports — correct for TS
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+const firebaseConfig = {
+    apiKey: "AIzaSyDEGYeA0ere_txZPbwxMH5-BRflZqh_ef0",
+    authDomain: "wikitehra.firebaseapp.com",
+    projectId: "wikitehra",
+    storageBucket: "wikitehra.firebasestorage.app",
+    messagingSenderId: "761691537990",
+    appId: "1:761691537990:web:70c47b4627350ade52c047"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 (() => {
     // Utility selectors with typed returns
     const $ = (sel) => { var _a; return (_a = document.querySelector(sel)) !== null && _a !== void 0 ? _a : null; };

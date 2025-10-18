@@ -1,6 +1,6 @@
 // Firebase imports — correct for TS
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, onSnapshot, deleteDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, onSnapshot, setDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDEGYeA0ere_txZPbwxMH5-BRflZqh_ef0",
@@ -32,7 +32,7 @@ type RowObj = {
 
 (() => {
   // Utility selectors with typed returns
-  const $ = <T extends Element = Element>(sel: string): (T | null) => document.querySelector<T>(sel) ?? null;
+  const $ = <T extends Element = Element>(sel: string): T | null => document.querySelector<T>(sel);
   const $$ = <T extends Element = Element>(sel: string): NodeListOf<T> => document.querySelectorAll<T>(sel);
   const pad2 = (v: string | number) => {
     const s = String(v);
@@ -170,17 +170,17 @@ type RowObj = {
     return s;
   }
 
-function dayNameFromDate(dateStr?: string) {
-  if (!dateStr) return '';
-  let s = dateStr.trim();
+  function dayNameFromDate(dateStr?: string) {
+    if (!dateStr) return '';
+    let s = dateStr.trim();
 
-  const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})$/);
-  if (m) s = `${m[1]}/${m[2]}/20${m[3]}`;
+    const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})$/);
+    if (m) s = `${m[1]}/${m[2]}/20${m[3]}`;
 
-  const p = new Date(s);
-  if (isNaN(p.getTime())) return '';
-  return p.toLocaleDateString('en-US', { weekday: 'long' });
-}
+    const p = new Date(s);
+    if (isNaN(p.getTime())) return '';
+    return p.toLocaleDateString('en-US', { weekday: 'long' });
+  }
 
   function detectBranchName(text?: string) {
     if (!text) return '';
@@ -424,6 +424,58 @@ function dayNameFromDate(dateStr?: string) {
     if (generateRestFileBtn) generateRestFileBtn.disabled = restDayData.length === 0;
   }
 
+  /***** Monitoring helpers: local + shared Firestore document *****/
+  const defaultMonitoring: RowObj[] = [
+    { name: 'AASP ABREEZA', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
+    { name: 'AASP NES - ATLAS', checked: false, uploaded: false, uploadedBy: '', remarks: '' }
+  ];
+
+  function getMonitoring(): RowObj[] {
+    const raw = localStorage.getItem('monitoringData');
+    if (!raw) return [...defaultMonitoring];
+    try { return JSON.parse(raw) as RowObj[]; } catch { return [...defaultMonitoring]; }
+  }
+
+  async function saveMonitoring(d: RowObj[]) {
+    try {
+      // Save locally first
+      localStorage.setItem('monitoringData', JSON.stringify(d));
+      // Save to Firestore shared document (best-effort)
+      try {
+        const sharedRef = doc(db, 'monitoring', 'sharedMonitoringData');
+        await setDoc(sharedRef, { data: d, updatedAt: new Date() }, { merge: true });
+      } catch (e) {
+        console.warn('Firestore save failed (monitoring):', e);
+      }
+    } catch (error) {
+      console.error('saveMonitoring error', error);
+    }
+  }
+
+  function initMonitoringSync() {
+    try {
+      const sharedRef = doc(db, 'monitoring', 'sharedMonitoringData');
+      onSnapshot(sharedRef, (snap) => {
+        try {
+          if (!snap.exists()) {
+            // no shared doc yet — keep local
+            return;
+          }
+          const payload = (snap.data() as any).data as RowObj[] | undefined;
+          if (Array.isArray(payload)) {
+            // overwrite local copy with shared data
+            localStorage.setItem('monitoringData', JSON.stringify(payload));
+            renderMonitoring();
+          }
+        } catch (e) {
+          console.warn('monitoring snapshot parse error', e);
+        }
+      });
+    } catch (e) {
+      console.warn('initMonitoringSync skipped (Firestore)', e);
+    }
+  }
+
   /***** Paste handling (work/rest) *****/
   function handlePaste(e: ClipboardEvent, type: 'work' | 'rest') {
     e.preventDefault();
@@ -460,6 +512,9 @@ function dayNameFromDate(dateStr?: string) {
           const weekday = dayNameFromDate(normalized);
           if (weekday) day = weekday;
         }
+
+        // ensure day from date when missing
+        if (!day && date) day = dayNameFromDate(date);
       } else {
         const cells = row.map((c: string) => (c || '').trim());
         const empIdx = cells.findIndex((c: string) => /^\d+$/.test(c));
@@ -664,21 +719,7 @@ function dayNameFromDate(dateStr?: string) {
     }
   });
 
-  /***** Monitoring handling *****/
-  const defaultMonitoring: RowObj[] = [
-    { name: 'AASP ABREEZA', checked: false, uploaded: false, uploadedBy: '', remarks: '' },
-    { name: 'AASP NES - ATLAS', checked: false, uploaded: false, uploadedBy: '', remarks: '' }
-  ];
-
-  function getMonitoring(): RowObj[] {
-    const data = localStorage.getItem('monitoringData');
-    if (data) {
-      try { return JSON.parse(data) as RowObj[]; } catch { return [...defaultMonitoring]; }
-    }
-    return [...defaultMonitoring];
-  }
-  function saveMonitoring(d: RowObj[]) { localStorage.setItem('monitoringData', JSON.stringify(d)); }
-
+  /***** Monitoring rendering & UI (uses getMonitoring/saveMonitoring) *****/
   function animateProgress(target: number) {
     const duration = 600;
     const start = performance.now();
@@ -783,6 +824,11 @@ function dayNameFromDate(dateStr?: string) {
     updateMonitoringStats();
   }
 
+  const monitorSearchInput = $('#monitorSearch') as HTMLInputElement | null;
+  const monitorFilterUnchecked = $('#filterUnchecked') as HTMLInputElement | null;
+  if (monitorSearchInput) monitorSearchInput.addEventListener('input', () => renderMonitoring());
+  if (monitorFilterUnchecked) monitorFilterUnchecked.addEventListener('change', () => { showUnchecked = !!monitorFilterUnchecked.checked; renderMonitoring(); });
+
   if (addBranchBtn) {
     addBranchBtn.addEventListener('click', () => {
       const name = prompt('Branch name:');
@@ -823,11 +869,6 @@ function dayNameFromDate(dateStr?: string) {
    XLSX.writeFile(wb, `Monitoring_${month}_${year}.xlsx`);
    showSuccess();
  });
-
-  const monitorSearchInput = $('#monitorSearch') as HTMLInputElement | null;
-  const monitorFilterUnchecked = $('#filterUnchecked') as HTMLInputElement | null;
-  if (monitorSearchInput) monitorSearchInput.addEventListener('input', () => renderMonitoring());
-  if (monitorFilterUnchecked) monitorFilterUnchecked.addEventListener('change', () => { showUnchecked = !!monitorFilterUnchecked.checked; renderMonitoring(); });
 
   /***** Clear All insertion (schedule header) *****/
   (function insertClearAll() {
@@ -903,6 +944,8 @@ function dayNameFromDate(dateStr?: string) {
   renderWorkTable();
   renderRestTable();
   renderMonitoring();
+  // start Firestore sync (best-effort, non-blocking)
+  initMonitoringSync();
 
   // Expose utilities for debugging if needed
   (window as any).__scc = {
