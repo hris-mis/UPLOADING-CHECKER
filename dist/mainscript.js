@@ -170,9 +170,12 @@
         const looksLikeName = (v) => /^[A-Za-z\s,.'-]{3,}$/.test(v) && v.split(' ').length >= 2;
         // if only one row: try to map by cell content
         if (rows.length === 1) {
-            const cells = rows[0].map((c) => { var _a; return ((_a = c === null || c === void 0 ? void 0 : c.trim()) !== null && _a !== void 0 ? _a : ""); }).filter((c) => c !== "");
+            // keep original columns (do NOT filter empties) to preserve indexes
+            const cells = rows[0].map((c) => { var _a; return ((_a = c === null || c === void 0 ? void 0 : c.trim()) !== null && _a !== void 0 ? _a : ""); });
             const colMap = {};
             cells.forEach((v, i) => {
+                if (!v)
+                    return;
                 if (isEmpNo(v))
                     colMap.empNo = i;
                 else if (isDateLike(v))
@@ -184,7 +187,7 @@
                 else if (looksLikeName(v))
                     colMap.name = i;
             });
-            // sensible defaults
+            // sensible defaults (remain in-column order)
             if (colMap.name === undefined)
                 colMap.name = 0;
             if (colMap.empNo === undefined)
@@ -276,8 +279,10 @@
                     mapping.day = 4;
                 return { headerIndex: -1, dataRows: rows, colMap: mapping };
             }
-            // else fall through and treat first row as header
-            headerIndex = 0;
+            // if heuristics can't confidently map, do NOT assume the first row is header.
+            // Instead, fallback to default positional mapping for all rows.
+            const fallback = { name: 0, empNo: 1, date: 2, shift: 3, day: 4, position: 5 };
+            return { headerIndex: -1, dataRows: rows, colMap: fallback };
         }
         // existing header parsing (when headerIndex is set)
         const detectInner = (headerRow) => {

@@ -189,16 +189,18 @@ function dayNameFromDate(dateStr?: string) {
 
     // if only one row: try to map by cell content
     if (rows.length === 1) {
-      const cells = rows[0].map((c: string | undefined) => (c?.trim() ?? "")).filter((c: string) => c !== "");
+      // keep original columns (do NOT filter empties) to preserve indexes
+      const cells = rows[0].map((c: string | undefined) => (c?.trim() ?? ""));
       const colMap: any = {};
       cells.forEach((v: string, i: number) => {
+        if (!v) return;
         if (isEmpNo(v)) colMap.empNo = i;
         else if (isDateLike(v)) colMap.date = i;
         else if (isShift(v)) colMap.shift = i;
         else if (isDay(v)) colMap.day = i;
         else if (looksLikeName(v)) colMap.name = i;
       });
-      // sensible defaults
+      // sensible defaults (remain in-column order)
       if (colMap.name === undefined) colMap.name = 0;
       if (colMap.empNo === undefined) colMap.empNo = 1;
       if (colMap.date === undefined) colMap.date = 2;
@@ -264,8 +266,11 @@ function dayNameFromDate(dateStr?: string) {
         if (mapping.day === undefined) mapping.day = 4;
         return { headerIndex: -1, dataRows: rows, colMap: mapping };
       }
-      // else fall through and treat first row as header
-      headerIndex = 0;
+
+      // if heuristics can't confidently map, do NOT assume the first row is header.
+      // Instead, fallback to default positional mapping for all rows.
+      const fallback: any = { name: 0, empNo: 1, date: 2, shift: 3, day: 4, position: 5 };
+      return { headerIndex: -1, dataRows: rows, colMap: fallback };
     }
 
     // existing header parsing (when headerIndex is set)
