@@ -159,12 +159,17 @@ type RowObj = {
     return s;
   }
 
-  function dayNameFromDate(dateStr?: string) {
-    if (!dateStr) return '';
-    const p = new Date(dateStr);
-    if (isNaN(p.getTime())) return '';
-    return p.toLocaleDateString(undefined, { weekday: 'long' });
-  }
+function dayNameFromDate(dateStr?: string) {
+  if (!dateStr) return '';
+  let s = dateStr.trim();
+
+  const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})$/);
+  if (m) s = `${m[1]}/${m[2]}/20${m[3]}`;
+
+  const p = new Date(s);
+  if (isNaN(p.getTime())) return '';
+  return p.toLocaleDateString('en-US', { weekday: 'long' });
+}
 
   function detectBranchName(text?: string) {
     if (!text) return '';
