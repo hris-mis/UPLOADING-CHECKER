@@ -932,21 +932,62 @@ type RowObj = {
 
   /***** Tab switching & scroll preservation *****/
   let lastScroll = 0;
-  if (tabSchedule && tabMonitoring && scheduleContent && monitoringContent) {
-    tabSchedule.addEventListener('click', () => {
+  function wireTabs(scheduleEl: HTMLElement | null, monitoringEl: HTMLElement | null, scheduleContentEl: HTMLElement | null, monitoringContentEl: HTMLElement | null) {
+    if (!scheduleEl || !monitoringEl || !scheduleContentEl || !monitoringContentEl) return false;
+    scheduleEl.addEventListener('click', () => {
       lastScroll = window.scrollY || 0;
-      tabSchedule.classList.add('bg-indigo-600', 'text-white'); tabSchedule.classList.remove('bg-gray-200', 'text-gray-700');
-      tabMonitoring.classList.remove('bg-indigo-600', 'text-white'); tabMonitoring.classList.add('bg-gray-200', 'text-gray-700');
-      scheduleContent.classList.remove('hidden'); monitoringContent.classList.add('hidden');
+      scheduleEl.classList.add('bg-indigo-600', 'text-white'); scheduleEl.classList.remove('bg-gray-200', 'text-gray-700');
+      monitoringEl.classList.remove('bg-indigo-600', 'text-white'); monitoringEl.classList.add('bg-gray-200', 'text-gray-700');
+      scheduleContentEl.classList.remove('hidden'); monitoringContentEl.classList.add('hidden');
       setTimeout(() => window.scrollTo(0, lastScroll), 120);
     });
-    tabMonitoring.addEventListener('click', () => {
+    monitoringEl.addEventListener('click', () => {
       lastScroll = window.scrollY || 0;
-      tabMonitoring.classList.add('bg-indigo-600', 'text-white'); tabMonitoring.classList.remove('bg-gray-200', 'text-gray-700');
-      tabSchedule.classList.remove('bg-indigo-600', 'text-white'); tabSchedule.classList.add('bg-gray-200', 'text-gray-700');
-      scheduleContent.classList.add('hidden'); monitoringContent.classList.remove('hidden');
+      monitoringEl.classList.add('bg-indigo-600', 'text-white'); monitoringEl.classList.remove('bg-gray-200', 'text-gray-700');
+      scheduleEl.classList.remove('bg-indigo-600', 'text-white'); scheduleEl.classList.add('bg-gray-200', 'text-gray-700');
+      scheduleContentEl.classList.add('hidden'); monitoringContentEl.classList.remove('hidden');
       renderMonitoring(); updateMonitoringStats();
       setTimeout(() => window.scrollTo(0, lastScroll), 120);
+    });
+    return true;
+  }
+
+  // Try to wire directly if elements exist now
+  let wired = wireTabs(tabSchedule, tabMonitoring, scheduleContent, monitoringContent);
+
+  // If not wired (elements not present yet in some browsers), add delegated fallback and retry on DOM ready
+  if (!wired) {
+    document.addEventListener('click', (ev: MouseEvent) => {
+      const t = ev.target as HTMLElement | null;
+      if (!t) return;
+      const scheduleBtn = t.closest && (t.closest('#tab-schedule') as HTMLElement | null);
+      const monitoringBtn = t.closest && (t.closest('#tab-monitoring') as HTMLElement | null);
+      if (scheduleBtn) {
+        // ensure elements are queried fresh (may now exist)
+        const s = document.querySelector<HTMLElement>('#tab-schedule');
+        const m = document.querySelector<HTMLElement>('#tab-monitoring');
+        const sc = document.querySelector<HTMLElement>('#tab-schedule-content');
+        const mc = document.querySelector<HTMLElement>('#tab-monitoring-content');
+        wireTabs(s, m, sc, mc);
+        // emulate click behavior once
+        if (s) s.click();
+      } else if (monitoringBtn) {
+        const s = document.querySelector<HTMLElement>('#tab-schedule');
+        const m = document.querySelector<HTMLElement>('#tab-monitoring');
+        const sc = document.querySelector<HTMLElement>('#tab-schedule-content');
+        const mc = document.querySelector<HTMLElement>('#tab-monitoring-content');
+        wireTabs(s, m, sc, mc);
+        if (m) m.click();
+      }
+    }, { capture: true });
+
+    // Final attempt on DOMContentLoaded to attach proper listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      const s = document.querySelector<HTMLElement>('#tab-schedule');
+      const m = document.querySelector<HTMLElement>('#tab-monitoring');
+      const sc = document.querySelector<HTMLElement>('#tab-schedule-content');
+      const mc = document.querySelector<HTMLElement>('#tab-monitoring-content');
+      wireTabs(s, m, sc, mc);
     });
   }
 
