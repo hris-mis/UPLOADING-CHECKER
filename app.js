@@ -855,6 +855,51 @@ function normalizePosition(value) {
   return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+function getMissingScheduleRecords(workRows, restRows) {
+  const firstWorkRowByEmployee = new Map();
+  const firstRestRowByEmployee = new Map();
+
+  workRows.forEach(row => {
+    const employeeNo = normalizeEmployeeNo(row.employeeNo);
+    if (employeeNo && !firstWorkRowByEmployee.has(employeeNo)) {
+      firstWorkRowByEmployee.set(employeeNo, row);
+    }
+  });
+
+  restRows.forEach(row => {
+    const employeeNo = normalizeEmployeeNo(row.employeeNo);
+    if (employeeNo && !firstRestRowByEmployee.has(employeeNo)) {
+      firstRestRowByEmployee.set(employeeNo, row);
+    }
+  });
+
+  const issues = [];
+
+  firstWorkRowByEmployee.forEach((row, employeeNo) => {
+    if (!firstRestRowByEmployee.has(employeeNo)) {
+      issues.push({
+        row,
+        employeeNo,
+        type: 'missingRest',
+        reason: `Employee ${employeeNo} — No Rest Day Record\nCheck RD entry or Employee Number.`
+      });
+    }
+  });
+
+  firstRestRowByEmployee.forEach((row, employeeNo) => {
+    if (!firstWorkRowByEmployee.has(employeeNo)) {
+      issues.push({
+        row,
+        employeeNo,
+        type: 'missingWork',
+        reason: `Employee ${employeeNo} — No Work Schedule Record\nCheck WS entry or Employee Number.`
+      });
+    }
+  });
+
+  return issues;
+}
+
 const SPECIAL_WEEKEND_POSITIONS = new Set([
   'regional sales manager',
   'senior area manager',
@@ -867,6 +912,8 @@ function getRestDayViolations(workRows, restRows, validateOperationWeekends) {
   const scheduleWeeks = new Map();
   const restWeeks = new Map();
   const cutoffRestDays = new Map();
+  const workEmployees = new Set(workRows.map(row => normalizeEmployeeNo(row.employeeNo)).filter(Boolean));
+  const restEmployees = new Set(restRows.map(row => normalizeEmployeeNo(row.employeeNo)).filter(Boolean));
 
   [...workRows, ...restRows].forEach(row => {
     const employeeNo = normalizeEmployeeNo(row.employeeNo);
@@ -898,6 +945,11 @@ function getRestDayViolations(workRows, restRows, validateOperationWeekends) {
   });
 
   scheduleWeeks.forEach((scheduleEntries, weekKey) => {
+    const employeeNo = weekKey.slice(0, weekKey.indexOf('|'));
+    // A wholly missing counterpart is reported once by getMissingScheduleRecords,
+    // rather than as a separate 0-of-2 issue for every complete week.
+    if (!workEmployees.has(employeeNo) || !restEmployees.has(employeeNo)) return;
+
     const mondayKey = weekKey.slice(weekKey.indexOf('|') + 1);
     if (!hasCompleteCalendarWeek(scheduleEntries, mondayKey)) return;
 
@@ -1049,20 +1101,16 @@ const taggedRow = {
   detectDuplicates(workRows, 'Work Schedule');
   detectDuplicates(restRows, 'Rest Day Schedule');
 
-  // 3. RD employee not found in WS
-  const workNos = new Set(workRows.map(row => row.employeeNo));
-
-  restRows.forEach(row => {
-    if (row.employeeNo && !workNos.has(row.employeeNo)) {
-      previewConflicts.push({
-        fileName: row.fileName,
-        importFileKey: row.importFileKey,
-        sheetName: row.sheetName,
-        employeeNo: row.employeeNo,
-        date: row.date,
-        reason: `Employee ${row.employeeNo} not found in Work Schedule`
-      });
-    }
+  // 3. Employees present in only one dataset (one issue per employee).
+  getMissingScheduleRecords(workRows, restRows).forEach(issue => {
+    previewConflicts.push({
+      fileName: issue.row.fileName,
+      importFileKey: issue.row.importFileKey,
+      sheetName: issue.row.sheetName,
+      employeeNo: issue.employeeNo,
+      reason: issue.reason,
+      conflictType: issue.type
+    });
   });
 
   // 4. Rest Day business rules. Support Group retains its existing validation.
@@ -1209,11 +1257,19 @@ importSummaryList.innerHTML = Object.values(filesGrouped).map((fileGroup, groupI
   const getScheduleConflictType = (reason = '') => {
     const normalizedReason = String(reason || '').toLowerCase();
 
-    if (normalizedReason.includes('not found in work schedule')) {
+    if (normalizedReason.includes('no rest day record')) {
       return {
-        key: 'missing',
-        summary: 'is in Rest Day but not found in Work Schedule',
-        title: 'Rest Day employee not found in Work Schedule'
+        key: 'missing-rest',
+        summary: 'has no Rest Day record',
+        title: 'No Rest Day Record'
+      };
+    }
+
+    if (normalizedReason.includes('no work schedule record')) {
+      return {
+        key: 'missing-work',
+        summary: 'has no Work Schedule record',
+        title: 'No Work Schedule Record'
       };
     }
 
@@ -2074,14 +2130,11 @@ function recheckConflicts() {
   detectDuplicates(workScheduleData, 'Work Schedule');
   detectDuplicates(restDayData, 'Rest Day Schedule');
 
-  // --- 3️⃣ RD employee not found in WS ---
-  const workNos = new Set(workScheduleData.map(d => d.employeeNo));
-  restDayData.forEach(r => {
-    if (r.employeeNo && !workNos.has(r.employeeNo)) {
-      r.conflict = true;
-      r.conflictType ||= 'missing';
-      r.conflictReasons.push(`Employee not found in Work Schedule`);
-    }
+  // --- 3️⃣ Employees present in only one dataset (one issue per employee) ---
+  getMissingScheduleRecords(workScheduleData, restDayData).forEach(issue => {
+    issue.row.conflict = true;
+    issue.row.conflictType ||= issue.type;
+    issue.row.conflictReasons.push(issue.reason);
   });
 
 
@@ -2103,7 +2156,8 @@ restDayViolations.forEach(violation => {
   const shortMessage = {
     sameDate: 'Same date conflict',
     duplicate: 'Duplicate date',
-    missing: 'Not in WS',
+    missingRest: 'No Rest Day Record',
+    missingWork: 'No Work Schedule Record',
     leadership: 'Leadership overlap',
     weekend: 'Weekend Rest Day limit',
     weeklyRestDays: 'Weekly Rest Day requirement'
