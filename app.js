@@ -832,6 +832,25 @@ function getCutoffKey(date) {
   return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate() <= 15 ? 1 : 2}`;
 }
 
+function hasCompleteCalendarWeek(scheduleEntries, mondayKey) {
+  const coveredDates = new Set(
+    scheduleEntries
+      .map(row => parseScheduleDate(row.date))
+      .filter(Boolean)
+      .map(getLocalDateKey)
+  );
+  const monday = parseScheduleDate(mondayKey);
+
+  if (!monday) return false;
+
+  for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+    const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset);
+    if (!coveredDates.has(getLocalDateKey(date))) return false;
+  }
+
+  return true;
+}
+
 function normalizePosition(value) {
   return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
@@ -879,6 +898,9 @@ function getRestDayViolations(workRows, restRows, validateOperationWeekends) {
   });
 
   scheduleWeeks.forEach((scheduleEntries, weekKey) => {
+    const mondayKey = weekKey.slice(weekKey.indexOf('|') + 1);
+    if (!hasCompleteCalendarWeek(scheduleEntries, mondayKey)) return;
+
     const restEntries = restWeeks.get(weekKey) || [];
     const uniqueRestDays = new Set(restEntries.map(entry => getLocalDateKey(entry.date)));
     if (uniqueRestDays.size === 2) return;
