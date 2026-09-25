@@ -1,9 +1,9 @@
-/***** State *****/
+/***** Independent checker configuration and state *****/
+      const GROUP_KEY = new URLSearchParams(window.location.search).get('group') === 'support' ? 'support' : 'operation';
+      const IS_SUPPORT_GROUP = GROUP_KEY === 'support';
       let workScheduleData = [];
       let restDayData = [];
-      let monitoringData = []; // This will be managed by Firestore
       let currentlyEditing = { type: null, index: null };
-      let unsubscribeMonitoring = () => {};
       const undoStack = { work: [], rest: [] };
       const redoStack = { work: [], rest: [] };
       const LEADERSHIP_POSITIONS = ['Branch Head', 'Site Supervisor', 'OIC'];
@@ -40,17 +40,9 @@ let importedFiles = [];
       const undoRestBtn = document.getElementById('undoRest');
       const redoRestBtn = document.getElementById('redoRest');
       const backToTopBtn = document.getElementById('backToTopBtn');
-      
-      const tabSchedule = document.getElementById('tab-schedule');
-      const tabMonitoring = document.getElementById('tab-monitoring');
-      const viewSchedule = document.getElementById('view-schedule');
-      const viewMonitoring = document.getElementById('view-monitoring');
-      
-      const monitoringTableBody = document.getElementById('monitoringTableBody');
-      const addMonitoringRowBtn = document.getElementById('addMonitoringRowBtn');
-      const monitoringProgressBar = document.getElementById('monitoringProgressBar');
-      const monitoringProgressText = document.getElementById('monitoringProgressText');
-      
+
+
+
       const editModal = document.getElementById('editModal');
       const closeEditModalBtn = document.getElementById('closeEditModalBtn');
       const cancelEditBtn = document.getElementById('cancelEditBtn');
@@ -135,7 +127,7 @@ continueConflictFilesBtn.addEventListener('click', () => {
   importConflictActions.classList.add('hidden');
   showSuccess('Conflicted file(s) kept. You may now generate.');
 });
-      
+
       clearWorkBtn.addEventListener('click', () => clearData('work'));
       clearRestBtn.addEventListener('click', () => clearData('rest'));
 
@@ -144,11 +136,8 @@ continueConflictFilesBtn.addEventListener('click', () => {
       undoRestBtn.addEventListener('click', () => undo('rest'));
       redoRestBtn.addEventListener('click', () => redo('rest'));
 
-      tabSchedule.addEventListener('click', () => switchTab('schedule'));
-      tabMonitoring.addEventListener('click', () => switchTab('monitoring'));
-      
-      addMonitoringRowBtn.addEventListener('click', addMonitoringBranch);
-      
+
+
       closeEditModalBtn.addEventListener('click', hideEditModal);
       cancelEditBtn.addEventListener('click', hideEditModal);
       editForm.addEventListener('submit', handleSaveEdit);
@@ -925,7 +914,7 @@ const taggedRow = {
   });
 
     // 4. Weekend RD Validation
-  const weekendDays = ['Friday', 'Saturday', 'Sunday'];
+  const weekendDays = IS_SUPPORT_GROUP ? ['Friday'] : ['Friday', 'Saturday', 'Sunday'];
   const employeeMonthWeekMap = {};
 
   function getWeekStart(dateStr) {
@@ -1982,7 +1971,7 @@ function recheckConflicts() {
 
 
 // --- 5️⃣ Weekend RD Validation (Business Rule Based) ---
-const weekendDays = ['Friday', 'Saturday', 'Sunday'];
+const weekendDays = IS_SUPPORT_GROUP ? ['Friday'] : ['Friday', 'Saturday', 'Sunday'];
 
 const employeeMonthWeekMap = {};
 
@@ -2265,7 +2254,7 @@ tr.className = rowClass;
        function renderRestTable() {
            renderTable(restTableBody, restDayData, ['employeeNo', 'name', 'position', 'date', 'dayOfWeek'], 'rest');
        }
-      
+
       function renderSummary(conflictCount, summaryLines) {
   if (workScheduleData.length === 0 && restDayData.length === 0) {
     summaryEl.innerHTML = `
@@ -2347,20 +2336,6 @@ tr.className = rowClass;
         }
       }
 
-      function switchTab(tab) {
-        if (tab === 'schedule') {
-          tabSchedule.classList.add('active');
-          tabMonitoring.classList.remove('active');
-          viewSchedule.classList.remove('hidden');
-          viewMonitoring.classList.add('hidden');
-        } else {
-          tabSchedule.classList.remove('active');
-          tabMonitoring.classList.add('active');
-          viewSchedule.classList.add('hidden');
-          viewMonitoring.classList.remove('hidden');
-        }
-      }
-
        function handleDeleteRow(type, index) {
             if (!confirm('Are you sure you want to delete this entry?')) return;
             const dataArray = type === 'work' ? workScheduleData : restDayData;
@@ -2380,14 +2355,14 @@ tr.className = rowClass;
            document.getElementById('editPosition').value = item.position || '';
            document.getElementById('editDate').value = item.date || '';
            document.getElementById('editDayOfWeek').value = item.dayOfWeek || '';
-           
+
            if(type === 'work') {
                document.getElementById('editShiftCode').value = item.shiftCode || '';
                editShiftCodeWrapper.style.display = 'block';
            } else {
                editShiftCodeWrapper.style.display = 'none';
            }
-           
+
            showEditModal();
        }
 
@@ -2395,7 +2370,7 @@ tr.className = rowClass;
             event.preventDefault();
             const {type, index} = currentlyEditing;
             if(type === null || index === null) return;
-            
+
             const dataArray = type === 'work' ? workScheduleData : restDayData;
             saveUndoState(type);
 
@@ -2418,7 +2393,7 @@ tr.className = rowClass;
             recheckConflicts();
             saveState();
        }
-       
+
        function showEditModal() { editModal.classList.remove('hidden'); editModal.style.display = 'flex'; }
        function hideEditModal() { editModal.classList.add('hidden'); editModal.style.display = 'none'; currentlyEditing = {type: null, index: null};}
 
@@ -2435,8 +2410,8 @@ tr.className = rowClass;
            const previousState = undoStack[type].pop();
            const currentState = type === 'work' ? workScheduleData : restDayData;
            redoStack[type].push(JSON.parse(JSON.stringify(currentState)));
-           
-           if(type === 'work') { workScheduleData = previousState; } 
+
+           if(type === 'work') { workScheduleData = previousState; }
            else { restDayData = previousState; }
            recheckConflicts();
            updateButtonStates();
@@ -2448,12 +2423,12 @@ tr.className = rowClass;
            const currentState = type === 'work' ? workScheduleData : restDayData;
            undoStack[type].push(JSON.parse(JSON.stringify(currentState)));
 
-           if(type === 'work') { workScheduleData = nextState; } 
+           if(type === 'work') { workScheduleData = nextState; }
            else { restDayData = nextState; }
            recheckConflicts();
            updateButtonStates();
        }
-       
+
        function clearData(type) {
            if (!confirm(`Are you sure you want to clear all ${type} data?`)) return;
            saveUndoState(type);
@@ -2467,103 +2442,6 @@ tr.className = rowClass;
            recheckConflicts();
            updateButtonStates();
        }
-
-        /*********************************\
-        * MONITORING DASHBOARD (REALTIME) *
-        \*********************************/
-        function listenForMonitoringUpdates() {
-            if (!monitoringCollectionRef) return;
-            unsubscribeMonitoring(); // Detach any old listener
-            unsubscribeMonitoring = onSnapshot(monitoringCollectionRef, (snapshot) => {
-                const serverData = [];
-                snapshot.forEach((doc) => {
-                    serverData.push({ id: doc.id, ...doc.data() });
-                });
-                monitoringData = serverData.sort((a,b) => (a.posCode || '').localeCompare(b.posCode || ''));
-                renderMonitoringDashboard();
-            }, (error) => {
-                console.error("Error listening to monitoring updates:", error);
-                showWarning("Real-time connection lost. Please refresh.");
-            });
-        }
-
-        function renderMonitoringDashboard() {
-            monitoringTableBody.innerHTML = '';
-            monitoringData.forEach((branch) => {
-                const tr = monitoringTableBody.insertRow();
-                tr.innerHTML = `
-                    <td><input class="monitoring-table-input" type="text" data-id="${branch.id}" data-field="posCode" value="${branch.posCode || ''}"></td>
-                    <td><input class="monitoring-table-input" type="text" data-id="${branch.id}" data-field="branchName" value="${branch.branchName || ''}"></td>
-                    <td><input class="monitoring-table-input" type="text" data-id="${branch.id}" data-field="sapCode" value="${branch.sapCode || ''}"></td>
-                    <td class="text-center"><input type="checkbox" data-id="${branch.id}" data-field="isUploaded" ${branch.isUploaded ? 'checked' : ''} class="h-5 w-5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"></td>
-                    <td><input class="monitoring-table-input" type="text" data-id="${branch.id}" data-field="uploadedBy" value="${branch.uploadedBy || ''}"></td>
-                    <td><input class="monitoring-table-input" type="text" data-id="${branch.id}" data-field="uploadedDate" value="${branch.uploadedDate || ''}"></td>
-                    <td class="text-center"><ion-icon name="trash-outline" class="action-icon delete-icon text-xl" data-id="${branch.id}"></ion-icon></td>
-                `;
-            });
-            
-            monitoringTableBody.querySelectorAll('input[type="text"]').forEach(input => {
-                input.addEventListener('change', (e) => updateMonitoringBranch(e.target.dataset.id, e.target.dataset.field, e.target.value));
-            });
-            monitoringTableBody.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
-                checkbox.addEventListener('change', (e) => updateMonitoringBranch(e.target.dataset.id, e.target.dataset.field, e.target.checked));
-            });
-            monitoringTableBody.querySelectorAll('.delete-icon').forEach(button => {
-                 button.addEventListener('click', (e) => deleteMonitoringBranch(e.target.dataset.id));
-            });
-            updateMonitoringProgress();
-        }
-
-        async function addMonitoringBranch() {
-            const newBranch = {posCode: '', branchName: '', sapCode: '', isUploaded: false, uploadedBy: '', uploadedDate: ''};
-            try {
-                await addDoc(monitoringCollectionRef, newBranch);
-            } catch (error) {
-                console.error("Error adding branch:", error);
-                showWarning("Could not add branch.");
-            }
-        }
-
-        async function deleteMonitoringBranch(id) {
-            if(!confirm('Are you sure you want to remove this branch from the tracker?')) return;
-            try {
-                await deleteDoc(doc(db, monitoringCollectionRef.path, id));
-            } catch (error) {
-                console.error("Error deleting branch:", error);
-                showWarning("Could not delete branch.");
-            }
-        }
-
-        async function updateMonitoringBranch(id, field, value) {
-            const updateData = { [field]: value };
-            
-            if(field === 'isUploaded') {
-                updateData.uploadedBy = value ? (auth.currentUser?.email || 'User') : '';
-                updateData.uploadedDate = value ? new Date().toLocaleDateString() : '';
-            }
-
-            try {
-                await updateDoc(doc(db, monitoringCollectionRef.path, id), updateData);
-            } catch (error) {
-                console.error("Error updating branch:", error);
-                showWarning("Could not save changes.");
-            }
-        }
-        
-        function updateMonitoringProgress() {
-            const total = monitoringData.length;
-            if(total === 0) {
-                 monitoringProgressBar.style.width = '0%';
-                 monitoringProgressText.textContent = 'N/A';
-                 return;
-            }
-            const uploadedCount = monitoringData.filter(b => b.isUploaded).length;
-            const percentage = Math.round((uploadedCount / total) * 100);
-            monitoringProgressBar.style.width = `${percentage}%`;
-            monitoringProgressText.textContent = `${percentage}% (${uploadedCount}/${total})`;
-        }
-
-
 
       /*************************\
        * UTILITY FUNCTIONS   *
@@ -2651,7 +2529,7 @@ function normalizeDateForExport(dateValue) {
 
   return `${month}/${day}/${year}`;
 }
-      
+
       function jsDateToExcel(jsDateStr) {
         const date = new Date(jsDateStr);
         const excelEpoch = new Date(Date.UTC(1899, 11, 30));
@@ -2673,7 +2551,7 @@ function normalizeDateForExport(dateValue) {
           gsap.to(successMsg, { opacity: 0, duration: 0.5, onComplete: () => successMsg.classList.add('hidden') });
         }, 3000);
       }
-      
+
       if (backToTopBtn) {
         window.addEventListener('scroll', () => { window.scrollY > 400 ? backToTopBtn.classList.add('show') : backToTopBtn.classList.remove('show'); });
         backToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
@@ -2682,19 +2560,19 @@ function normalizeDateForExport(dateValue) {
       /***** LOCAL STORAGE FOR SCHEDULES *****/
       function saveState() {
         try {
-          localStorage.setItem('workScheduleData_v3', JSON.stringify(workScheduleData));
-          localStorage.setItem('restDayData_v3', JSON.stringify(restDayData));
+          localStorage.setItem(`${GROUP_KEY}_workScheduleData_v3`, JSON.stringify(workScheduleData));
+          localStorage.setItem(`${GROUP_KEY}_restDayData_v3`, JSON.stringify(restDayData));
         } catch (e) { console.warn("Could not save schedule state.", e); }
       }
       function loadState() {
         try {
-          const w = JSON.parse(localStorage.getItem('workScheduleData_v3') || '[]');
-          const r = JSON.parse(localStorage.getItem('restDayData_v3') || '[]');
+          const w = JSON.parse(localStorage.getItem(`${GROUP_KEY}_workScheduleData_v3`) || (IS_SUPPORT_GROUP ? '[]' : localStorage.getItem('workScheduleData_v3')) || '[]');
+          const r = JSON.parse(localStorage.getItem(`${GROUP_KEY}_restDayData_v3`) || (IS_SUPPORT_GROUP ? '[]' : localStorage.getItem('restDayData_v3')) || '[]');
           workScheduleData = Array.isArray(w) ? w : [];
           restDayData = Array.isArray(r) ? r : [];
         } catch (e) { console.error("Could not load schedule state.", e); }
       }
-      
+
       ['paste', 'click'].forEach(evt => {
         workInput.addEventListener(evt, saveState);
         restInput.addEventListener(evt, saveState);
@@ -2718,75 +2596,8 @@ function normalizeDateForExport(dateValue) {
       for (let i = 0; i < particleCount; i++) {
         const particle = document.createElement('div');
         particle.classList.add('particle');
-        const size = Math.random() * 6 + 2; 
+        const size = Math.random() * 6 + 2;
         particle.style.cssText = `width:${size}px; height:${size}px; background:${colors[Math.floor(Math.random()*colors.length)]}; border-radius:50%; position:absolute; top:${Math.random()*100}%; left:${Math.random()*100}%; opacity:${Math.random()*0.5+0.1};`;
         particleContainer.appendChild(particle);
         gsap.to(particle, { x: (Math.random()-0.5)*200, y: (Math.random()-0.5)*200, duration: Math.random()*20+15, repeat: -1, yoyo: true, ease: 'sine.inOut' });
       }
-// Function to create a reference for the selected month and year
-const progressRef = (month, year) => {
-    return collection(db, "monitoring", "_meta", "progress", `${year}-${month}`, "entries");
-};
-
-// Function to load data for the selected month and year
-async function loadMonthData() {
-    const month = document.getElementById("monthPicker").value;
-    const year = document.getElementById("yearPicker").value;
-
-    // Log selected month and year
-    console.log("Fetching data for:", month, year);
-
-    // Fetch data from Firestore based on selected month and year
-    const progressDataRef = progressRef(month, year); // Firestore reference
-    const snapshot = await getDocs(progressDataRef); // Fetch data
-    const progressData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    // Render the data in the table
-    renderMonitoringTable(progressData);
-
-    // If no data is found, show an alert
-    if (progressData.length === 0) {
-        alert("No data found for this month/year");
-    }
-}
-
-// Event listener to trigger loadMonthData() when the "Load Data" button is clicked
-document.getElementById("loadMonthData").addEventListener("click", loadMonthData);
-
-// Function to export data to Excel
-function exportToExcel(progressData) {
-    const month = document.getElementById("monthPicker").value;
-    const year = document.getElementById("yearPicker").value;
-
-    // Log exporting data
-    console.log('Exporting data:', progressData);
-
-    // Create a new workbook and add a worksheet
-    const ws = XLSX.utils.json_to_sheet(progressData);
-    const wb = XLSX.utils.book_new();
-
-    // Set a header with the month and year
-    const header = `Branch Upload Monitoring Report\nMonth: ${month} ${year}\n\n`;
-
-    // Add the header to the worksheet
-    const wsHeader = XLSX.utils.aoa_to_sheet([[header]]);
-    XLSX.utils.book_append_sheet(wb, wsHeader, "Header");
-    XLSX.utils.book_append_sheet(wb, ws, "Progress Data");
-
-    // Write the Excel file
-    XLSX.writeFile(wb, `Monitoring_Report_${year}_${month}.xlsx`);
-}
-
-// Event listener for the export button
-document.getElementById("exportExcel").addEventListener("click", function() {
-    // Load the progress data from Firestore for the selected month/year before exporting
-    const month = document.getElementById("monthPicker").value;
-    const year = document.getElementById("yearPicker").value;
-    const progressDataRef = progressRef(month, year); // Get Firestore reference
-
-    // Fetch data from Firestore and pass it to exportToExcel
-    getDocs(progressDataRef).then(snapshot => {
-        const progressData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        exportToExcel(progressData); // Export the fetched data to Excel
-    });
-});
