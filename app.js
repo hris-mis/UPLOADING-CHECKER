@@ -1278,6 +1278,15 @@ document.querySelectorAll('.remove-imported-file-btn').forEach(btn => {
   });
 });
 }
+function isSampleDataSheet(sheetName) {
+  const normalizedSheetName = String(sheetName || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .trim();
+
+  return /(?:^| )SAMPLE\s*DATA(?: |$)/.test(normalizedSheetName);
+}
+
 function detectScheduleContent(rows, sheetName = '') {
   const upperSheetName = String(sheetName || '').toUpperCase();
   const sheetNameLooksSchedule = /(?:WS|RD|WORK|REST|SCHEDULE|SCEHDULE)/.test(upperSheetName) &&
@@ -1452,7 +1461,7 @@ async function handleImportFiles(event, appendMode = false) {
     importedFiles = [];
   }
 
-  let summaryMessage = '';
+  let skippedSampleSheetCount = 0;
 
   for (const file of files) {
     const importFileKey = `${file.name}-${file.size}`;
@@ -1462,6 +1471,12 @@ async function handleImportFiles(event, appendMode = false) {
 
       workbook.SheetNames.forEach(sheetName => {
         try {
+          if (isSampleDataSheet(sheetName)) {
+            skippedSampleSheetCount += 1;
+            console.log(`Skipped sample data sheet: ${sheetName}`);
+            return;
+          }
+
           const sheet = workbook.Sheets[sheetName];
 
           const rows = XLSX.utils.sheet_to_json(sheet, {
@@ -1519,7 +1534,11 @@ async function handleImportFiles(event, appendMode = false) {
         }
       });
 
-      if (importedSheetCount === 0) {
+      const hasNonSampleSheet = workbook.SheetNames.some(sheetName =>
+        !isSampleDataSheet(sheetName)
+      );
+
+      if (importedSheetCount === 0 && hasNonSampleSheet) {
         importedFiles.push({
           fileName: file.name,
           importFileKey,
@@ -1564,7 +1583,10 @@ async function handleImportFiles(event, appendMode = false) {
       importedFiles.length === 0;
 
     showSuccess(
-      `${importedFiles.length} sheet(s) ready for generation.`
+      `${importedFiles.length} sheet(s) ready for generation.` +
+      (skippedSampleSheetCount > 0
+        ? ` Skipped ${skippedSampleSheetCount} sample data sheet(s).`
+        : '')
     );
   });
 
