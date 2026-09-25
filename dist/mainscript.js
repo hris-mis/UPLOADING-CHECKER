@@ -46,30 +46,47 @@ function dayName(value) {
     const date = parseDate(value);
     return date ? date.toLocaleDateString("en-US", { weekday: "long" }) : "";
 }
-function parseTabular(text) {
-    const lines = text.replace(/\r/g, "").split("\n").map(line => line.trim()).filter(line => line && !/^(sheet|page|total|subtotal|page\s*\d+)/i.test(line));
+function parseTabular(text, html = "") {
+    if (html && /<table[\s>]/i.test(html)) {
+        const documentFragment = new DOMParser().parseFromString(html, "text/html");
+        const tableRows = Array.from(documentFragment.querySelectorAll("tr")).map(row => Array.from(row.querySelectorAll("th, td")).map(cell => (cell.textContent || "").replace(/\u00a0/g, " ").trim())).filter(row => row.some(Boolean));
+        if (tableRows.length)
+            return tableRows;
+    }
+    const lines = text.replace(/\r/g, "").replace(/\u00a0/g, " ").split("\n").map(line => line.trim()).filter(line => line && !/^(sheet|page|total|subtotal|summary|prepared|page\s*\d+)/i.test(line));
     const sample = lines.slice(0, 5).join("\n");
     const separator = /\t/.test(sample) ? /\t/ : /,/.test(sample) ? /,/ : /\s{2,}/;
     return lines.map(line => line.split(separator).map(cell => cell.trim()));
 }
-function mapRows(text, type) {
-    let rows = parseTabular(text);
+function mapImportedRows(importedRows, type) {
+    let rows = importedRows;
     if (!rows.length)
         return { rows: [], rejected: [] };
     const normalizedHeaders = rows[0].map(cell => cell.replace(/[\s_\-/.]/g, "").toLowerCase());
     const isHeader = normalizedHeaders.some(cell => /employee|emp|name/.test(cell)) && normalizedHeaders.some(cell => /date|schedule/.test(cell));
     const index = (pattern, fallback) => { const found = normalizedHeaders.findIndex(cell => pattern.test(cell)); return found < 0 ? fallback : found; };
-    const columns = isHeader ? {
+    let columns = isHeader ? {
         name: index(/name|fullname|employeename/, 0), empNo: index(/emp|employeenumber|idnum|^id$/, 1), date: index(/date|workdate|restdate|sched/, 2),
         shift: index(/shift|time|duty/, 3), day: index(/^day|daytype/, 4), position: index(/position|title|role/, 5)
     } : { name: 0, empNo: 1, date: 2, shift: 3, day: 4, position: 5 };
     if (isHeader)
         rows = rows.slice(1);
+    else {
+        const sample = rows.slice(0, 8);
+        const score = (predicate) => Array.from({ length: Math.max(...sample.map(row => row.length)) }, (_, column) => sample.filter(row => predicate((row[column] || "").trim())).length);
+        const best = (scores, fallback) => Math.max(...scores) > 0 ? scores.indexOf(Math.max(...scores)) : fallback;
+        const employee = best(score(cell => /^\d{2,6}$/.test(cell.replace(/\D/g, ""))), 1);
+        const date = best(score(cell => /^\d{5}(?:\.\d+)?$/.test(cell) || parseDate(cell) !== null), 2);
+        const shift = best(score(cell => /^(?:[A-Z]{1,5}\d{0,4}|\d{1,2}:\d{2}\s*(?:AM|PM)?(?:\s*[-–]\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)?)$/i.test(cell)), 3);
+        const day = best(score(cell => /^(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?|sun)(?:day)?$/i.test(cell)), 4);
+        const name = best(score(cell => /^[A-Za-z][A-Za-z ,.'-]+$/.test(cell) && cell.includes(" ") && !/day$/i.test(cell)), 0);
+        columns = { name, empNo: employee, date, shift, day, position: 5 };
+    }
     const accepted = [], rejected = [];
     for (const row of rows) {
         const empNo = (row[columns.empNo] || "").replace(/[^0-9]/g, "");
         const date = normalizeDate(row[columns.date] || "");
-        if (empNo.length < 2 || empNo.length > 6 || !date) {
+        if (empNo.length < 2 || empNo.length > 6) {
             rejected.push(row.join(" | "));
             continue;
         }
@@ -117,16 +134,17 @@ class ScheduleGroup {
         (_k = this.el("restTableBody")) === null || _k === void 0 ? void 0 : _k.addEventListener("dblclick", event => this.edit(event));
     }
     paste(event, type) {
-        var _a, _b, _c;
+        var _a, _b, _c, _d;
         event.preventDefault();
         const text = ((_a = event.clipboardData) === null || _a === void 0 ? void 0 : _a.getData("text/plain")) || "";
-        const branch = (_c = (_b = text.match(/branch\s*[:\-]\s*(.+)/i)) === null || _b === void 0 ? void 0 : _b[1]) === null || _c === void 0 ? void 0 : _c.trim();
+        const html = ((_b = event.clipboardData) === null || _b === void 0 ? void 0 : _b.getData("text/html")) || "";
+        const branch = (_d = (_c = text.match(/branch\s*[:\-]\s*(.+)/i)) === null || _c === void 0 ? void 0 : _c[1]) === null || _d === void 0 ? void 0 : _d.trim();
         if (branch) {
             const input = this.el(type === "work" ? "workBranchName" : "restBranchName");
             if (input && !input.value)
                 input.value = branch;
         }
-        const parsed = mapRows(text, type);
+        const parsed = mapImportedRows(parseTabular(text, html), type);
         this.checkpoint();
         this[type] = parsed.rows;
         const input = this.el(type === "work" ? "workScheduleInput" : "restScheduleInput");
@@ -258,6 +276,8 @@ class ScheduleGroup {
             return showBanner(`⚠️ Enter ${type === "work" ? "Work" : "Rest"} Branch Name.`);
         if (!this[type].length)
             return showBanner(`⚠️ No ${type === "work" ? "Work Schedule" : "Rest Day"} data to generate.`);
+        if (type === "rest" && this.rest.some(row => { var _a; return (_a = row.conflicts) === null || _a === void 0 ? void 0 : _a.length; }))
+            showBanner("⚠️ Note: There are conflicts, but file generation will proceed.");
         const data = type === "work" ? [["Employee Number", "Work Date", "Shift Code"], ...this.work.map(row => [row.empNo, row.date, row.shift.replace(/\s+/g, "").toUpperCase()])] : [["Employee No", "Rest Day Date"], ...this.rest.map(row => [row.empNo, row.date])];
         const book = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(data), "HRIS Upload");
@@ -269,10 +289,23 @@ class ScheduleGroup {
         body.innerHTML = `<p>⚙️ ${rows.length} rows were skipped:</p>${rows.map(row => `<div class="p-2 border-b">${escapeHtml(row)}</div>`).join("")}`; modal.classList.remove("hidden"); modal.style.display = "block"; }
 }
 const operation = new ScheduleGroup("operation", false);
-const support = new ScheduleGroup("support", true);
+const support = new ScheduleGroup("support", false);
 let active = "operation";
 const scheduleContent = $("#tab-schedule-content"), supportContent = $("#tab-monitoring-content"), operationTab = $("#tab-schedule"), supportTab = $("#tab-monitoring");
-function activate(group) { active = group; scheduleContent === null || scheduleContent === void 0 ? void 0 : scheduleContent.classList.toggle("hidden", group !== "operation"); supportContent === null || supportContent === void 0 ? void 0 : supportContent.classList.toggle("hidden", group !== "support"); operationTab === null || operationTab === void 0 ? void 0 : operationTab.classList.toggle("bg-indigo-600", group === "operation"); operationTab === null || operationTab === void 0 ? void 0 : operationTab.classList.toggle("text-white", group === "operation"); supportTab === null || supportTab === void 0 ? void 0 : supportTab.classList.toggle("bg-indigo-600", group === "support"); supportTab === null || supportTab === void 0 ? void 0 : supportTab.classList.toggle("text-white", group === "support"); }
+function setTabState(tab, selected) {
+    tab === null || tab === void 0 ? void 0 : tab.classList.toggle("bg-indigo-600", selected);
+    tab === null || tab === void 0 ? void 0 : tab.classList.toggle("text-white", selected);
+    tab === null || tab === void 0 ? void 0 : tab.classList.toggle("shadow-md", selected);
+    tab === null || tab === void 0 ? void 0 : tab.classList.toggle("bg-gray-200", !selected);
+    tab === null || tab === void 0 ? void 0 : tab.classList.toggle("text-gray-700", !selected);
+}
+function activate(group) {
+    active = group;
+    scheduleContent === null || scheduleContent === void 0 ? void 0 : scheduleContent.classList.toggle("hidden", group !== "operation");
+    supportContent === null || supportContent === void 0 ? void 0 : supportContent.classList.toggle("hidden", group !== "support");
+    setTabState(operationTab, group === "operation");
+    setTabState(supportTab, group === "support");
+}
 operationTab === null || operationTab === void 0 ? void 0 : operationTab.addEventListener("click", () => activate("operation"));
 supportTab === null || supportTab === void 0 ? void 0 : supportTab.addEventListener("click", () => activate("support"));
 activate("operation");
