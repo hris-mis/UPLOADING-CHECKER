@@ -2672,7 +2672,9 @@ function normalizeDateForExport(dateValue) {
 
       const particleContainer = document.getElementById('particle-container');
       const particleCount = 50;
-      const colors = ['#a7f3d0', '#67e8f9', '#5eead4', '#99f6e4'];
+      const colors = IS_SUPPORT_GROUP
+        ? ['#c4b5fd', '#a5b4fc', '#818cf8', '#ddd6fe']
+        : ['#a7f3d0', '#67e8f9', '#5eead4', '#99f6e4'];
       for (let i = 0; i < particleCount; i++) {
         const particle = document.createElement('div');
         particle.classList.add('particle');

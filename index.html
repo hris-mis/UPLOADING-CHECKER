@@ -18,8 +18,14 @@
       </div>
     </header>
     <nav class="flex justify-center space-x-4 mb-8" aria-label="Schedule groups">
-      <button id="tab-operation" class="tab-btn active" type="button">📅 Operation Group</button>
-      <button id="tab-support" class="tab-btn" type="button">📅 Support Group</button>
+      <button id="tab-operation" class="tab-btn active" type="button">
+        <svg class="group-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 3v4m10-4v4M6 11h4v4H6zM5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></svg>
+        <span>Operation Group</span>
+      </button>
+      <button id="tab-support" class="tab-btn" type="button">
+        <svg class="group-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.2c0 4.6 3.2 8.1 7.5 9.8 4.3-1.7 7.5-5.2 7.5-9.8V6L12 3Zm-3 9 2 2 4-4"/></svg>
+        <span>Support Group</span>
+      </button>
     </nav>
     <section id="panel-operation" aria-labelledby="tab-operation">
       <iframe class="checker-frame" title="Operation Group conflict checker" src="checker.html?group=operation"></iframe>
