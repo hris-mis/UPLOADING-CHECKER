@@ -1,0 +1,90 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const appSource = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+const validationSource = appSource.slice(
+  appSource.indexOf('function normalizeEmployeeNo'),
+  appSource.indexOf('function getImportedPreviewConflicts')
+);
+const context = {};
+
+vm.runInNewContext(
+  `${validationSource}\nthis.getRestDayViolations = getRestDayViolations;`,
+  context
+);
+
+const { getRestDayViolations } = context;
+const employeeNo = '1001';
+
+function row(date, extra = {}) {
+  return { employeeNo, date, position: 'Cashier', ...extra };
+}
+
+function buildWeek(dates, restDates) {
+  const restDateSet = new Set(restDates);
+  return {
+    workRows: dates.filter(date => !restDateSet.has(date)).map(date => row(date, { shiftCode: 'RBT-001' })),
+    restRows: restDates.map(date => row(date))
+  };
+}
+
+function weeklyViolations(schedule, validateOperationWeekends = false) {
+  return getRestDayViolations(
+    schedule.workRows,
+    schedule.restRows,
+    validateOperationWeekends
+  ).filter(violation => violation.type === 'weeklyRestDays');
+}
+
+const crossingMonthDates = [
+  '2026-10-26',
+  '2026-10-27',
+  '2026-10-28',
+  '2026-10-29',
+  '2026-10-30',
+  '2026-10-31',
+  '2026-11-01'
+];
+
+// Test 1: a boundary week cannot be judged when Sunday is outside the import.
+const octoberOnly = buildWeek(crossingMonthDates.slice(0, 6), ['2026-10-31']);
+assert.equal(weeklyViolations(octoberOnly, true).length, 0);
+assert.equal(weeklyViolations(octoberOnly, false).length, 0);
+
+// Test 2: Saturday and Sunday remain in one Monday-Sunday week across months.
+const twoBoundaryRestDays = buildWeek(crossingMonthDates, ['2026-10-31', '2026-11-01']);
+assert.equal(weeklyViolations(twoBoundaryRestDays).length, 0);
+
+// Test 3: a fully covered cross-month week with only one RD is still invalid.
+const oneBoundaryRestDay = buildWeek(crossingMonthDates, ['2026-10-31']);
+const boundaryViolations = weeklyViolations(oneBoundaryRestDay);
+assert.equal(boundaryViolations.length, 1);
+assert.match(boundaryViolations[0].reason, /Only 1 of 2 required rest days/);
+
+// Test 4: complete weeks contained by one month retain the existing rule.
+const withinMonth = buildWeek([
+  '2026-10-05',
+  '2026-10-06',
+  '2026-10-07',
+  '2026-10-08',
+  '2026-10-09',
+  '2026-10-10',
+  '2026-10-11'
+], ['2026-10-10']);
+assert.equal(weeklyViolations(withinMonth).length, 1);
+
+// Test 5: the 15/16 cut-off does not split a calendar week.
+const crossingCutoff = buildWeek([
+  '2026-10-12',
+  '2026-10-13',
+  '2026-10-14',
+  '2026-10-15',
+  '2026-10-16',
+  '2026-10-17',
+  '2026-10-18'
+], ['2026-10-13', '2026-10-17']);
+assert.equal(weeklyViolations(crossingCutoff).length, 0);
+
+console.log('Weekly Rest Day boundary tests passed.');
