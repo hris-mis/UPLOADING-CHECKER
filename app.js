@@ -974,11 +974,11 @@ function getRestDayViolations(workRows, restRows, validateOperationWeekends) {
     const employeeNo = normalizeEmployeeNo(entries[0].row.employeeNo);
 
     if (!SPECIAL_WEEKEND_POSITIONS.has(positions.get(employeeNo) || '')) {
-      entries.slice(1).forEach(entry => violations.push({
-        rows: [entry.row],
+      if (entries.length > 1) violations.push({
+        rows: entries.map(entry => entry.row),
         reason: 'Weekend RD Limit — Only one Saturday or Sunday rest day is allowed per cut-off for this position.',
         type: 'weekend'
-      }));
+      });
       return;
     }
 
@@ -1132,6 +1132,69 @@ const taggedRow = {
   return previewConflicts;
 }
 
+function getScheduleConflictType(reason = '') {
+  const normalizedReason = String(reason || '').toLowerCase();
+
+  if (normalizedReason.includes('no rest day record')) {
+    return { key: 'missing-rest', summary: 'has no Rest Day record', title: 'No Rest Day Record' };
+  }
+  if (normalizedReason.includes('no work schedule record')) {
+    return { key: 'missing-work', summary: 'has no Work Schedule record', title: 'No Work Schedule Record' };
+  }
+  if (normalizedReason.includes('duplicate date')) {
+    return { key: 'duplicate', summary: 'has duplicate schedule date entries', title: 'Duplicate schedule date' };
+  }
+  if (
+    normalizedReason.includes('consecutive weekend') ||
+    normalizedReason.includes('maximum weekend') ||
+    normalizedReason.includes('weekend rd limit')
+  ) {
+    return { key: 'weekend', summary: 'has Rest Day weekend rule conflict', title: 'Weekend RD Limit' };
+  }
+  if (normalizedReason.includes('insufficient rest days') || normalizedReason.includes('excess rest days')) {
+    return { key: 'weekly-rest-days', summary: 'does not have exactly two Rest Days for the week', title: 'Weekly Rest Day requirement' };
+  }
+  return { key: 'overlap', summary: 'has Work Schedule and Rest Day overlap', title: 'Work Schedule and Rest Day overlap' };
+}
+
+function getConflictDetail(reason, type) {
+  const text = String(reason || '');
+
+  if (type.key === 'missing-rest' || type.key === 'missing-work') {
+    return text.split('\n').slice(1).join('\n') || text;
+  }
+
+  const separatorIndex = text.indexOf(' — ');
+  return separatorIndex >= 0 ? text.slice(separatorIndex + 3) : text;
+}
+
+function groupScheduleConflictsByEmployee(conflicts) {
+  const employees = {};
+
+  conflicts.forEach(conflict => {
+    const employeeNo = normalizeEmployeeNo(conflict.employeeNo) || 'Unknown';
+    const type = getScheduleConflictType(conflict.reason);
+
+    if (!employees[employeeNo]) {
+      employees[employeeNo] = { employeeNo, conflictCount: 0, groups: {} };
+    }
+    if (!employees[employeeNo].groups[type.key]) {
+      employees[employeeNo].groups[type.key] = { type, dates: [], reasons: [] };
+    }
+
+    const employee = employees[employeeNo];
+    const group = employee.groups[type.key];
+    employee.conflictCount++;
+
+    if (conflict.date && !group.dates.includes(conflict.date)) group.dates.push(conflict.date);
+
+    const detail = getConflictDetail(conflict.reason, type);
+    if (detail && !group.reasons.includes(detail)) group.reasons.push(detail);
+  });
+
+  return employees;
+}
+
 function renderImportSummaryDashboard() {
   const previewConflicts = getImportedPreviewConflicts();
 
@@ -1252,86 +1315,7 @@ previewConflicts.forEach(conflict => {
 
 
 importSummaryList.innerHTML = Object.values(filesGrouped).map((fileGroup, groupIndex) => {
-  const groupedScheduleConflicts = {};
-
-  const getScheduleConflictType = (reason = '') => {
-    const normalizedReason = String(reason || '').toLowerCase();
-
-    if (normalizedReason.includes('no rest day record')) {
-      return {
-        key: 'missing-rest',
-        summary: 'has no Rest Day record',
-        title: 'No Rest Day Record'
-      };
-    }
-
-    if (normalizedReason.includes('no work schedule record')) {
-      return {
-        key: 'missing-work',
-        summary: 'has no Work Schedule record',
-        title: 'No Work Schedule Record'
-      };
-    }
-
-    if (normalizedReason.includes('duplicate date')) {
-      return {
-        key: 'duplicate',
-        summary: 'has duplicate schedule date entries',
-        title: 'Duplicate schedule date'
-      };
-    }
-
-    if (
-      normalizedReason.includes('consecutive weekend') ||
-      normalizedReason.includes('maximum weekend') ||
-      normalizedReason.includes('weekend rd limit')
-    ) {
-      return {
-        key: 'weekend',
-        summary: 'has Rest Day weekend rule conflict',
-        title: 'Rest Day weekend rule conflict'
-      };
-    }
-
-    if (
-      normalizedReason.includes('insufficient rest days') ||
-      normalizedReason.includes('excess rest days')
-    ) {
-      return {
-        key: 'weekly-rest-days',
-        summary: 'does not have exactly two Rest Days for the week',
-        title: 'Weekly Rest Day requirement'
-      };
-    }
-
-    return {
-      key: 'overlap',
-      summary: 'has Work Schedule and Rest Day overlap',
-      title: 'Work Schedule and Rest Day overlap'
-    };
-  };
-
-  fileGroup.scheduleConflicts.forEach(conflict => {
-    const conflictType = getScheduleConflictType(conflict.reason);
-    const groupKey = `${conflict.employeeNo || 'Unknown'}-${conflictType.key}`;
-
-    if (!groupedScheduleConflicts[groupKey]) {
-      groupedScheduleConflicts[groupKey] = {
-        employeeNo: conflict.employeeNo || 'Unknown',
-        type: conflictType,
-        dates: [],
-        reasons: []
-      };
-    }
-
-    if (conflict.date && !groupedScheduleConflicts[groupKey].dates.includes(conflict.date)) {
-      groupedScheduleConflicts[groupKey].dates.push(conflict.date);
-    }
-
-    if (conflict.reason && !groupedScheduleConflicts[groupKey].reasons.includes(conflict.reason)) {
-      groupedScheduleConflicts[groupKey].reasons.push(conflict.reason);
-    }
-  });
+  const groupedScheduleConflicts = groupScheduleConflictsByEmployee(fileGroup.scheduleConflicts);
 
   const totalScheduleConflicts = fileGroup.scheduleConflicts.length;
   const totalFieldConflicts = fileGroup.fieldConflicts.length;
@@ -1341,18 +1325,25 @@ importSummaryList.innerHTML = Object.values(filesGrouped).map((fileGroup, groupI
     ? `
       <div class="mt-3 text-sm text-red-700">
         <p class="font-semibold">${totalFieldConflicts + totalScheduleConflicts} conflict(s) found</p>
-        ${Object.values(groupedScheduleConflicts).map(group => `
-          <p>Employee ${group.employeeNo} ${group.type.summary}${group.dates.length ? ` on ${group.dates.length} date(s)` : ''}</p>
-        `).join('')}
+        ${Object.values(groupedScheduleConflicts).flatMap(employee =>
+          Object.values(employee.groups).map(group => `
+            <p>Employee ${employee.employeeNo} ${group.type.summary}${group.dates.length ? ` on ${group.dates.length} date(s)` : ''}</p>
+          `)
+        ).join('')}
       </div>
 
       <div id="fileConflictDetails-${groupIndex}" class="hidden mt-3 border-t border-red-200 pt-3 text-sm text-red-700">
-        ${Object.values(groupedScheduleConflicts).map(group => `
+        ${Object.values(groupedScheduleConflicts).map(employee => `
           <div class="mb-3">
-            <p class="font-semibold">Employee ${group.employeeNo} — ${group.type.title}</p>
-            ${group.dates.length ? `<p>Affected Dates: ${group.dates.join(', ')}</p>` : ''}
-            ${group.reasons.length ? `<p>${group.reasons.join('; ')}</p>` : ''}
-            <p class="font-semibold">Total: ${group.dates.length || group.reasons.length}</p>
+            <p class="font-semibold">Employee ${employee.employeeNo} — Conflicts</p>
+            ${Object.values(employee.groups).map(group => `
+              <div class="mt-2">
+                <p class="font-semibold">${group.type.title}</p>
+                ${group.dates.length ? `<p>Affected Dates: ${group.dates.join(', ')}</p>` : ''}
+                ${group.reasons.length ? `<p>${group.reasons.join('; ')}</p>` : ''}
+              </div>
+            `).join('')}
+            <p class="mt-2 font-semibold">Total: ${employee.conflictCount}</p>
           </div>
         `).join('')}
 

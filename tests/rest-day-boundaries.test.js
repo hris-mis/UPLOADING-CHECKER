@@ -8,14 +8,18 @@ const validationSource = appSource.slice(
   appSource.indexOf('function normalizeEmployeeNo'),
   appSource.indexOf('function getImportedPreviewConflicts')
 );
+const conflictGroupingSource = appSource.slice(
+  appSource.indexOf('function getScheduleConflictType'),
+  appSource.indexOf('function renderImportSummaryDashboard')
+);
 const context = {};
 
 vm.runInNewContext(
-  `${validationSource}\nthis.getRestDayViolations = getRestDayViolations; this.getMissingScheduleRecords = getMissingScheduleRecords;`,
+  `${validationSource}\n${conflictGroupingSource}\nthis.getRestDayViolations = getRestDayViolations; this.getMissingScheduleRecords = getMissingScheduleRecords; this.groupScheduleConflictsByEmployee = groupScheduleConflictsByEmployee;`,
   context
 );
 
-const { getRestDayViolations, getMissingScheduleRecords } = context;
+const { getRestDayViolations, getMissingScheduleRecords, groupScheduleConflictsByEmployee } = context;
 const employeeNo = '1001';
 
 function row(date, extra = {}) {
@@ -122,4 +126,48 @@ assert.equal(sameNameDifferentNumbers.length, 2);
 // Test 9: once an employee exists in both datasets, normal weekly validation remains.
 assert.equal(weeklyViolations(withinMonth).length, 1);
 
-console.log('Weekly Rest Day boundary tests passed.');
+function weekendViolations(dates, extra = {}) {
+  return getRestDayViolations([], dates.map(date => row(date, extra)), true)
+    .filter(violation => violation.type === 'weekend');
+}
+
+// Test 10: weekend allowances reset between the first and second cut-offs.
+assert.equal(weekendViolations(['09/13/2026', '09/27/2026']).length, 0);
+
+// Test 11: two weekend Rest Days in cut-off 1 conflict and identify both dates.
+const firstCutoffWeekend = weekendViolations(['09/06/2026', '09/13/2026']);
+assert.equal(firstCutoffWeekend.length, 1);
+assert.deepEqual(Array.from(firstCutoffWeekend[0].rows, item => item.date), ['09/06/2026', '09/13/2026']);
+
+// Test 12: two weekend Rest Days in cut-off 2 conflict and identify both dates.
+const secondCutoffWeekend = weekendViolations(['09/20/2026', '09/27/2026']);
+assert.equal(secondCutoffWeekend.length, 1);
+assert.deepEqual(Array.from(secondCutoffWeekend[0].rows, item => item.date), ['09/20/2026', '09/27/2026']);
+
+// Test 13: different reasons for one normalized employee share one employee group.
+const oneEmployee = groupScheduleConflictsByEmployee([
+  {
+    employeeNo: '2619.0',
+    reason: 'Employee 2619 — No Work Schedule Record\nCheck WS entry or Employee Number.'
+  },
+  {
+    employeeNo: '2619',
+    date: '09/13/2026',
+    reason: 'Weekend RD Limit — Only one Saturday or Sunday rest day is allowed per cut-off for this position.'
+  }
+]);
+assert.deepEqual(Object.keys(oneEmployee), ['2619']);
+assert.deepEqual(Object.keys(oneEmployee['2619'].groups), ['missing-work', 'weekend']);
+assert.equal(oneEmployee['2619'].conflictCount, 2);
+assert.deepEqual(Array.from(oneEmployee['2619'].groups['missing-work'].dates), []);
+assert.deepEqual(Array.from(oneEmployee['2619'].groups['missing-work'].reasons), ['Check WS entry or Employee Number.']);
+assert.deepEqual(Array.from(oneEmployee['2619'].groups.weekend.dates), ['09/13/2026']);
+
+// Test 14: conflicts for different employees remain in separate employee groups.
+const twoEmployees = groupScheduleConflictsByEmployee([
+  { employeeNo: '2619', reason: 'Employee 2619 has duplicate date in Rest Day Schedule: 09/13/2026' },
+  { employeeNo: '3001', reason: 'Employee 3001 has duplicate date in Rest Day Schedule: 09/13/2026' }
+]);
+assert.deepEqual(Object.keys(twoEmployees), ['2619', '3001']);
+
+console.log('Rest Day validation and conflict grouping tests passed.');
