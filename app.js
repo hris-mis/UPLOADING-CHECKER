@@ -791,14 +791,144 @@ function normalizeDayName(value) {
 }
 
 function getRestDayName(row) {
-  const date = new Date(row.date);
-  if (!isNaN(date)) {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long'
-    });
-  }
+  const date = parseScheduleDate(row.date);
+  if (date) return ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][date.getDay()];
 
   return normalizeDayName(row.dayOfWeek);
+}
+
+function parseScheduleDate(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/^(\d{1,4})[\/-](\d{1,2})[\/-](\d{1,4})$/);
+
+  if (!match) return null;
+
+  const yearFirst = match[1].length === 4;
+  const year = Number(yearFirst ? match[1] : match[3].length === 2 ? `20${match[3]}` : match[3]);
+  const month = Number(yearFirst ? match[2] : match[1]);
+  const day = Number(yearFirst ? match[3] : match[2]);
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) return null;
+
+  return date;
+}
+
+function getLocalDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getMondayWeekKey(date) {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  monday.setDate(monday.getDate() + (date.getDay() === 0 ? -6 : 1 - date.getDay()));
+  return getLocalDateKey(monday);
+}
+
+function getCutoffKey(date) {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate() <= 15 ? 1 : 2}`;
+}
+
+function normalizePosition(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+const SPECIAL_WEEKEND_POSITIONS = new Set([
+  'regional sales manager',
+  'senior area manager',
+  'mobilecare territory manager'
+]);
+
+function getRestDayViolations(workRows, restRows, validateOperationWeekends) {
+  const violations = [];
+  const positions = new Map();
+  const scheduleWeeks = new Map();
+  const restWeeks = new Map();
+  const cutoffRestDays = new Map();
+
+  [...workRows, ...restRows].forEach(row => {
+    const employeeNo = normalizeEmployeeNo(row.employeeNo);
+    const date = parseScheduleDate(row.date);
+    if (!employeeNo || !date) return;
+
+    const position = normalizePosition(row.position);
+    if (position) positions.set(employeeNo, position);
+
+    const weekKey = `${employeeNo}|${getMondayWeekKey(date)}`;
+    if (!scheduleWeeks.has(weekKey)) scheduleWeeks.set(weekKey, []);
+    scheduleWeeks.get(weekKey).push(row);
+  });
+
+  restRows.forEach(row => {
+    const employeeNo = normalizeEmployeeNo(row.employeeNo);
+    const date = parseScheduleDate(row.date);
+    if (!employeeNo || !date) return;
+
+    const weekKey = `${employeeNo}|${getMondayWeekKey(date)}`;
+    if (!restWeeks.has(weekKey)) restWeeks.set(weekKey, []);
+    restWeeks.get(weekKey).push({ row, date });
+
+    if (validateOperationWeekends && (date.getDay() === 0 || date.getDay() === 6)) {
+      const cutoffKey = `${employeeNo}|${getCutoffKey(date)}`;
+      if (!cutoffRestDays.has(cutoffKey)) cutoffRestDays.set(cutoffKey, []);
+      cutoffRestDays.get(cutoffKey).push({ row, date });
+    }
+  });
+
+  scheduleWeeks.forEach((scheduleEntries, weekKey) => {
+    const restEntries = restWeeks.get(weekKey) || [];
+    const uniqueRestDays = new Set(restEntries.map(entry => getLocalDateKey(entry.date)));
+    if (uniqueRestDays.size === 2) return;
+
+    const reason = uniqueRestDays.size < 2
+      ? `Insufficient Rest Days — Only ${uniqueRestDays.size} of 2 required rest days found this week.`
+      : 'Excess Rest Days — More than 2 rest days found this week.';
+    const affectedRows = restEntries.length > 0
+      ? restEntries.map(entry => entry.row)
+      : scheduleEntries;
+    violations.push({ rows: affectedRows, reason, type: 'weeklyRestDays' });
+  });
+
+  // Weekend Rest Day limits are exclusive to the Operation Group.
+  if (!validateOperationWeekends) return violations;
+
+  cutoffRestDays.forEach(entries => {
+    entries.sort((a, b) => a.date - b.date);
+    const employeeNo = normalizeEmployeeNo(entries[0].row.employeeNo);
+
+    if (!SPECIAL_WEEKEND_POSITIONS.has(positions.get(employeeNo) || '')) {
+      entries.slice(1).forEach(entry => violations.push({
+        rows: [entry.row],
+        reason: 'Weekend RD Limit — Only one Saturday or Sunday rest day is allowed per cut-off for this position.',
+        type: 'weekend'
+      }));
+      return;
+    }
+
+    const sundayByDate = new Map(
+      entries.filter(entry => entry.date.getDay() === 0).map(entry => [getLocalDateKey(entry.date), entry])
+    );
+    const weekendPairs = entries
+      .filter(entry => entry.date.getDay() === 6)
+      .map(saturday => {
+        const nextDay = new Date(saturday.date);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const sunday = sundayByDate.get(getLocalDateKey(nextDay));
+        return sunday ? [saturday, sunday] : null;
+      })
+      .filter(Boolean);
+
+    weekendPairs.slice(1).forEach(pair => violations.push({
+      rows: pair.map(entry => entry.row),
+      reason: 'Consecutive Weekend RD Limit — Saturday and Sunday rest days are allowed only once per cut-off for this position.',
+      type: 'weekend'
+    }));
+  });
+
+  return violations;
 }
 
 function getImportedPreviewConflicts() {
@@ -913,95 +1043,20 @@ const taggedRow = {
     }
   });
 
-    // 4. Weekend RD Validation
-  const weekendDays = IS_SUPPORT_GROUP ? ['Friday'] : ['Friday', 'Saturday', 'Sunday'];
-  const employeeMonthWeekMap = {};
+  // 4. Rest Day business rules. Support Group retains its existing validation.
+  const restDayViolations = getRestDayViolations(workRows, restRows, !IS_SUPPORT_GROUP);
 
-  function getWeekStart(dateStr) {
-    const d = new Date(dateStr);
-    const day = d.getDay();
-    const mondayOffset = day === 0 ? -6 : 1 - day;
-
-    const monday = new Date(d);
-    monday.setDate(d.getDate() + mondayOffset);
-
-    return monday.toISOString().split('T')[0];
-  }
-
-  restRows.forEach(row => {
-    if (!row.employeeNo || !row.date) return;
-
-    const date = new Date(row.date);
-    if (isNaN(date)) return;
-
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-
-    const dayName = getRestDayName(row);
-
-    if (!weekendDays.includes(dayName)) return;
-
-    const weekKey = getWeekStart(row.date);
-    const empKey = `${row.employeeNo}-${year}-${month}`;
-
-    if (!employeeMonthWeekMap[empKey]) {
-      employeeMonthWeekMap[empKey] = {};
-    }
-
-    if (!employeeMonthWeekMap[empKey][weekKey]) {
-      employeeMonthWeekMap[empKey][weekKey] = [];
-    }
-
-    employeeMonthWeekMap[empKey][weekKey].push({
-      row,
-      dayName
+  restDayViolations.forEach(violation => {
+    violation.rows.forEach(row => {
+      previewConflicts.push({
+        fileName: row.fileName,
+        importFileKey: row.importFileKey,
+        sheetName: row.sheetName,
+        employeeNo: row.employeeNo,
+        date: row.date,
+        reason: violation.reason
+      });
     });
-  });
-
-  Object.values(employeeMonthWeekMap).forEach(weeks => {
-    let weekendGroupCount = 0;
-
-    Object.values(weeks).forEach(entries => {
-      const days = entries.map(e => e.dayName);
-
-      const hasFriday = days.includes('Friday');
-      const hasSaturday = days.includes('Saturday');
-      const hasSunday = days.includes('Sunday');
-
-      if (hasSaturday && hasSunday) {
-        entries
-          .filter(e => e.dayName === 'Saturday' || e.dayName === 'Sunday')
-          .forEach(e => {
-            previewConflicts.push({
-              fileName: e.row.fileName,
-              importFileKey: e.row.importFileKey,
-              sheetName: e.row.sheetName,
-              employeeNo: e.row.employeeNo,
-              date: e.row.date,
-              reason: 'Saturday-Sunday consecutive Rest Days are not allowed.'
-            });
-          });
-      }
-
-      if (hasFriday || hasSaturday || hasSunday) {
-        weekendGroupCount++;
-      }
-    });
-
-    if (weekendGroupCount > 4) {
-      Object.values(weeks)
-        .flat()
-        .forEach(e => {
-          previewConflicts.push({
-            fileName: e.row.fileName,
-            importFileKey: e.row.importFileKey,
-            sheetName: e.row.sheetName,
-            employeeNo: e.row.employeeNo,
-            date: e.row.date,
-            reason: 'Maximum weekend RD groups exceeded. Allowed maximum is 4 per month.'
-          });
-        });
-    }
   });
 
   return previewConflicts;
@@ -1150,12 +1205,24 @@ importSummaryList.innerHTML = Object.values(filesGrouped).map((fileGroup, groupI
 
     if (
       normalizedReason.includes('consecutive weekend') ||
-      normalizedReason.includes('maximum weekend')
+      normalizedReason.includes('maximum weekend') ||
+      normalizedReason.includes('weekend rd limit')
     ) {
       return {
         key: 'weekend',
         summary: 'has Rest Day weekend rule conflict',
         title: 'Rest Day weekend rule conflict'
+      };
+    }
+
+    if (
+      normalizedReason.includes('insufficient rest days') ||
+      normalizedReason.includes('excess rest days')
+    ) {
+      return {
+        key: 'weekly-rest-days',
+        summary: 'does not have exactly two Rest Days for the week',
+        title: 'Weekly Rest Day requirement'
       };
     }
 
@@ -1996,100 +2063,19 @@ function recheckConflicts() {
   });
 
 
-// --- 5️⃣ Weekend RD Validation (Business Rule Based) ---
-const weekendDays = IS_SUPPORT_GROUP ? ['Friday'] : ['Friday', 'Saturday', 'Sunday'];
+// --- 5️⃣ Rest Day Validation (Business Rule Based) ---
+const restDayViolations = getRestDayViolations(
+  workScheduleData,
+  restDayData,
+  !IS_SUPPORT_GROUP
+);
 
-const employeeMonthWeekMap = {};
-
-function getWeekStart(dateStr) {
-  const d = new Date(dateStr);
-  const day = d.getDay();
-
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + mondayOffset);
-
-  return monday.toISOString().split('T')[0];
-}
-
-restDayData.forEach(r => {
-  if (!r.employeeNo || !r.date) return;
-
-  const date = new Date(r.date);
-
-  if (isNaN(date)) return;
-
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-
-  const dayName = getRestDayName(r);
-
-  if (!weekendDays.includes(dayName)) return;
-
-  const weekKey = getWeekStart(r.date);
-
-  const empKey = `${r.employeeNo}-${year}-${month}`;
-
-  if (!employeeMonthWeekMap[empKey]) {
-    employeeMonthWeekMap[empKey] = {};
-  }
-
-  if (!employeeMonthWeekMap[empKey][weekKey]) {
-    employeeMonthWeekMap[empKey][weekKey] = [];
-  }
-
-  employeeMonthWeekMap[empKey][weekKey].push({
-    row: r,
-    dayName
+restDayViolations.forEach(violation => {
+  violation.rows.forEach(row => {
+    row.conflict = true;
+    row.conflictType ||= violation.type;
+    row.conflictReasons.push(violation.reason);
   });
-});
-
-// Validate each employee/month/week
-Object.values(employeeMonthWeekMap).forEach(weeks => {
-  let weekendGroupCount = 0;
-
-  Object.values(weeks).forEach(entries => {
-    const days = entries.map(e => e.dayName);
-
-    const hasFriday = days.includes('Friday');
-    const hasSaturday = days.includes('Saturday');
-    const hasSunday = days.includes('Sunday');
-
-    if (hasSaturday && hasSunday) {
-      entries
-        .filter(e => e.dayName === 'Saturday' || e.dayName === 'Sunday')
-        .forEach(e => {
-          e.row.conflict = true;
-          e.row.conflictType = 'weekend';
-          e.row.conflictReasons.push(
-            'Saturday-Sunday consecutive Rest Days are not allowed.'
-          );
-        });
-    }
-
-    // ✅ Count valid weekend group
-    if (
-      hasFriday ||
-      hasSaturday ||
-      hasSunday
-    ) {
-      weekendGroupCount++;
-    }
-  });
-
-  // ❌ Exceeded monthly max
-  if (weekendGroupCount > 4) {
-    Object.values(weeks)
-      .flat()
-      .forEach(e => {
-        e.row.conflict = true;
-        e.row.conflictType = 'weekend';
-        e.row.conflictReasons.push(
-          'Maximum weekend RD groups exceeded. Allowed maximum is 4 per month.'
-        );
-      });
-  }
 });
 
   const shortMessage = {
@@ -2097,7 +2083,8 @@ Object.values(employeeMonthWeekMap).forEach(weeks => {
     duplicate: 'Duplicate date',
     missing: 'Not in WS',
     leadership: 'Leadership overlap',
-    weekend: 'Too many weekends'
+    weekend: 'Weekend Rest Day limit',
+    weeklyRestDays: 'Weekly Rest Day requirement'
   };
   [...workScheduleData, ...restDayData].forEach(d => {
     d.conflictReasons = [...new Set(d.conflictReasons || [])];
