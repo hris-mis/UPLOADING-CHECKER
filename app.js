@@ -842,7 +842,7 @@ const SPECIAL_WEEKEND_POSITIONS = new Set([
   'mobilecare territory manager'
 ]);
 
-function getOperationRestDayViolations(workRows, restRows) {
+function getRestDayViolations(workRows, restRows, validateOperationWeekends) {
   const violations = [];
   const positions = new Map();
   const scheduleWeeks = new Map();
@@ -871,7 +871,7 @@ function getOperationRestDayViolations(workRows, restRows) {
     if (!restWeeks.has(weekKey)) restWeeks.set(weekKey, []);
     restWeeks.get(weekKey).push({ row, date });
 
-    if (date.getDay() === 0 || date.getDay() === 6) {
+    if (validateOperationWeekends && (date.getDay() === 0 || date.getDay() === 6)) {
       const cutoffKey = `${employeeNo}|${getCutoffKey(date)}`;
       if (!cutoffRestDays.has(cutoffKey)) cutoffRestDays.set(cutoffKey, []);
       cutoffRestDays.get(cutoffKey).push({ row, date });
@@ -891,6 +891,9 @@ function getOperationRestDayViolations(workRows, restRows) {
       : scheduleEntries;
     violations.push({ rows: affectedRows, reason, type: 'weeklyRestDays' });
   });
+
+  // Weekend Rest Day limits are exclusive to the Operation Group.
+  if (!validateOperationWeekends) return violations;
 
   cutoffRestDays.forEach(entries => {
     entries.sort((a, b) => a.date - b.date);
@@ -923,48 +926,6 @@ function getOperationRestDayViolations(workRows, restRows) {
       reason: 'Consecutive Weekend RD Limit — Saturday and Sunday rest days are allowed only once per cut-off for this position.',
       type: 'weekend'
     }));
-  });
-
-  return violations;
-}
-
-function getSupportWeekendViolations(restRows) {
-  const employeeMonthWeekMap = {};
-  const violations = [];
-
-  restRows.forEach(row => {
-    const date = parseScheduleDate(row.date);
-    if (!row.employeeNo || !date || !['Friday', 'Saturday', 'Sunday'].includes(getRestDayName(row))) return;
-
-    const empKey = `${row.employeeNo}-${date.getFullYear()}-${date.getMonth() + 1}`;
-    const weekKey = getMondayWeekKey(date);
-    if (!employeeMonthWeekMap[empKey]) employeeMonthWeekMap[empKey] = {};
-    if (!employeeMonthWeekMap[empKey][weekKey]) employeeMonthWeekMap[empKey][weekKey] = [];
-    employeeMonthWeekMap[empKey][weekKey].push({ row, dayName: getRestDayName(row) });
-  });
-
-  Object.values(employeeMonthWeekMap).forEach(weeks => {
-    let weekendGroupCount = 0;
-
-    Object.values(weeks).forEach(entries => {
-      const days = entries.map(entry => entry.dayName);
-      if (days.includes('Saturday') && days.includes('Sunday')) {
-        violations.push({
-          rows: entries.filter(entry => entry.dayName === 'Saturday' || entry.dayName === 'Sunday').map(entry => entry.row),
-          reason: 'Saturday-Sunday consecutive Rest Days are not allowed.',
-          type: 'weekend'
-        });
-      }
-      weekendGroupCount++;
-    });
-
-    if (weekendGroupCount > 4) {
-      violations.push({
-        rows: Object.values(weeks).flat().map(entry => entry.row),
-        reason: 'Maximum weekend RD groups exceeded. Allowed maximum is 4 per month.',
-        type: 'weekend'
-      });
-    }
   });
 
   return violations;
@@ -1083,9 +1044,7 @@ const taggedRow = {
   });
 
   // 4. Rest Day business rules. Support Group retains its existing validation.
-  const restDayViolations = IS_SUPPORT_GROUP
-    ? getSupportWeekendViolations(restRows)
-    : getOperationRestDayViolations(workRows, restRows);
+  const restDayViolations = getRestDayViolations(workRows, restRows, !IS_SUPPORT_GROUP);
 
   restDayViolations.forEach(violation => {
     violation.rows.forEach(row => {
@@ -2105,9 +2064,11 @@ function recheckConflicts() {
 
 
 // --- 5️⃣ Rest Day Validation (Business Rule Based) ---
-const restDayViolations = IS_SUPPORT_GROUP
-  ? getSupportWeekendViolations(restDayData)
-  : getOperationRestDayViolations(workScheduleData, restDayData);
+const restDayViolations = getRestDayViolations(
+  workScheduleData,
+  restDayData,
+  !IS_SUPPORT_GROUP
+);
 
 restDayViolations.forEach(violation => {
   violation.rows.forEach(row => {
