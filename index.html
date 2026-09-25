@@ -76,26 +76,31 @@
   </div>
 
 <!-- SUPPORT GROUP -->
-<div id="tab-monitoring-content" class="hidden dashboard-card mt-6 shadow-lg">
-  <h2 class="text-3xl text-center mb-2">Support Group Schedule Conflict Checker</h2>
-  <p class="text-center text-gray-600 mb-8">Paste, validate, and generate HRIS upload files for Support Work and Rest Day schedules.</p>
+<div id="tab-monitoring-content" class="hidden">
+  <h1 class="text-3xl font-extrabold text-center mt-4">Support Group Schedule Conflict Checker</h1>
+  <div class="text-center my-4"></div>
+  <p class="mt-2 text-center text-gray-600 mb-8">Paste, validate, and generate HRIS upload files for Work and Rest Day schedules.</p>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 px-8 py-6">
+    <!-- Work -->
     <div>
-      <div class="flex items-center justify-between mb-4 gap-4"><h3>1. Paste Work Schedule Data</h3><div class="flex items-center gap-3">
+      <div class="flex items-center justify-between mb-4 gap-4"><h3 class="font-semibold text-lg">1. Paste Work Schedule Data</h3><div class="flex items-center gap-3">
         <input id="supportWorkBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-2" />
-        <button id="supportGenerateWorkFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button><button id="supportClearWorkData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
+        <button id="supportGenerateWorkFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button>
+        <button id="supportClearWorkData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
       </div></div>
       <textarea id="supportWorkScheduleInput" class="w-full h-64 border rounded p-3 mb-4" placeholder="Paste work schedule (Excel copy) here"></textarea>
       <div class="overflow-auto bg-white rounded border"><table class="w-full text-sm text-center"><thead class="bg-gray-50 text-gray-600 text-xs"><tr><th>Name</th><th>Emp No.</th><th>Work Date</th><th>Shift</th><th>Day</th><th>Position</th></tr></thead><tbody id="supportWorkTableBody"></tbody></table></div>
     </div>
+    <!-- Rest -->
     <div>
-      <div class="flex items-center justify-between mb-4 gap-4"><h3>2. Paste Rest Day Schedule Data</h3><div class="flex items-center gap-3">
+      <div class="flex items-center justify-between mb-4 gap-4"><h3 class="font-semibold text-lg">2. Paste Rest Day Schedule Data</h3><div class="flex items-center gap-3">
         <input id="supportRestBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-2" />
-        <button id="supportGenerateRestFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button><button id="supportClearRestData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
+        <button id="supportGenerateRestFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button>
+        <button id="supportClearRestData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
       </div></div>
       <textarea id="supportRestScheduleInput" class="w-full h-64 border rounded p-3 mb-4" placeholder="Paste rest day schedule (Excel copy) here"></textarea>
       <div class="overflow-auto bg-white rounded border"><table class="w-full text-sm text-center"><thead class="bg-gray-50 text-gray-600 text-xs"><tr><th>Conflict</th><th>Name</th><th>Emp No.</th><th>Rest Date</th><th>Day</th><th>Position</th></tr></thead><tbody id="supportRestTableBody"></tbody></table></div>
-      <div id="supportSummary" class="summary-box hidden"></div>
+      <div id="supportSummary" class="summary-box text-center hidden"></div>
     </div>
   </div>
 </div>

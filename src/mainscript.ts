@@ -49,28 +49,46 @@ function dayName(value: string): string {
   const date = parseDate(value);
   return date ? date.toLocaleDateString("en-US", { weekday: "long" }) : "";
 }
-function parseTabular(text: string): string[][] {
-  const lines = text.replace(/\r/g, "").split("\n").map(line => line.trim()).filter(line => line && !/^(sheet|page|total|subtotal|page\s*\d+)/i.test(line));
+function parseTabular(text: string, html = ""): string[][] {
+  if (html && /<table[\s>]/i.test(html)) {
+    const documentFragment = new DOMParser().parseFromString(html, "text/html");
+    const tableRows = Array.from(documentFragment.querySelectorAll("tr")).map(row =>
+      Array.from(row.querySelectorAll("th, td")).map(cell => (cell.textContent || "").replace(/\u00a0/g, " ").trim())
+    ).filter(row => row.some(Boolean));
+    if (tableRows.length) return tableRows;
+  }
+  const lines = text.replace(/\r/g, "").replace(/\u00a0/g, " ").split("\n").map(line => line.trim()).filter(line => line && !/^(sheet|page|total|subtotal|summary|prepared|page\s*\d+)/i.test(line));
   const sample = lines.slice(0, 5).join("\n");
   const separator = /\t/.test(sample) ? /\t/ : /,/.test(sample) ? /,/ : /\s{2,}/;
   return lines.map(line => line.split(separator).map(cell => cell.trim()));
 }
-function mapRows(text: string, type: DataType): { rows: RowObj[]; rejected: string[] } {
-  let rows = parseTabular(text);
+function mapImportedRows(importedRows: string[][], type: DataType): { rows: RowObj[]; rejected: string[] } {
+  let rows = importedRows;
   if (!rows.length) return { rows: [], rejected: [] };
   const normalizedHeaders = rows[0].map(cell => cell.replace(/[\s_\-/.]/g, "").toLowerCase());
   const isHeader = normalizedHeaders.some(cell => /employee|emp|name/.test(cell)) && normalizedHeaders.some(cell => /date|schedule/.test(cell));
   const index = (pattern: RegExp, fallback: number) => { const found = normalizedHeaders.findIndex(cell => pattern.test(cell)); return found < 0 ? fallback : found; };
-  const columns = isHeader ? {
+  let columns = isHeader ? {
     name: index(/name|fullname|employeename/, 0), empNo: index(/emp|employeenumber|idnum|^id$/, 1), date: index(/date|workdate|restdate|sched/, 2),
     shift: index(/shift|time|duty/, 3), day: index(/^day|daytype/, 4), position: index(/position|title|role/, 5)
   } : { name: 0, empNo: 1, date: 2, shift: 3, day: 4, position: 5 };
   if (isHeader) rows = rows.slice(1);
+  else {
+    const sample = rows.slice(0, 8);
+    const score = (predicate: (cell: string) => boolean) => Array.from({ length: Math.max(...sample.map(row => row.length)) }, (_, column) => sample.filter(row => predicate((row[column] || "").trim())).length);
+    const best = (scores: number[], fallback: number) => Math.max(...scores) > 0 ? scores.indexOf(Math.max(...scores)) : fallback;
+    const employee = best(score(cell => /^\d{2,6}$/.test(cell.replace(/\D/g, ""))), 1);
+    const date = best(score(cell => /^\d{5}(?:\.\d+)?$/.test(cell) || parseDate(cell) !== null), 2);
+    const shift = best(score(cell => /^(?:[A-Z]{1,5}\d{0,4}|\d{1,2}:\d{2}\s*(?:AM|PM)?(?:\s*[-–]\s*\d{1,2}:\d{2}\s*(?:AM|PM)?)?)$/i.test(cell)), 3);
+    const day = best(score(cell => /^(?:mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?|sun)(?:day)?$/i.test(cell)), 4);
+    const name = best(score(cell => /^[A-Za-z][A-Za-z ,.'-]+$/.test(cell) && cell.includes(" ") && !/day$/i.test(cell)), 0);
+    columns = { name, empNo: employee, date, shift, day, position: 5 };
+  }
   const accepted: RowObj[] = [], rejected: string[] = [];
   for (const row of rows) {
     const empNo = (row[columns.empNo] || "").replace(/[^0-9]/g, "");
     const date = normalizeDate(row[columns.date] || "");
-    if (empNo.length < 2 || empNo.length > 6 || !date) { rejected.push(row.join(" | ")); continue; }
+    if (empNo.length < 2 || empNo.length > 6) { rejected.push(row.join(" | ")); continue; }
     accepted.push({ name: row[columns.name] || "", empNo, date, shift: type === "work" ? row[columns.shift] || "" : "", day: row[columns.day] || dayName(date), position: row[columns.position] || "" });
   }
   return { rows: accepted, rejected };
@@ -108,9 +126,10 @@ class ScheduleGroup {
   paste(event: ClipboardEvent, type: DataType): void {
     event.preventDefault();
     const text = event.clipboardData?.getData("text/plain") || "";
+    const html = event.clipboardData?.getData("text/html") || "";
     const branch = text.match(/branch\s*[:\-]\s*(.+)/i)?.[1]?.trim();
     if (branch) { const input = this.el<HTMLInputElement>(type === "work" ? "workBranchName" : "restBranchName"); if (input && !input.value) input.value = branch; }
-    const parsed = mapRows(text, type);
+    const parsed = mapImportedRows(parseTabular(text, html), type);
     this.checkpoint(); this[type] = parsed.rows;
     const input = this.el<HTMLTextAreaElement>(type === "work" ? "workScheduleInput" : "restScheduleInput"); if (input) input.value = "";
     this.validateAndRender();
@@ -171,6 +190,7 @@ class ScheduleGroup {
   generate(type: DataType): void {
     const branch = this.el<HTMLInputElement>(type === "work" ? "workBranchName" : "restBranchName")?.value.trim(); if (!branch) return showBanner(`⚠️ Enter ${type === "work" ? "Work" : "Rest"} Branch Name.`);
     if (!this[type].length) return showBanner(`⚠️ No ${type === "work" ? "Work Schedule" : "Rest Day"} data to generate.`);
+    if (type === "rest" && this.rest.some(row => row.conflicts?.length)) showBanner("⚠️ Note: There are conflicts, but file generation will proceed.");
     const data = type === "work" ? [["Employee Number", "Work Date", "Shift Code"], ...this.work.map(row => [row.empNo, row.date, row.shift.replace(/\s+/g, "").toUpperCase()])] : [["Employee No", "Rest Day Date"], ...this.rest.map(row => [row.empNo, row.date])];
     const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, XLSX.utils.aoa_to_sheet(data), "HRIS Upload"); XLSX.writeFile(book, `${branch}_${type === "work" ? "WORK_SCHEDULE" : "REST_DAY_UPLOAD"}.xlsx`); showSuccess();
   }
@@ -178,10 +198,23 @@ class ScheduleGroup {
 }
 
 const operation = new ScheduleGroup("operation", false);
-const support = new ScheduleGroup("support", true);
+const support = new ScheduleGroup("support", false);
 let active: GroupKey = "operation";
 const scheduleContent = $("#tab-schedule-content"), supportContent = $("#tab-monitoring-content"), operationTab = $("#tab-schedule"), supportTab = $("#tab-monitoring");
-function activate(group: GroupKey): void { active = group; scheduleContent?.classList.toggle("hidden", group !== "operation"); supportContent?.classList.toggle("hidden", group !== "support"); operationTab?.classList.toggle("bg-indigo-600", group === "operation"); operationTab?.classList.toggle("text-white", group === "operation"); supportTab?.classList.toggle("bg-indigo-600", group === "support"); supportTab?.classList.toggle("text-white", group === "support"); }
+function setTabState(tab: Element | null, selected: boolean): void {
+  tab?.classList.toggle("bg-indigo-600", selected);
+  tab?.classList.toggle("text-white", selected);
+  tab?.classList.toggle("shadow-md", selected);
+  tab?.classList.toggle("bg-gray-200", !selected);
+  tab?.classList.toggle("text-gray-700", !selected);
+}
+function activate(group: GroupKey): void {
+  active = group;
+  scheduleContent?.classList.toggle("hidden", group !== "operation");
+  supportContent?.classList.toggle("hidden", group !== "support");
+  setTabState(operationTab, group === "operation");
+  setTabState(supportTab, group === "support");
+}
 operationTab?.addEventListener("click", () => activate("operation")); supportTab?.addEventListener("click", () => activate("support")); activate("operation");
 document.addEventListener("keydown", event => { if (!(event.ctrlKey || event.metaKey)) return; const group = active === "operation" ? operation : support; if (event.key.toLowerCase() === "z" && !event.shiftKey) { event.preventDefault(); group.undoChange(); } else if (event.key.toLowerCase() === "y" || (event.key.toLowerCase() === "z" && event.shiftKey)) { event.preventDefault(); group.redoChange(); } });
 document.addEventListener("click", event => { const target = event.target as HTMLElement; if (target.matches(".modal-close, #rejectedModal .modal-overlay")) { const modal = $("#rejectedModal") as HTMLElement | null; if (modal) { modal.classList.add("hidden"); modal.style.display = "none"; } } });
