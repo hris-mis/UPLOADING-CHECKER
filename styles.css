@@ -4,14 +4,56 @@
  * — Blue–Teal Premium —
  * ============================ */
 
+:root {
+  --group-accent: #0d9488;
+  --group-accent-bright: #22d3ee;
+  --group-accent-secondary: #2dd4bf;
+  --group-accent-soft: rgba(45, 212, 191, 0.15);
+  --group-border: rgba(45, 212, 191, 0.2);
+  --group-shadow: rgba(13, 148, 136, 0.1);
+  --group-bg-glow: linear-gradient(135deg, #e0f7fa, #f0fdfa, #f9fafb);
+}
+
+body.theme-support {
+  --group-accent: #6366f1;
+  --group-accent-bright: #818cf8;
+  --group-accent-secondary: #a78bfa;
+  --group-accent-soft: rgba(129, 140, 248, 0.14);
+  --group-border: rgba(129, 140, 248, 0.22);
+  --group-shadow: rgba(99, 102, 241, 0.12);
+  --group-bg-glow: linear-gradient(135deg, #eef2ff, #f5f3ff, #f8fafc);
+}
+
 body {
   font-family: 'Inter', sans-serif;
-  background: linear-gradient(135deg, #e0f7fa, #f0fdfa, #f9fafb);
+  background: var(--group-bg-glow);
   background-size: 200% 200%;
   color: #0f172a;
   min-height: 100vh;
   overflow-x: hidden;
-  transition: background 1s ease;
+  transition: background 0.55s ease;
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  width: 28rem;
+  height: 28rem;
+  border-radius: 50%;
+  background: var(--group-accent-soft);
+  filter: blur(90px);
+  pointer-events: none;
+  z-index: -1;
+  transition: background 0.55s ease;
+}
+
+body::before { top: -12rem; left: -10rem; }
+body::after { right: -12rem; bottom: -14rem; opacity: 0.65; }
+
+header {
+  box-shadow: 0 12px 38px var(--group-shadow), inset 0 0 0 1px var(--group-border) !important;
+  transition: box-shadow 0.55s ease;
 }
 
 /* ✨ Floating Particles Container */
@@ -35,16 +77,16 @@ body {
   position: relative;
   background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid var(--group-border);
   border-radius: 1rem;
-  box-shadow: 0 8px 32px rgba(13, 148, 136, 0.1);
+  box-shadow: 0 8px 32px var(--group-shadow);
   padding: 1.5rem;
   transition: all 0.4s ease;
   z-index: 1;
 }
 
 .dashboard-card:hover {
-  box-shadow: 0 8px 32px rgba(13, 148, 136, 0.1);
+  box-shadow: 0 10px 34px var(--group-shadow);
 }
 
 /* 🎨 Buttons & Tabs */
@@ -57,6 +99,20 @@ body {
   transition: all 0.3s ease;
   overflow: hidden;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid transparent;
+}
+
+.group-icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .tab-btn::before {
@@ -66,7 +122,7 @@ body {
   left: 0;
   width: 0;
   height: 100%;
-  background: linear-gradient(90deg, #67e8f9, #2dd4bf);
+  background: linear-gradient(90deg, var(--group-accent-bright), var(--group-accent-secondary));
   transition: width 0.4s cubic-bezier(0.25, 1, 0.5, 1);
   z-index: -1;
   border-radius: 9999px;
@@ -75,6 +131,12 @@ body {
 .tab-btn.active {
   color: #fff;
   transform: scale(1.05);
+}
+
+.tab-btn:not(.active):hover {
+  color: var(--group-accent);
+  border-color: var(--group-border);
+  background: rgba(255, 255, 255, 0.45);
 }
 
 .tab-btn.active::before {
@@ -98,6 +160,26 @@ textarea:focus {
   background: white;
 }
 
+body.theme-support textarea:focus,
+body.theme-support input:focus {
+  border-color: var(--group-accent-bright) !important;
+  box-shadow: 0 0 0 3px var(--group-accent-soft), inset 0 2px 4px rgba(0, 0, 0, 0.04) !important;
+}
+
+.group-context-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--group-border);
+  border-radius: 9999px;
+  background: var(--group-accent-soft);
+  color: var(--group-accent);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  line-height: 1.25;
+}
+
 /* ⚙️ Data View Container */
 .data-view {
   overflow-x: hidden;
@@ -117,7 +199,7 @@ table {
 
 thead {
   background: rgba(255, 255, 255, 0.5);
-  border-bottom: 2px solid #99f6e4;
+  border-bottom: 2px solid var(--group-accent-secondary);
 }
 
 th,
@@ -139,8 +221,8 @@ td {
 
 /* Hover row */
 tbody tr:hover {
-  background-color: rgba(209, 250, 229, 0.75);
-  box-shadow: inset 0 0 10px rgba(45, 212, 191, 0.15);
+  background-color: var(--group-accent-soft);
+  box-shadow: inset 0 0 10px var(--group-accent-soft);
 }
 
 /* Conflict row styling */
@@ -212,7 +294,7 @@ tbody tr:hover {
   font-size: 13px;
   line-height: 1.2;
   background-color: rgba(255, 255, 255, 0.5);
-  border-bottom: 2px solid #80cbc4;
+  border-bottom: 2px solid var(--group-accent-secondary);
   text-align: left;
   padding: 0.6rem 0.25rem;
   white-space: nowrap;

@@ -42,10 +42,13 @@
 
   <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
-      <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-        <ion-icon name="cloud-upload-outline"></ion-icon>
-        Schedule Import
-      </h3>
+      <div class="flex flex-wrap items-center gap-2">
+        <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <ion-icon name="cloud-upload-outline"></ion-icon>
+          Schedule Import
+        </h3>
+        <span id="group-context-label" class="group-context-label">Operation Rules</span>
+      </div>
       <p class="text-sm text-slate-500 mt-1">
         Import one or multiple files. Work Schedule and Rest Day will be detected automatically.
       </p>
@@ -269,9 +272,12 @@
   </div>
 
   <script>
-    const groupName = new URLSearchParams(location.search).get('group') === 'support' ? 'Support Group' : 'Operation Group';
+    const isSupportGroup = new URLSearchParams(location.search).get('group') === 'support';
+    const groupName = isSupportGroup ? 'Support Group' : 'Operation Group';
+    document.body.classList.add(isSupportGroup ? 'theme-support' : 'theme-operation');
     document.title = `${groupName} — Sched Master`;
     document.getElementById('group-heading').textContent = `${groupName} schedule conflict checker`;
+    document.getElementById('group-context-label').textContent = isSupportGroup ? 'Support Rules' : 'Operation Rules';
   </script>
   <script src="app.js?v=20260925-2"></script>
 

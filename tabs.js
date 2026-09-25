@@ -1,6 +1,9 @@
 const groups = ['operation', 'support'];
 
 function selectGroup(selected) {
+  document.body.classList.toggle('theme-support', selected === 'support');
+  document.body.classList.toggle('theme-operation', selected === 'operation');
+
   groups.forEach(group => {
     const active = group === selected;
     const tab = document.getElementById(`tab-${group}`);
