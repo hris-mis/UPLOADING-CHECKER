@@ -1479,6 +1479,12 @@ async function handleImportFiles(event, appendMode = false) {
 
       importableSheetNames.forEach(sheetName => {
         try {
+          if (isSampleDataSheet(sheetName)) {
+            skippedSampleSheetCount += 1;
+            console.log(`Skipped sample data sheet: ${sheetName}`);
+            return;
+          }
+
           const sheet = workbook.Sheets[sheetName];
 
           const rows = XLSX.utils.sheet_to_json(sheet, {
