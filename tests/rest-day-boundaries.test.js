@@ -11,11 +11,11 @@ const validationSource = appSource.slice(
 const context = {};
 
 vm.runInNewContext(
-  `${validationSource}\nthis.getRestDayViolations = getRestDayViolations;`,
+  `${validationSource}\nthis.getRestDayViolations = getRestDayViolations; this.getMissingScheduleRecords = getMissingScheduleRecords;`,
   context
 );
 
-const { getRestDayViolations } = context;
+const { getRestDayViolations, getMissingScheduleRecords } = context;
 const employeeNo = '1001';
 
 function row(date, extra = {}) {
@@ -86,5 +86,40 @@ const crossingCutoff = buildWeek([
   '2026-10-18'
 ], ['2026-10-13', '2026-10-17']);
 assert.equal(weeklyViolations(crossingCutoff).length, 0);
+
+// Test 6: a WS-only employee receives one missing-RD issue, not weekly 0-of-2 issues.
+const twoWorkWeeks = [
+  ...Array.from({ length: 7 }, (_, index) => `2026-10-${String(index + 5).padStart(2, '0')}`),
+  ...Array.from({ length: 7 }, (_, index) => `2026-10-${String(index + 12).padStart(2, '0')}`)
+].map(date => row(date));
+const missingRestIssues = getMissingScheduleRecords(twoWorkWeeks, []);
+assert.equal(missingRestIssues.length, 1);
+assert.equal(missingRestIssues[0].type, 'missingRest');
+assert.equal(
+  missingRestIssues[0].reason,
+  'Employee 1001 — No Rest Day Record\nCheck RD entry or Employee Number.'
+);
+assert.equal(getRestDayViolations(twoWorkWeeks, [], true).length, 0);
+assert.equal(getRestDayViolations(twoWorkWeeks, [], false).length, 0);
+
+// Test 7: an RD-only employee receives one missing-WS issue despite multiple rows.
+const restOnlyRows = ['2026-10-05', '2026-10-06', '2026-10-12'].map(date => row(date));
+const missingWorkIssues = getMissingScheduleRecords([], restOnlyRows);
+assert.equal(missingWorkIssues.length, 1);
+assert.equal(missingWorkIssues[0].type, 'missingWork');
+assert.equal(
+  missingWorkIssues[0].reason,
+  'Employee 1001 — No Work Schedule Record\nCheck WS entry or Employee Number.'
+);
+
+// Test 8: matching is based only on normalized employee number, never name.
+const sameNameDifferentNumbers = getMissingScheduleRecords(
+  [row('2026-10-05', { employeeNo: '001001', name: 'Same Name' })],
+  [row('2026-10-06', { employeeNo: '2002', name: 'Same Name' })]
+);
+assert.equal(sameNameDifferentNumbers.length, 2);
+
+// Test 9: once an employee exists in both datasets, normal weekly validation remains.
+assert.equal(weeklyViolations(withinMonth).length, 1);
 
 console.log('Weekly Rest Day boundary tests passed.');
