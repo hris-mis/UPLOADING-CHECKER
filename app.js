@@ -1278,6 +1278,15 @@ document.querySelectorAll('.remove-imported-file-btn').forEach(btn => {
   });
 });
 }
+function isSampleDataSheet(sheetName) {
+  const normalizedSheetName = String(sheetName || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .trim();
+
+  return /(?:^| )SAMPLE\s*DATA(?: |$)/.test(normalizedSheetName);
+}
+
 function detectScheduleContent(rows, sheetName = '') {
   const upperSheetName = String(sheetName || '').toUpperCase();
   const sheetNameLooksSchedule = /(?:WS|RD|WORK|REST|SCHEDULE|SCEHDULE)/.test(upperSheetName) &&
@@ -1452,7 +1461,7 @@ async function handleImportFiles(event, appendMode = false) {
     importedFiles = [];
   }
 
-  let summaryMessage = '';
+  let skippedSampleSheetCount = 0;
 
   for (const file of files) {
     const importFileKey = `${file.name}-${file.size}`;
@@ -1460,7 +1469,15 @@ async function handleImportFiles(event, appendMode = false) {
       const workbook = await readWorkbookFromFile(file);
       let importedSheetCount = 0;
 
-      workbook.SheetNames.forEach(sheetName => {
+      const importableSheetNames = workbook.SheetNames.filter(sheetName => {
+        if (!isSampleDataSheet(sheetName)) return true;
+
+        skippedSampleSheetCount += 1;
+        console.log(`Skipped sample data sheet: ${sheetName}`);
+        return false;
+      });
+
+      importableSheetNames.forEach(sheetName => {
         try {
           const sheet = workbook.Sheets[sheetName];
 
@@ -1519,7 +1536,7 @@ async function handleImportFiles(event, appendMode = false) {
         }
       });
 
-      if (importedSheetCount === 0) {
+      if (importedSheetCount === 0 && importableSheetNames.length > 0) {
         importedFiles.push({
           fileName: file.name,
           importFileKey,
@@ -1564,7 +1581,10 @@ async function handleImportFiles(event, appendMode = false) {
       importedFiles.length === 0;
 
     showSuccess(
-      `${importedFiles.length} sheet(s) ready for generation.`
+      `${importedFiles.length} sheet(s) ready for generation.` +
+      (skippedSampleSheetCount > 0
+        ? ` Skipped ${skippedSampleSheetCount} sample data sheet(s).`
+        : '')
     );
   });
 
