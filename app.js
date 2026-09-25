@@ -1469,7 +1469,15 @@ async function handleImportFiles(event, appendMode = false) {
       const workbook = await readWorkbookFromFile(file);
       let importedSheetCount = 0;
 
-      workbook.SheetNames.forEach(sheetName => {
+      const importableSheetNames = workbook.SheetNames.filter(sheetName => {
+        if (!isSampleDataSheet(sheetName)) return true;
+
+        skippedSampleSheetCount += 1;
+        console.log(`Skipped sample data sheet: ${sheetName}`);
+        return false;
+      });
+
+      importableSheetNames.forEach(sheetName => {
         try {
           if (isSampleDataSheet(sheetName)) {
             skippedSampleSheetCount += 1;
@@ -1534,11 +1542,7 @@ async function handleImportFiles(event, appendMode = false) {
         }
       });
 
-      const hasNonSampleSheet = workbook.SheetNames.some(sheetName =>
-        !isSampleDataSheet(sheetName)
-      );
-
-      if (importedSheetCount === 0 && hasNonSampleSheet) {
+      if (importedSheetCount === 0 && importableSheetNames.length > 0) {
         importedFiles.push({
           fileName: file.name,
           importFileKey,
