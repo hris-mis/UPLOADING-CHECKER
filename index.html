@@ -18,8 +18,8 @@
 <div class="max-w-[1400px] mx-auto">
   <header class="mb-10 text-center">
     <div class="flex justify-center space-x-4 mb-8">
-  <button id="tab-schedule" class="tab px-6 py-2 rounded-full font-semibold bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition">🗓️ Schedule Checker</button>
-  <button id="tab-monitoring" class="tab px-6 py-2 rounded-full font-semibold bg-gray-200 text-gray-700 hover:bg-indigo-100 transition">📊 Monitoring</button>
+  <button id="tab-schedule" class="tab px-6 py-2 rounded-full font-semibold bg-indigo-600 text-white shadow-md hover:bg-indigo-700 transition">🗓️ Operation Group</button>
+  <button id="tab-monitoring" class="tab px-6 py-2 rounded-full font-semibold bg-gray-200 text-gray-700 hover:bg-indigo-100 transition">🗓️ Support Group</button>
 </div>
   </header>
 
@@ -75,68 +75,29 @@
     </div>
   </div>
 
-<!-- MONITORING -->
+<!-- SUPPORT GROUP -->
 <div id="tab-monitoring-content" class="hidden dashboard-card mt-6 shadow-lg">
-
-  <h2 class="text-2xl text-center mb-6">📊 Branch Monitoring Dashboard</h2>
-
-  <!-- ✅ Summary cards -->
-  <div id="monitoring-summary" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 text-center">
-    <div class="summary-card bg-gradient-to-r from-sky-500 to-cyan-400 text-white p-4 rounded-lg shadow-md">
-      <div class="text-sm opacity-90">🏢 Total Branches</div>
-      <div id="totalBranches" class="text-2xl font-bold">0</div>
+  <h2 class="text-3xl text-center mb-2">Support Group Schedule Conflict Checker</h2>
+  <p class="text-center text-gray-600 mb-8">Paste, validate, and generate HRIS upload files for Support Work and Rest Day schedules.</p>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 px-8 py-6">
+    <div>
+      <div class="flex items-center justify-between mb-4 gap-4"><h3>1. Paste Work Schedule Data</h3><div class="flex items-center gap-3">
+        <input id="supportWorkBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-2" />
+        <button id="supportGenerateWorkFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button><button id="supportClearWorkData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
+      </div></div>
+      <textarea id="supportWorkScheduleInput" class="w-full h-64 border rounded p-3 mb-4" placeholder="Paste work schedule (Excel copy) here"></textarea>
+      <div class="overflow-auto bg-white rounded border"><table class="w-full text-sm text-center"><thead class="bg-gray-50 text-gray-600 text-xs"><tr><th>Name</th><th>Emp No.</th><th>Work Date</th><th>Shift</th><th>Day</th><th>Position</th></tr></thead><tbody id="supportWorkTableBody"></tbody></table></div>
     </div>
-    <div class="summary-card bg-gradient-to-r from-amber-400 to-yellow-300 text-white p-4 rounded-lg shadow-md">
-      <div class="text-sm opacity-90">✅ Checked</div>
-      <div id="checkedBranches" class="text-2xl font-bold">0</div>
+    <div>
+      <div class="flex items-center justify-between mb-4 gap-4"><h3>2. Paste Rest Day Schedule Data</h3><div class="flex items-center gap-3">
+        <input id="supportRestBranchName" type="text" placeholder="Branch Name" class="border rounded px-3 py-2" />
+        <button id="supportGenerateRestFile" class="bg-indigo-600 text-white px-4 py-2 rounded">Generate</button><button id="supportClearRestData" class="bg-gray-100 px-4 py-2 rounded">Clear</button>
+      </div></div>
+      <textarea id="supportRestScheduleInput" class="w-full h-64 border rounded p-3 mb-4" placeholder="Paste rest day schedule (Excel copy) here"></textarea>
+      <div class="overflow-auto bg-white rounded border"><table class="w-full text-sm text-center"><thead class="bg-gray-50 text-gray-600 text-xs"><tr><th>Conflict</th><th>Name</th><th>Emp No.</th><th>Rest Date</th><th>Day</th><th>Position</th></tr></thead><tbody id="supportRestTableBody"></tbody></table></div>
+      <div id="supportSummary" class="summary-box hidden"></div>
     </div>
-    <div class="summary-card bg-gradient-to-r from-emerald-500 to-green-400 text-white p-4 rounded-lg shadow-md">
-      <div class="text-sm opacity-90">⬆️ Uploaded</div>
-      <div id="uploadedBranches" class="text-2xl font-bold">0</div>
-    </div>
   </div>
-
-  <!-- 📊 Progress Bar -->
-  <div class="w-full bg-gray-200 rounded-full h-4 mb-6 overflow-hidden">
-    <div id="progressBar" class="h-4 bg-gradient-to-r from-red-500 via-yellow-400 to-green-500 rounded-full transition-all duration-700 ease-out w-0"></div>
-  </div>
-  <p class="text-center mb-4 text-sm text-gray-700">
-    Progress: <span id="progressPercent" class="font-semibold">0%</span>
-  </p>
-
-  <!-- 🔍 Search + Filters -->
-  <div class="flex flex-col sm:flex-row justify-center items-center gap-3 mb-4">
-    <input id="monitorSearch" type="search" placeholder="Search branch..." class="border rounded px-3 py-2 w-64" />
-    <label class="flex items-center gap-2 text-sm text-gray-700">
-      <input type="checkbox" id="filterUnchecked" /> Show only unchecked
-    </label>
-    <button id="clearMonitoringBtn" class="bg-red-500 text-white px-4 py-2 rounded">Clear</button>
-    <button id="exportMonitoringBtn" class="bg-green-600 text-white px-4 py-2 rounded">Export</button>
-  </div>
-
-  <!-- 📋 Monitoring Table -->
-  <div class="overflow-auto bg-white rounded border max-h-[480px]">
-    <table class="w-full text-sm text-center">
-      <thead class="bg-gray-100 sticky top-0 z-10">
-        <tr>
-          <th>Branch</th>
-          <th>Checked</th>
-          <th>Uploaded</th>
-          <th>Uploaded By</th>
-          <th>Remarks</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="monitoringBody"></tbody>
-    </table>
-  </div>
-
-  <!-- ➕ Floating Add Button -->
-  <button id="addBranchBtn"
-    class="fixed bottom-8 right-8 bg-indigo-600 hover:bg-indigo-700 text-white text-2xl rounded-full w-14 h-14 shadow-lg flex items-center justify-center transition-transform transform hover:scale-110">
-    +
-  </button>
-
 </div>
 
 <!-- ================================
