@@ -369,7 +369,10 @@ const findHeaderIndexes = (row) => {
     h.includes('SCODE')
   );
   const forceWorkOnlyForRow = forceWorkOnly && !rowHasRestDate;
-  const forceRestOnlyForRow = forceRestOnly && !rowHasWorkDate && !rowHasShiftCode;
+  // An explicitly named RD sheet is authoritative even when its template reuses
+  // the WORK DATE and SHIFT CODE column labels. RD rows legitimately leave the
+  // shift-code column blank, so treating that header as work would discard them.
+  const forceRestOnlyForRow = forceRestOnly;
   const preferRestOnly =
     (rowHasRestDate && !rowHasWorkDate && !rowHasShiftCode) ||
     forceRestOnlyForRow;
