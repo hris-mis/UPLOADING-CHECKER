@@ -34,12 +34,12 @@ function buildWeek(dates, restDates) {
   };
 }
 
-function weeklyViolations(schedule, validateOperationWeekends = false) {
+function restDayViolations(schedule, validateOperationWeekends = false) {
   return getRestDayViolations(
     schedule.workRows,
     schedule.restRows,
     validateOperationWeekends
-  ).filter(violation => violation.type === 'weeklyRestDays');
+  );
 }
 
 const crossingMonthDates = [
@@ -52,44 +52,15 @@ const crossingMonthDates = [
   '2026-11-01'
 ];
 
-// Test 1: a boundary week cannot be judged when Sunday is outside the import.
-const octoberOnly = buildWeek(crossingMonthDates.slice(0, 6), ['2026-10-31']);
-assert.equal(weeklyViolations(octoberOnly, true).length, 0);
-assert.equal(weeklyViolations(octoberOnly, false).length, 0);
-
-// Test 2: Saturday and Sunday remain in one Monday-Sunday week across months.
-const twoBoundaryRestDays = buildWeek(crossingMonthDates, ['2026-10-31', '2026-11-01']);
-assert.equal(weeklyViolations(twoBoundaryRestDays).length, 0);
-
-// Test 3: a fully covered cross-month week with only one RD is still invalid.
-const oneBoundaryRestDay = buildWeek(crossingMonthDates, ['2026-10-31']);
-const boundaryViolations = weeklyViolations(oneBoundaryRestDay);
-assert.equal(boundaryViolations.length, 1);
-assert.match(boundaryViolations[0].reason, /Only 1 of 2 required rest days/);
-
-// Test 4: complete weeks contained by one month retain the existing rule.
-const withinMonth = buildWeek([
-  '2026-10-05',
-  '2026-10-06',
-  '2026-10-07',
-  '2026-10-08',
-  '2026-10-09',
-  '2026-10-10',
-  '2026-10-11'
-], ['2026-10-10']);
-assert.equal(weeklyViolations(withinMonth).length, 1);
-
-// Test 5: the 15/16 cut-off does not split a calendar week.
-const crossingCutoff = buildWeek([
-  '2026-10-12',
-  '2026-10-13',
-  '2026-10-14',
-  '2026-10-15',
-  '2026-10-16',
-  '2026-10-17',
-  '2026-10-18'
-], ['2026-10-13', '2026-10-17']);
-assert.equal(weeklyViolations(crossingCutoff).length, 0);
+// Weekly RD totals never create conflicts, regardless of the count.
+for (const restDates of [
+  [],
+  ['2026-10-30'],
+  ['2026-10-30', '2026-10-31'],
+  ['2026-10-30', '2026-10-31', '2026-11-01']
+]) {
+  assert.equal(restDayViolations(buildWeek(crossingMonthDates, restDates)).length, 0);
+}
 
 // Test 6: a WS-only employee receives one missing-RD issue, not weekly 0-of-2 issues.
 const twoWorkWeeks = [
@@ -122,9 +93,6 @@ const sameNameDifferentNumbers = getMissingScheduleRecords(
   [row('2026-10-06', { employeeNo: '2002', name: 'Same Name' })]
 );
 assert.equal(sameNameDifferentNumbers.length, 2);
-
-// Test 9: once an employee exists in both datasets, normal weekly validation remains.
-assert.equal(weeklyViolations(withinMonth).length, 1);
 
 function weekendViolations(dates, extra = {}) {
   return getRestDayViolations([], dates.map(date => row(date, extra)), true)
