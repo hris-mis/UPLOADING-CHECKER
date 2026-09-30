@@ -250,30 +250,43 @@ function parseImportedRows(rows, isWork) {
   return data;
 }
 
-function detectDominantMonthYearFromRows(rows) {
-  const counts = {};
+function detectDateConventionsFromRows(rows) {
+  const evidenceByColumn = {};
 
-  rows.flat().forEach(cell => {
-    const value = String(cell || '').trim();
+  rows.forEach(row => row.forEach((cell, columnIndex) => {
+    if (typeof cell !== 'string') return;
 
-    const match = value.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](20\d{2})$/);
+    const match = cell.trim().match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})$/);
     if (!match) return;
 
-    const [, month, , year] = match;
-    const key = `${Number(month)}-${year}`;
+    const first = Number(match[1]);
+    const second = Number(match[2]);
+    if (first < 1 || second < 1 || first > 31 || second > 31) return;
 
-    counts[key] = (counts[key] || 0) + 1;
+    const evidence = evidenceByColumn[columnIndex] || new Set();
+    if (first > 12 && second <= 12) evidence.add('DMY');
+    if (second > 12 && first <= 12) evidence.add('MDY');
+    evidenceByColumn[columnIndex] = evidence;
+  }));
+
+  const columns = {};
+  Object.entries(evidenceByColumn).forEach(([columnIndex, evidence]) => {
+    if (evidence.size > 1) {
+      columns[columnIndex] = 'CONFLICT';
+      return;
+    }
+    if (evidence.size === 1) columns[columnIndex] = [...evidence][0];
   });
 
-  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-
-  if (!top) return null;
-
-  const [month, year] = top[0].split('-');
-
+  // An all-ambiguous column may inherit a convention only when every evidenced
+  // date column on this sheet agrees. A column's own evidence always wins, so
+  // side-by-side Work and Rest tables are free to use different conventions.
+  const evidencedConventions = [
+    ...new Set(Object.values(columns).filter(value => value === 'DMY' || value === 'MDY'))
+  ];
   return {
-    month: Number(month),
-    year: Number(year)
+    columns,
+    sheetConvention: evidencedConventions.length === 1 ? evidencedConventions[0] : null
   };
 }
 
@@ -604,24 +617,41 @@ blocks.forEach(block => {
         const getVal = (key) => {
           if (activeHeader[key] === null || activeHeader[key] === undefined) return '';
           const localIndex = activeHeader[key] - block.offset;
-          return String(block.row[localIndex] || '').trim();
+          const cell = block.row[localIndex];
+          return typeof cell === 'string' ? cell.trim() : cell;
         };
 
         entry.name = getVal('name');
         entry.employeeNo = normalizeEmployeeNo(getVal('employeeNo'));
         const rawDate = getVal('date');
-entry.date = rawDate ? excelDateToJS(rawDate, dateContext) : '';
+        const dateColumn = activeHeader.date;
+        const convention = dateContext && (
+          dateContext.columns?.[dateColumn] || dateContext.sheetConvention
+        );
+        if (convention === 'CONFLICT') {
+          throw new Error(`Conflicting date formats were found in date column ${dateColumn + 1}.`);
+        }
+entry.date = rawDate ? excelDateToJS(rawDate, { convention, requireConvention: true }) : '';
         entry.shiftCode = normalizeShiftCode(getVal('shiftCode'));
         entry.dayOfWeek = getVal('dayOfWeek');
         entry.position = getVal('position');
       } else {
-        block.row.forEach(value => {
-          value = String(value || '').trim();
-          const upper = value.toUpperCase();
+        block.row.forEach((rawValue, localIndex) => {
+          let value = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+          const upper = String(value || '').toUpperCase();
 
           if (/^\d{1,6}(?:\.0+)?$/.test(value)) entry.employeeNo ||= normalizeEmployeeNo(value);
           else if (isShiftCode(upper)) entry.shiftCode ||= normalizeShiftCode(upper);
-          else if (isDate(value)) entry.date ||= excelDateToJS(value, dateContext);
+          else if (isDate(value)) {
+            const dateColumn = block.offset + localIndex;
+            const convention = dateContext && (
+              dateContext.columns?.[dateColumn] || dateContext.sheetConvention
+            );
+            if (convention === 'CONFLICT') {
+              throw new Error(`Conflicting date formats were found in date column ${dateColumn + 1}.`);
+            }
+            entry.date ||= excelDateToJS(value, { convention, requireConvention: true });
+          }
           else if (isDay(value)) entry.dayOfWeek ||= value;
           else if (/^(branch\s*head|oic|officer\s*in\s*charge|cashier|manager|assistant|lead|mac\s*expert|site\s*supervisor)$/i.test(value)) entry.position ||= value;
           else if (/^[A-Za-z,\s.-]+$/.test(value)) entry.name ||= value;
@@ -1494,7 +1524,7 @@ async function readWorkbookFromFile(file) {
 
   if (isCsv) {
     const text = await file.text();
-    return XLSX.read(text, { type: 'string', raw: false, cellStyles: true });
+    return XLSX.read(text, { type: 'string', cellDates: true, cellStyles: true });
   }
 
   const buffer = await file.arrayBuffer();
@@ -1502,15 +1532,15 @@ async function readWorkbookFromFile(file) {
 
   if (headerType === 'zip' || headerType === 'ole') {
     try {
-      return XLSX.read(buffer, { type: 'array', cellStyles: true });
+      return XLSX.read(buffer, { type: 'array', cellDates: true, cellStyles: true });
     } catch (arrayError) {
       try {
         const uint8 = new Uint8Array(buffer);
-        return XLSX.read(uint8, { type: 'array', cellStyles: true });
+        return XLSX.read(uint8, { type: 'array', cellDates: true, cellStyles: true });
       } catch (altError) {
         try {
           const binary = arrayBufferToBinary(buffer);
-          return XLSX.read(binary, { type: 'binary', raw: false, cellStyles: true });
+          return XLSX.read(binary, { type: 'binary', cellDates: true, cellStyles: true });
         } catch (binaryError) {
           const readError = arrayError || altError || binaryError;
           readError.message = `Unable to parse workbook (${headerType}): ${readError.message}`;
@@ -1522,7 +1552,7 @@ async function readWorkbookFromFile(file) {
 
   const text = await file.text();
   if (text.includes(',') || text.includes('\t')) {
-    return XLSX.read(text, { type: 'string', raw: false, cellStyles: true });
+    return XLSX.read(text, { type: 'string', cellDates: true, cellStyles: true });
   }
 
   const error = new Error(`Unsupported file header type: ${headerType}`);
@@ -1553,6 +1583,7 @@ async function handleImportFiles(event, appendMode = false) {
         console.log(`Skipped sample data sheet: ${sheetName}`);
         return false;
       });
+      const sheetFailures = [];
 
       importableSheetNames.forEach(sheetName => {
         try {
@@ -1566,7 +1597,7 @@ async function handleImportFiles(event, appendMode = false) {
 
           const rows = XLSX.utils.sheet_to_json(sheet, {
             header: 1,
-            raw: false,
+            raw: true,
             defval: ''
           });
 
@@ -1576,7 +1607,7 @@ async function handleImportFiles(event, appendMode = false) {
               Array.isArray(row) &&
               row.some(cell => String(cell || '').trim() !== '')
             )
-            .map(row => row.map(cell => String(cell || '').trim()));
+            .map(row => row.map(cell => typeof cell === 'string' ? cell.trim() : cell));
 
           const scheduleContent = detectScheduleContent(cleanedRows, sheetName);
 
@@ -1585,7 +1616,7 @@ async function handleImportFiles(event, appendMode = false) {
             return;
           }
 
-          const dateContext = detectDominantMonthYearFromRows(cleanedRows);
+          const dateContext = detectDateConventionsFromRows(cleanedRows);
 
           const parsedRows = parseMixedScheduleRows(cleanedRows, dateContext, sheetName);
 
@@ -1610,6 +1641,7 @@ async function handleImportFiles(event, appendMode = false) {
           });
           importedSheetCount += 1;
         } catch (sheetError) {
+          sheetFailures.push(`${sheetName}: ${sheetError?.message || 'unknown error'}`);
           console.error('Sheet failed:', {
             file: file.name,
             sheetName,
@@ -1628,7 +1660,9 @@ async function handleImportFiles(event, appendMode = false) {
           conflicts: [
             {
               row: '-',
-              reason: `Workbook was readable, but no Work Schedule or Rest Day sheet was detected. Sheets found: ${workbook.SheetNames.join(', ')}`
+              reason: sheetFailures.length > 0
+                ? `Schedule import failed: ${sheetFailures.join('; ')}`
+                : `Workbook was readable, but no Work Schedule or Rest Day sheet was detected. Sheets found: ${workbook.SheetNames.join(', ')}`
             }
           ]
         });
@@ -2469,6 +2503,11 @@ tr.className = rowClass;
 function excelDateToJS(excelDate, dateContext = null) {
   if (!excelDate) return '';
 
+  if (Object.prototype.toString.call(excelDate) === '[object Date]') {
+    if (isNaN(excelDate.getTime())) return '';
+    return `${excelDate.getMonth() + 1}/${excelDate.getDate()}/${excelDate.getFullYear()}`;
+  }
+
   const value = String(excelDate).trim();
 
   if (!value || value.toUpperCase() === 'NAN') return '';
@@ -2476,14 +2515,18 @@ function excelDateToJS(excelDate, dateContext = null) {
   const numericMatch = value.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
 
   if (numericMatch) {
-    let [, month, day, year] = numericMatch;
+    let [, first, second, year] = numericMatch;
 
     if (year.length === 2) {
       year = `20${year}`;
     }
 
-    const parsedMonth = Number(month);
-    const parsedDay = Number(day);
+    const firstNumber = Number(first);
+    const secondNumber = Number(second);
+    const inferredConvention = firstNumber > 12 ? 'DMY' : secondNumber > 12 ? 'MDY' : null;
+    const convention = (dateContext && dateContext.convention) || inferredConvention;
+    const parsedMonth = convention === 'DMY' ? secondNumber : firstNumber;
+    const parsedDay = convention === 'DMY' ? firstNumber : secondNumber;
     const parsedYear = Number(year);
 
     const isValidDate =
@@ -2493,12 +2536,12 @@ function excelDateToJS(excelDate, dateContext = null) {
       parsedDay <= 31 &&
       parsedYear >= 2020;
 
-    if (isValidDate) {
-      return `${parsedMonth}/${parsedDay}/${parsedYear}`;
+    if (!convention && dateContext && dateContext.requireConvention) {
+      throw new Error(`Ambiguous date "${value}" has no safely detected column format.`);
     }
 
-    if (dateContext && dateContext.month && dateContext.year) {
-      return `${dateContext.month}/${parsedDay}/${dateContext.year}`;
+    if (isValidDate) {
+      return `${parsedMonth}/${parsedDay}/${parsedYear}`;
     }
 
     return '';
