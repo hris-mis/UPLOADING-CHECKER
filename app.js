@@ -822,33 +822,8 @@ function getLocalDateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function getMondayWeekKey(date) {
-  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  monday.setDate(monday.getDate() + (date.getDay() === 0 ? -6 : 1 - date.getDay()));
-  return getLocalDateKey(monday);
-}
-
 function getCutoffKey(date) {
   return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate() <= 15 ? 1 : 2}`;
-}
-
-function hasCompleteCalendarWeek(scheduleEntries, mondayKey) {
-  const coveredDates = new Set(
-    scheduleEntries
-      .map(row => parseScheduleDate(row.date))
-      .filter(Boolean)
-      .map(getLocalDateKey)
-  );
-  const monday = parseScheduleDate(mondayKey);
-
-  if (!monday) return false;
-
-  for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-    const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + dayOffset);
-    if (!coveredDates.has(getLocalDateKey(date))) return false;
-  }
-
-  return true;
 }
 
 function normalizePosition(value) {
@@ -909,11 +884,7 @@ const SPECIAL_WEEKEND_POSITIONS = new Set([
 function getRestDayViolations(workRows, restRows, validateOperationWeekends) {
   const violations = [];
   const positions = new Map();
-  const scheduleWeeks = new Map();
-  const restWeeks = new Map();
   const cutoffRestDays = new Map();
-  const workEmployees = new Set(workRows.map(row => normalizeEmployeeNo(row.employeeNo)).filter(Boolean));
-  const restEmployees = new Set(restRows.map(row => normalizeEmployeeNo(row.employeeNo)).filter(Boolean));
 
   [...workRows, ...restRows].forEach(row => {
     const employeeNo = normalizeEmployeeNo(row.employeeNo);
@@ -922,10 +893,6 @@ function getRestDayViolations(workRows, restRows, validateOperationWeekends) {
 
     const position = normalizePosition(row.position);
     if (position) positions.set(employeeNo, position);
-
-    const weekKey = `${employeeNo}|${getMondayWeekKey(date)}`;
-    if (!scheduleWeeks.has(weekKey)) scheduleWeeks.set(weekKey, []);
-    scheduleWeeks.get(weekKey).push(row);
   });
 
   restRows.forEach(row => {
@@ -933,37 +900,11 @@ function getRestDayViolations(workRows, restRows, validateOperationWeekends) {
     const date = parseScheduleDate(row.date);
     if (!employeeNo || !date) return;
 
-    const weekKey = `${employeeNo}|${getMondayWeekKey(date)}`;
-    if (!restWeeks.has(weekKey)) restWeeks.set(weekKey, []);
-    restWeeks.get(weekKey).push({ row, date });
-
     if (validateOperationWeekends && (date.getDay() === 0 || date.getDay() === 6)) {
       const cutoffKey = `${employeeNo}|${getCutoffKey(date)}`;
       if (!cutoffRestDays.has(cutoffKey)) cutoffRestDays.set(cutoffKey, []);
       cutoffRestDays.get(cutoffKey).push({ row, date });
     }
-  });
-
-  scheduleWeeks.forEach((scheduleEntries, weekKey) => {
-    const employeeNo = weekKey.slice(0, weekKey.indexOf('|'));
-    // A wholly missing counterpart is reported once by getMissingScheduleRecords,
-    // rather than as a separate 0-of-2 issue for every complete week.
-    if (!workEmployees.has(employeeNo) || !restEmployees.has(employeeNo)) return;
-
-    const mondayKey = weekKey.slice(weekKey.indexOf('|') + 1);
-    if (!hasCompleteCalendarWeek(scheduleEntries, mondayKey)) return;
-
-    const restEntries = restWeeks.get(weekKey) || [];
-    const uniqueRestDays = new Set(restEntries.map(entry => getLocalDateKey(entry.date)));
-    if (uniqueRestDays.size === 2) return;
-
-    const reason = uniqueRestDays.size < 2
-      ? `Insufficient Rest Days — Only ${uniqueRestDays.size} of 2 required rest days found this week.`
-      : 'Excess Rest Days — More than 2 rest days found this week.';
-    const affectedRows = restEntries.length > 0
-      ? restEntries.map(entry => entry.row)
-      : scheduleEntries;
-    violations.push({ rows: affectedRows, reason, type: 'weeklyRestDays' });
   });
 
   // Weekend Rest Day limits are exclusive to the Operation Group.
@@ -1150,9 +1091,6 @@ function getScheduleConflictType(reason = '') {
     normalizedReason.includes('weekend rd limit')
   ) {
     return { key: 'weekend', summary: 'has Rest Day weekend rule conflict', title: 'Weekend RD Limit' };
-  }
-  if (normalizedReason.includes('insufficient rest days') || normalizedReason.includes('excess rest days')) {
-    return { key: 'weekly-rest-days', summary: 'does not have exactly two Rest Days for the week', title: 'Weekly Rest Day requirement' };
   }
   return { key: 'overlap', summary: 'has Work Schedule and Rest Day overlap', title: 'Work Schedule and Rest Day overlap' };
 }
@@ -2150,8 +2088,7 @@ restDayViolations.forEach(violation => {
     missingRest: 'No Rest Day Record',
     missingWork: 'No Work Schedule Record',
     leadership: 'Leadership overlap',
-    weekend: 'Weekend Rest Day limit',
-    weeklyRestDays: 'Weekly Rest Day requirement'
+    weekend: 'Weekend Rest Day limit'
   };
   [...workScheduleData, ...restDayData].forEach(d => {
     d.conflictReasons = [...new Set(d.conflictReasons || [])];
