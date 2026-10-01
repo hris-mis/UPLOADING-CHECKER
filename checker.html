@@ -68,6 +68,10 @@
         <ion-icon name="refresh-outline"></ion-icon>
         Generate Imported Data
       </button>
+      <button type="button" id="exportCurrentSessionBtn" class="action-btn flex items-center gap-2" disabled>
+        <ion-icon name="download-outline"></ion-icon>
+        Export Current Session
+      </button>
     </div>
   </div>
 
@@ -279,7 +283,7 @@
     document.getElementById('group-heading').textContent = `${groupName} schedule conflict checker`;
     document.getElementById('group-context-label').textContent = isSupportGroup ? 'Support Rules' : 'Operation Rules';
   </script>
-  <script src="app.js?v=20260925-2"></script>
+  <script src="app.js?v=20261001-1"></script>
 
   <script>
     loadState();
