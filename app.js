@@ -1,6 +1,8 @@
 /***** Independent checker configuration and state *****/
       const GROUP_KEY = new URLSearchParams(window.location.search).get('group') === 'support' ? 'support' : 'operation';
       const IS_SUPPORT_GROUP = GROUP_KEY === 'support';
+      const CHECKER_STORAGE_KEY = 'schedMasterCheckerState_v1';
+      const CHECKER_STORAGE_VERSION = 1;
       let workScheduleData = [];
       let restDayData = [];
       let currentlyEditing = { type: null, index: null };
@@ -22,6 +24,7 @@
 const addScheduleFilesInput = document.getElementById('addScheduleFilesInput');
 const importScheduleBtn = document.getElementById('importScheduleBtn');
 const generateImportedBtn = document.getElementById('generateImportedBtn');
+const exportCurrentSessionBtn = document.getElementById('exportCurrentSessionBtn');
 const importSummaryPanel = document.getElementById('importSummaryPanel');
 const importSummaryText = document.getElementById('importSummaryText');
 const importSummaryBadge = document.getElementById('importSummaryBadge');
@@ -78,6 +81,7 @@ addScheduleFilesInput.addEventListener('change', async (event) => {
 });
 
 generateImportedBtn.addEventListener('click', generateImportedData);
+exportCurrentSessionBtn.addEventListener('click', exportCurrentSession);
 
 removeConflictFilesBtn.addEventListener('click', () => {
   const previewConflicts = getImportedPreviewConflicts();
@@ -110,6 +114,7 @@ if (importedFiles.length === 0) {
   addScheduleFilesBtn.classList.remove('hidden');
 }
   renderImportSummaryDashboard();
+  saveState();
   showWarning(
     conflictedImportKeys.size > 0
       ? `${conflictedImportKeys.size} conflicted file(s) removed.`
@@ -120,6 +125,7 @@ if (importedFiles.length === 0) {
 removeAllImportedFilesBtn.addEventListener('click', () => {
   importedFiles = [];
   renderImportSummaryDashboard();
+  saveState();
   showWarning('All imported file(s) removed.');
 });
 
@@ -1381,6 +1387,7 @@ document.querySelectorAll('.remove-imported-file-btn').forEach(btn => {
     const fileName = btn.dataset.fileName;
     importedFiles = importedFiles.filter(file => file.fileName !== fileName);
     renderImportSummaryDashboard();
+    saveState();
     showWarning('Imported file removed.');
   });
 });
@@ -1693,6 +1700,7 @@ async function handleImportFiles(event, appendMode = false) {
 
   requestAnimationFrame(() => {
     renderImportSummaryDashboard();
+    saveState();
 
     generateImportedBtn.disabled =
       importedFiles.length === 0;
@@ -1894,6 +1902,7 @@ function handlePaste(event) {
   // ✅ Always refresh UI
   recheckConflicts();
   updateButtonStates();
+  saveState();
 
   console.log('Parsed data:', data);
 }
@@ -2177,6 +2186,7 @@ if (isWorkSchedule) {
   branchName = document.getElementById('branchNameRestInput').value || 'UnnamedBranch';
 }
 
+
     // ✅ Headers
     const headers = isWorkSchedule
         ? ['Employee Number', 'Work Date', 'Shift Code']
@@ -2216,6 +2226,52 @@ if (isWorkSchedule) {
     // 💾 Export
     XLSX.writeFile(workbook, filename);
     showSuccess(`File "${filename}" generated successfully!`);
+}
+function dateForExcel(dateValue) {
+  const normalized = normalizeDateForExport(dateValue);
+  const match = normalized.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return '';
+  return new Date(Number(match[3]), Number(match[1]) - 1, Number(match[2]));
+}
+
+function exportCurrentSession() {
+  if (!workScheduleData.length && !restDayData.length) {
+    showWarning('No current schedule data to export.');
+    return;
+  }
+
+  const workbook = XLSX.utils.book_new();
+  const workRows = workScheduleData.map(row => ({
+    'Employee Number': row.employeeNo,
+    Name: row.name || '',
+    Position: row.position || '',
+    'Work Date': dateForExcel(row.date),
+    'Shift Code': row.shiftCode || '',
+    'Day of Week': row.dayOfWeek || ''
+  }));
+  const restRows = restDayData.map(row => ({
+    'Employee Number': row.employeeNo,
+    Name: row.name || '',
+    Position: row.position || '',
+    'Rest Day Date': dateForExcel(row.date),
+    'Day of Week': row.dayOfWeek || ''
+  }));
+
+  const appendSheet = (rows, name, dateColumn) => {
+    const sheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: 'mm/dd/yyyy' });
+    const range = XLSX.utils.decode_range(sheet['!ref']);
+    const dateColumnIndex = Object.keys(rows[0]).indexOf(dateColumn);
+    for (let row = 1; row <= range.e.r; row += 1) {
+      const cell = sheet[XLSX.utils.encode_cell({ r: row, c: dateColumnIndex })];
+      if (cell && cell.t === 'd') cell.z = 'mm/dd/yyyy';
+    }
+    XLSX.utils.book_append_sheet(workbook, sheet, name);
+  };
+
+  if (workRows.length) appendSheet(workRows, 'Work Schedule', 'Work Date');
+  if (restRows.length) appendSheet(restRows, 'Rest Day Schedule', 'Rest Day Date');
+  XLSX.writeFile(workbook, `${GROUP_KEY}_current_schedule.xlsx`, { cellDates: true });
+  showSuccess('Current checker data exported successfully.');
 }
 
       /*************************\
@@ -2388,6 +2444,7 @@ tr.className = rowClass;
         if (generateImportedBtn) {
   generateImportedBtn.disabled = importedFiles.length === 0;
         }
+        exportCurrentSessionBtn.disabled = workScheduleData.length === 0 && restDayData.length === 0;
       }
 
        function handleDeleteRow(type, index) {
@@ -2396,6 +2453,7 @@ tr.className = rowClass;
             saveUndoState(type);
             dataArray.splice(index, 1);
             recheckConflicts();
+            updateButtonStates();
             saveState();
        }
 
@@ -2469,6 +2527,7 @@ tr.className = rowClass;
            else { restDayData = previousState; }
            recheckConflicts();
            updateButtonStates();
+           saveState();
        }
 
        function redo(type) {
@@ -2481,6 +2540,7 @@ tr.className = rowClass;
            else { restDayData = nextState; }
            recheckConflicts();
            updateButtonStates();
+           saveState();
        }
 
        function clearData(type) {
@@ -2495,6 +2555,7 @@ tr.className = rowClass;
            }
            recheckConflicts();
            updateButtonStates();
+           saveState();
        }
 
       /*************************\
@@ -2620,28 +2681,122 @@ function normalizeDateForExport(dateValue) {
         backToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
       }
 
-      /***** LOCAL STORAGE FOR SCHEDULES *****/
-      function saveState() {
-        try {
-          localStorage.setItem(`${GROUP_KEY}_workScheduleData_v3`, JSON.stringify(workScheduleData));
-          localStorage.setItem(`${GROUP_KEY}_restDayData_v3`, JSON.stringify(restDayData));
-        } catch (e) { console.warn("Could not save schedule state.", e); }
-      }
-      function loadState() {
-        try {
-          const w = JSON.parse(localStorage.getItem(`${GROUP_KEY}_workScheduleData_v3`) || (IS_SUPPORT_GROUP ? '[]' : localStorage.getItem('workScheduleData_v3')) || '[]');
-          const r = JSON.parse(localStorage.getItem(`${GROUP_KEY}_restDayData_v3`) || (IS_SUPPORT_GROUP ? '[]' : localStorage.getItem('restDayData_v3')) || '[]');
-          workScheduleData = Array.isArray(w) ? w : [];
-          restDayData = Array.isArray(r) ? r : [];
-        } catch (e) { console.error("Could not load schedule state.", e); }
+      /***** VERSIONED, GROUP-AWARE LOCAL CHECKER SESSION *****/
+      function withoutDerivedConflictState(row) {
+        const {
+          conflict,
+          conflictReasons,
+          conflictReason,
+          conflictType,
+          _rowNum,
+          ...sourceRecord
+        } = row;
+        return sourceRecord;
       }
 
-      ['paste', 'click'].forEach(evt => {
-        workInput.addEventListener(evt, saveState);
-        restInput.addEventListener(evt, saveState);
-        clearWorkBtn.addEventListener(evt, saveState);
-        clearRestBtn.addEventListener(evt, saveState);
-      });
+      function createPersistedGroupState(work, rest, files, branchNames = {}) {
+        return {
+          workScheduleData: Array.isArray(work) ? work.map(withoutDerivedConflictState) : [],
+          restDayData: Array.isArray(rest) ? rest.map(withoutDerivedConflictState) : [],
+          importedFiles: Array.isArray(files) ? files.map(file => ({
+            fileName: file.fileName,
+            importFileKey: file.importFileKey,
+            sheetName: file.sheetName,
+            rows: Array.isArray(file.rows) ? file.rows.map(withoutDerivedConflictState) : []
+          })) : [],
+          branchNames: {
+            work: String(branchNames.work || ''),
+            rest: String(branchNames.rest || '')
+          }
+        };
+      }
+
+      function parsePersistedCheckerState(raw) {
+        if (!raw) return null;
+        try {
+          const state = JSON.parse(raw);
+          if (!state || state.version !== CHECKER_STORAGE_VERSION || !state.groups || typeof state.groups !== 'object') {
+            return null;
+          }
+          const validGroups = Object.values(state.groups).every(group =>
+            group && typeof group === 'object' &&
+            Array.isArray(group.workScheduleData) && group.workScheduleData.every(row => row && typeof row === 'object' && !Array.isArray(row)) &&
+            Array.isArray(group.restDayData) && group.restDayData.every(row => row && typeof row === 'object' && !Array.isArray(row)) &&
+            Array.isArray(group.importedFiles) && group.importedFiles.every(file =>
+              file && typeof file === 'object' && !Array.isArray(file) &&
+              typeof file.fileName === 'string' && Array.isArray(file.rows) &&
+              file.rows.every(row => row && typeof row === 'object' && !Array.isArray(row))
+            )
+          );
+          if (!validGroups) return null;
+          return state;
+        } catch (error) {
+          return null;
+        }
+      }
+
+      function saveState() {
+        try {
+          const state = parsePersistedCheckerState(localStorage.getItem(CHECKER_STORAGE_KEY)) || {
+            version: CHECKER_STORAGE_VERSION,
+            groups: {}
+          };
+          const groupState = createPersistedGroupState(
+            workScheduleData,
+            restDayData,
+            importedFiles,
+            {
+              work: document.getElementById('branchNameInput').value,
+              rest: document.getElementById('branchNameRestInput').value
+            }
+          );
+          const isEmpty = !groupState.workScheduleData.length &&
+            !groupState.restDayData.length && !groupState.importedFiles.length;
+          if (isEmpty) delete state.groups[GROUP_KEY];
+          else state.groups[GROUP_KEY] = groupState;
+
+          if (Object.keys(state.groups).length === 0) {
+            localStorage.removeItem(CHECKER_STORAGE_KEY);
+            return;
+          }
+          localStorage.setItem(CHECKER_STORAGE_KEY, JSON.stringify(state));
+        } catch (error) {
+          console.warn('Could not save checker session.', error);
+        }
+      }
+
+      function loadState() {
+        const cleanState = createPersistedGroupState([], [], []);
+        let saved = cleanState;
+        try {
+          const state = parsePersistedCheckerState(localStorage.getItem(CHECKER_STORAGE_KEY));
+          const groupState = state && state.groups[GROUP_KEY];
+          if (groupState && Array.isArray(groupState.workScheduleData) &&
+              Array.isArray(groupState.restDayData) && Array.isArray(groupState.importedFiles)) {
+            saved = createPersistedGroupState(
+              groupState.workScheduleData,
+              groupState.restDayData,
+              groupState.importedFiles,
+              groupState.branchNames
+            );
+          }
+        } catch (error) {
+          console.warn('Could not restore checker session.', error);
+        }
+
+        workScheduleData = saved.workScheduleData;
+        restDayData = saved.restDayData;
+        importedFiles = saved.importedFiles.map(file => ({
+          ...file,
+          conflicts: validateMixedRows(file.rows, file.fileName, file.sheetName)
+        }));
+        document.getElementById('branchNameInput').value = saved.branchNames.work;
+        document.getElementById('branchNameRestInput').value = saved.branchNames.rest;
+        if (importedFiles.length) renderImportSummaryDashboard();
+      }
+
+      document.getElementById('branchNameInput').addEventListener('change', saveState);
+      document.getElementById('branchNameRestInput').addEventListener('change', saveState);
 
       /***** Parallax Header & Particles *****/
       const header = document.querySelector('header');
