@@ -296,6 +296,40 @@ function detectDateConventionsFromRows(rows) {
   };
 }
 
+function isTemplateEmployeeNumber(value) {
+  const normalized = normalizeEmployeeNo(value).replace(/,/g, '');
+  return /^\d+(?:\.0+)?$/.test(normalized) && Number(normalized) === 1010;
+}
+
+function excludeTemplateEmployeeRows(rows) {
+  const employeeNumberColumns = new Set();
+
+  return rows.filter(row => {
+    row.forEach((cell, columnIndex) => {
+      const header = String(cell || '').toUpperCase().replace(/\s+/g, ' ').trim();
+      if (
+        header.includes('EMPLOYEE NUMBER') ||
+        header.includes('EMPLOYEE NO') ||
+        header.includes('EMP NO') ||
+        header.includes('EMPLOYEE #') ||
+        header.includes('EMP ID')
+      ) {
+        employeeNumberColumns.add(columnIndex);
+      }
+    });
+
+    if (employeeNumberColumns.size > 0) {
+      return ![...employeeNumberColumns].some(columnIndex =>
+        isTemplateEmployeeNumber(row[columnIndex])
+      );
+    }
+
+    // Headerless schedule layouts are supported by the importer. In those files,
+    // the exact numeric guide ID is the only reliable early identifier.
+    return !row.some(isTemplateEmployeeNumber);
+  });
+}
+
 function parseMixedScheduleRows(rows, dateContext = null, sheetName = '') {
   const parsed = [];
 
@@ -629,6 +663,7 @@ blocks.forEach(block => {
 
         entry.name = getVal('name');
         entry.employeeNo = normalizeEmployeeNo(getVal('employeeNo'));
+        if (isTemplateEmployeeNumber(entry.employeeNo)) return;
         const rawDate = getVal('date');
         const dateColumn = activeHeader.date;
         const convention = dateContext && (
@@ -642,6 +677,7 @@ entry.date = rawDate ? excelDateToJS(rawDate, { convention, requireConvention: t
         entry.dayOfWeek = getVal('dayOfWeek');
         entry.position = getVal('position');
       } else {
+        if (block.row.some(isTemplateEmployeeNumber)) return;
         block.row.forEach((rawValue, localIndex) => {
           let value = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
           const upper = String(value || '').toUpperCase();
@@ -678,14 +714,6 @@ const allowedYears = [
 ];
 
 if (entry.date && !allowedYears.includes(rowYear)) {
-  return;
-}
-
-      const isSampleRow =
-  String(entry.employeeNo || '').trim() === '1010' ||
-  String(entry.name || '').toUpperCase().includes('JUAN DELA CRUZ');
-
-if (isSampleRow) {
   return;
 }
 
@@ -993,12 +1021,13 @@ function getImportedPreviewConflicts() {
 
   importedFiles.forEach(file => {
     file.rows.forEach(row => {
-const taggedRow = {
-  ...row,
-  fileName: file.fileName,
-  importFileKey: file.importFileKey,
-  sheetName: file.sheetName
-};
+      if (isTemplateEmployeeNumber(row.employeeNo)) return;
+      const taggedRow = {
+        ...row,
+        fileName: file.fileName,
+        importFileKey: file.importFileKey,
+        sheetName: file.sheetName
+      };
 
       if (row.type === 'work') workRows.push(taggedRow);
       if (row.type === 'rest') restRows.push(taggedRow);
@@ -1608,13 +1637,13 @@ async function handleImportFiles(event, appendMode = false) {
             defval: ''
           });
 
-          const cleanedRows = rows
+          const cleanedRows = excludeTemplateEmployeeRows(rows
             .filter((row, rowIndex) =>
               !isHiddenSheetRow(sheet, rowIndex) &&
               Array.isArray(row) &&
               row.some(cell => String(cell || '').trim() !== '')
             )
-            .map(row => row.map(cell => typeof cell === 'string' ? cell.trim() : cell));
+            .map(row => row.map(cell => typeof cell === 'string' ? cell.trim() : cell)));
 
           const scheduleContent = detectScheduleContent(cleanedRows, sheetName);
 
@@ -2235,13 +2264,16 @@ function dateForExcel(dateValue) {
 }
 
 function exportCurrentSession() {
-  if (!workScheduleData.length && !restDayData.length) {
+  const currentWorkData = workScheduleData.filter(row => !isTemplateEmployeeNumber(row.employeeNo));
+  const currentRestData = restDayData.filter(row => !isTemplateEmployeeNumber(row.employeeNo));
+
+  if (!currentWorkData.length && !currentRestData.length) {
     showWarning('No current schedule data to export.');
     return;
   }
 
   const workbook = XLSX.utils.book_new();
-  const workRows = workScheduleData.map(row => ({
+  const workRows = currentWorkData.map(row => ({
     'Employee Number': row.employeeNo,
     Name: row.name || '',
     Position: row.position || '',
@@ -2249,7 +2281,7 @@ function exportCurrentSession() {
     'Shift Code': row.shiftCode || '',
     'Day of Week': row.dayOfWeek || ''
   }));
-  const restRows = restDayData.map(row => ({
+  const restRows = currentRestData.map(row => ({
     'Employee Number': row.employeeNo,
     Name: row.name || '',
     Position: row.position || '',
@@ -2696,13 +2728,19 @@ function normalizeDateForExport(dateValue) {
 
       function createPersistedGroupState(work, rest, files, branchNames = {}) {
         return {
-          workScheduleData: Array.isArray(work) ? work.map(withoutDerivedConflictState) : [],
-          restDayData: Array.isArray(rest) ? rest.map(withoutDerivedConflictState) : [],
+          workScheduleData: Array.isArray(work) ? work
+            .filter(row => !isTemplateEmployeeNumber(row.employeeNo))
+            .map(withoutDerivedConflictState) : [],
+          restDayData: Array.isArray(rest) ? rest
+            .filter(row => !isTemplateEmployeeNumber(row.employeeNo))
+            .map(withoutDerivedConflictState) : [],
           importedFiles: Array.isArray(files) ? files.map(file => ({
             fileName: file.fileName,
             importFileKey: file.importFileKey,
             sheetName: file.sheetName,
-            rows: Array.isArray(file.rows) ? file.rows.map(withoutDerivedConflictState) : []
+            rows: Array.isArray(file.rows) ? file.rows
+              .filter(row => !isTemplateEmployeeNumber(row.employeeNo))
+              .map(withoutDerivedConflictState) : []
           })) : [],
           branchNames: {
             work: String(branchNames.work || ''),

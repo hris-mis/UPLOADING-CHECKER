@@ -8,6 +8,10 @@ const parserSource = appSource.slice(
   appSource.indexOf('function parseMixedScheduleRows'),
   appSource.indexOf('function validateMixedRows')
 );
+const templateEmployeeSource = appSource.slice(
+  appSource.indexOf('function isTemplateEmployeeNumber'),
+  appSource.indexOf('function parseMixedScheduleRows')
+);
 const normalizerSource = appSource.slice(
   appSource.indexOf('function normalizeShiftCode'),
   appSource.indexOf('function getRestDayName')
@@ -19,7 +23,7 @@ const dateSource = appSource.slice(
 const context = {};
 
 vm.runInNewContext(
-  `${parserSource}\n${normalizerSource}\n${dateSource}\nthis.parseMixedScheduleRows = parseMixedScheduleRows;`,
+  `${templateEmployeeSource}\n${parserSource}\n${normalizerSource}\n${dateSource}\nthis.parseMixedScheduleRows = parseMixedScheduleRows;`,
   context
 );
 

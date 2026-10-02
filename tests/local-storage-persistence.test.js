@@ -8,10 +8,18 @@ const persistenceSource = appSource.slice(
   appSource.indexOf('function withoutDerivedConflictState'),
   appSource.indexOf('function saveState()')
 );
+const employeeNumberSource = appSource.slice(
+  appSource.indexOf('function normalizeEmployeeNo'),
+  appSource.indexOf('function normalizeDayName')
+);
+const templateEmployeeSource = appSource.slice(
+  appSource.indexOf('function isTemplateEmployeeNumber'),
+  appSource.indexOf('function parseMixedScheduleRows')
+).split('function excludeTemplateEmployeeRows')[0];
 const context = {};
 
 vm.runInNewContext(
-  `const CHECKER_STORAGE_VERSION = 1; ${persistenceSource}\n` +
+  `const CHECKER_STORAGE_VERSION = 1; ${employeeNumberSource}\n${templateEmployeeSource}\n${persistenceSource}\n` +
   'this.api = { createPersistedGroupState, parsePersistedCheckerState };',
   context
 );
@@ -68,6 +76,17 @@ assert.deepEqual(restored.importedFiles, [{
   ]
 }]);
 assert.equal(restored.branchNames.work, 'Branch A');
+
+// The known template employee is never written to current or staged import data.
+const guideRow = { employeeNo: '001010.0', name: 'Juan Dela Cruz', date: '10/2/2025' };
+restored = roundTrip(createPersistedGroupState(
+  [guideRow, ...work],
+  [guideRow, ...rest],
+  [{ ...files[0], rows: [guideRow, ...files[0].rows] }]
+));
+assert.deepEqual(restored.workScheduleData.map(row => row.employeeNo), ['1001']);
+assert.deepEqual(restored.restDayData.map(row => row.employeeNo), ['1001']);
+assert.equal(restored.importedFiles[0].rows.some(row => row.employeeNo === '001010.0'), false);
 
 // Saving current arrays after edits and deletes cannot resurrect the prior records.
 const editedWork = [{ ...work[0], shiftCode: 'RBT-099' }];
