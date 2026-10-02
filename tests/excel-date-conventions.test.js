@@ -24,12 +24,13 @@ const context = { importedFiles: [], IS_SUPPORT_GROUP: true };
 
 vm.runInNewContext(
   `${importerSource}\n${normalizerSource}\n${dateSource}\n${conflictSource}\n` +
-  'this.api = { detectDateConventionsFromRows, parseMixedScheduleRows, excelDateToJS, getImportedPreviewConflicts };',
+  'this.api = { detectDateConventionsFromRows, excludeTemplateEmployeeRows, parseMixedScheduleRows, excelDateToJS, getImportedPreviewConflicts };',
   context
 );
 
 const {
   detectDateConventionsFromRows,
+  excludeTemplateEmployeeRows,
   parseMixedScheduleRows,
   excelDateToJS,
   getImportedPreviewConflicts
@@ -78,6 +79,42 @@ assert.throws(
   /Ambiguous date/
 );
 
+// Template employee 1010 is removed before convention detection and parsing.
+// Its ambiguous MDY-looking guide date therefore cannot override the real DMY evidence.
+const workWithGuide = excludeTemplateEmployeeRows([
+  workHeader,
+  ['1010.0', 'Juan Dela Cruz', '10/2/25', 'RBT-001', 'Thursday', 'Guide'],
+  ['8401', 'Real Employee', '02/10/2026', 'RBT-001', 'Friday', 'Cashier'],
+  ['8401', 'Real Employee', '15/10/2026', 'RBT-001', 'Thursday', 'Cashier']
+]);
+const importedWork = parse(workWithGuide, 'Work Schedule');
+assert.deepEqual(Array.from(importedWork, row => row.employeeNo), ['8401', '8401']);
+assert.deepEqual(Array.from(importedWork, row => row.date), ['10/2/2026', '10/15/2026']);
+assert.equal(
+  parse(excludeTemplateEmployeeRows([
+    workHeader,
+    ['1010', 'Juan Dela Cruz', '10/2/25', 'RBT-001', 'Thursday', 'Guide']
+  ]), 'Work Schedule').length,
+  0
+);
+
+const restWithGuide = excludeTemplateEmployeeRows([
+  restHeader,
+  ['001010', 'Juan Dela Cruz', '10/1/25', 'Wednesday', 'Guide'],
+  ['8401', 'Real Employee', '02/10/2026', 'Friday', 'Cashier'],
+  ['8401', 'Real Employee', '15/10/2026', 'Thursday', 'Cashier']
+]);
+const importedRest = parse(restWithGuide, 'Rest Day Schedule');
+assert.deepEqual(Array.from(importedRest, row => row.employeeNo), ['8401', '8401']);
+
+// A name match alone is deliberately not excluded.
+const legitimateSameName = excludeTemplateEmployeeRows([
+  workHeader,
+  ['8402', 'Juan Dela Cruz', '02/10/2026', 'RBT-001', 'Friday', 'Cashier'],
+  ['8402', 'Juan Dela Cruz', '15/10/2026', 'RBT-001', 'Thursday', 'Cashier']
+]);
+assert.equal(parse(legitimateSameName, 'Work Schedule').length, 2);
+
 // Genuine Excel Date objects and serial values bypass slash-format guessing.
 assert.equal(excelDateToJS(new Date(2027, 2, 17), { requireConvention: true }), '3/17/2027');
 assert.equal(excelDateToJS(46463, { requireConvention: true }), '3/17/2027');
@@ -93,8 +130,13 @@ context.importedFiles = [{
     ...genericRest.map((row, index) => ({ ...row, rowNumber: index + 30 }))
   ]
 }];
+context.importedFiles[0].rows.push(
+  { employeeNo: '1010', name: 'Juan Dela Cruz', date: '3/4/2027', type: 'work', rowNumber: 50 },
+  { employeeNo: '1010.0', name: 'Juan Dela Cruz', date: '3/4/2027', type: 'rest', rowNumber: 51 }
+);
 const conflicts = getImportedPreviewConflicts();
 assert.ok(conflicts.some(item => item.reason.includes('Work Schedule and Rest Day on the same date: 3/4/2027')));
 assert.ok(conflicts.some(item => item.reason.includes('duplicate date in Work Schedule: 3/4/2027')));
+assert.equal(conflicts.some(item => String(item.employeeNo).includes('1010')), false);
 
 console.log('Excel date convention and normalized conflict tests passed.');
